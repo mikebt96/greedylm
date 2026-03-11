@@ -1,0 +1,62 @@
+# Environment
+.env
+.venv
+venv
+env
+bin
+lib
+include
+share
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Databases & local storage
+*.db
+*.sqlite
+data/
+qdrant_storage/
+pgdata/
+redis_data/
+
+# IDEs & System
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# GREEDYLM Specific
+uvicorn_out.txt
+uvicorn_debug.txt
+temp_*/
+sandbox_*/
