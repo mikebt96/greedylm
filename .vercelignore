@@ -1,0 +1,21 @@
+# Ignore the heavy AI backend for Vercel deployment
+core/
+requirements.txt
+Dockerfile
+infrastructure/
+tests/
+main.py
+index.py
+pyproject.toml
+.github/
+migrations/
+alembic.ini
+contracts/
+daemon/
+sdk/
+scripts/
+*.txt
+*.py
+*.sql
+*.yaml
+*.yml
