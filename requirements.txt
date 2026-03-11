@@ -1,0 +1,14 @@
+fastapi[all]
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+pydantic
+pydantic-settings
+pyjwt
+cryptography
+qdrant-client
+redis
+celery
+alembic
+pgvector
+sentence-transformers
