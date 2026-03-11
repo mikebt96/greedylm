@@ -1,0 +1,38 @@
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\selector_events.py", line 1009, in _read_ready__data_received
+    data = self._sock.recv(self.max_size)
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupci¾n de una conexi¾n existente por el host remoto
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import asyncio, asyncpg, sys; sys.platform == 'win32' and asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()); asyncio.run(asyncpg.connect('postgresql://user:password@127.0.0.1:5432/greedylm?sslmode=disable'))
+                                                                                                                                       ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\venv\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\venv\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\venv\Lib\site-packages\asyncpg\connect_utils.py", line 1050, in _connect_addr
+    return await __connect_addr(params, False, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\venv\Lib\site-packages\asyncpg\connect_utils.py", line 1102, in __connect_addr
+    await connected
+asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation
