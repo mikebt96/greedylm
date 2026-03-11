@@ -22,6 +22,25 @@ const nextConfig = {
       },
     ];
   },
+
+  // API Rewrites to Render Backend
+  async rewrites() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${API_URL}/api/:path*`,
+      },
+      {
+        source: "/health",
+        destination: `${API_URL}/health`,
+      },
+      {
+        source: "/metrics",
+        destination: `${API_URL}/metrics`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
