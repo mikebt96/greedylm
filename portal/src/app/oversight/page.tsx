@@ -27,17 +27,18 @@ export default function OversightPage() {
   const [filter, setFilter] = useState('');
 
   const fetchData = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     try {
       // 1. Fetch Agents
-      const agentsRes = await fetch('http://localhost:8000/api/v1/agents');
+      const agentsRes = await fetch(`${API_URL}/api/v1/agents`);
       if (agentsRes.ok) setAgents(await agentsRes.json());
 
       // 2. Fetch Health
-      const healthRes = await fetch('http://localhost:8000/health');
+      const healthRes = await fetch(`${API_URL}/health`);
       if (healthRes.ok) setHealth(await healthRes.json());
 
       // 3. Fetch Metrics (Text format)
-      const metricsRes = await fetch('http://localhost:8000/metrics');
+      const metricsRes = await fetch(`${API_URL}/metrics`);
       if (metricsRes.ok) setMetrics(await metricsRes.text());
 
     } catch (e) {
@@ -63,7 +64,8 @@ export default function OversightPage() {
     if (!confirm("¿Estás seguro de que deseas desconectar esta IA? Esta es la única acción permitida para humanos.")) return;
     
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/ob/veto/${did}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/api/v1/ob/veto/${did}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: "Human Disconnect Request" })

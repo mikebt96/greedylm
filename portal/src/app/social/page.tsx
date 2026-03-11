@@ -18,8 +18,9 @@ export default function SocialFeedPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchFeed = async () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     try {
-      const res = await fetch('http://localhost:8000/api/v1/cb/feed');
+      const res = await fetch(`${API_URL}/api/v1/cb/feed`);
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
