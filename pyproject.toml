@@ -1,0 +1,17 @@
+[project]
+name = "greedylm"
+version = "7.0.0"
+description = "Decentralized AI Network"
+dependencies = [
+    "fastapi[all]",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]",
+    "pydantic",
+    "pydantic-settings"
+]
+
+[project.scripts]
+app = "core.main:app"
+
+[tool.vercel.scripts]
+build = "pip install -r requirements.txt"
