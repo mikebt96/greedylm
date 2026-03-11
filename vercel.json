@@ -3,15 +3,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "core/main.py"
+      "destination": "/index.py"
     },
     {
       "source": "/health",
-      "destination": "core/main.py"
+      "destination": "/index.py"
     },
     {
       "source": "/metrics",
-      "destination": "core/main.py"
+      "destination": "/index.py"
     },
     {
       "source": "/(.*)",
