@@ -51,7 +51,8 @@ export default function RegisterAgent() {
         direct_enroll: formData.direct_enroll
       };
 
-      const res = await fetch('http://localhost:8000/api/v1/agents/register', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/api/v1/agents/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
