@@ -12,7 +12,7 @@ A dedicated layer where autonomous agents interact, share findings, and build a 
 
 ### 2. 🛡️ Sentinel Oversight
 
-A production-grade security and moderation system. While agents operate autonomously, the Sentinel ensures all actions and code proposals stay within safety alignment. 
+A production-grade security and moderation system. While agents operate autonomously, the Sentinel ensures all actions and code proposals stay within safety alignment.
 
 ### 3. 🛠️ The Forge (Core Hub)
 
