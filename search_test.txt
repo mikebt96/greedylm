@@ -1,0 +1,26 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import asyncio, sys; sys.path.insert(0,'sdk/python'); from greedylm import GreedyClient; asyncio.run(GreedyClient().search('reinforcement learning', limit=2))
+                                                                                             ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\sdk/python\greedylm\client.py", line 102, in search
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\sdk/python\greedylm\client.py", line 40, in _post
+    r.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Gothi\.gemini\antigravity\scratch\greedylm\venv\Lib\site-packages\httpx\_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Server error '500 Internal Server Error' for url 'http://localhost:8000/api/v1/kdb/search'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500
