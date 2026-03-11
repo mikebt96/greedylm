@@ -12,3 +12,6 @@ celery
 alembic
 pgvector
 sentence-transformers
+pytest
+pytest-asyncio
+httpx
