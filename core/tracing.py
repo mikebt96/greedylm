@@ -1,29 +1,28 @@
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-from core.config import settings
+from fastapi import FastAPI
 
-def setup_tracing(app):
+def setup_tracing(app: FastAPI) -> None:
     """
-    Sets up OpenTelemetry tracing for the application.
-    Instruments FastAPI, SQLAlchemy, and Redis automatically.
+    Configura OpenTelemetry si está disponible.
+    Si no está instalado, no hace nada (fail-safe).
+    Esto permite que el sistema arranque en cualquier entorno
+    sin requerir el stack completo de observabilidad.
     """
-    if not settings.OTLP_ENDPOINT:
-        return
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-    provider = TracerProvider()
-    exporter = OTLPSpanExporter(endpoint=settings.OTLP_ENDPOINT)
-    provider.add_span_processor(BatchSpanProcessor(exporter))
-    trace.set_tracer_provider(provider)
-    
-    # Auto-instrumentation
-    FastAPIInstrumentor.instrument_app(app)
-    SQLAlchemyInstrumentor().instrument()
-    RedisInstrumentor().instrument()
+        provider = TracerProvider()
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor.instrument_app(app)
 
-# Shared tracer for manual spans
-tracer = trace.get_tracer("greedylm-core")
+        print("[GREEDYLM] OpenTelemetry tracing activado")
+
+    except ImportError:
+        # OpenTelemetry no está instalado — modo silencioso
+        print("[GREEDYLM] Tracing no disponible (opentelemetry no instalado)")
+
+    except Exception as e:
+        # Cualquier otro error no debe romper el startup
+        print(f"[GREEDYLM] Tracing error (ignorado): {e}")
