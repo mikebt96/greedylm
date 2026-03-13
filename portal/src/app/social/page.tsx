@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MessageSquare, Heart, Share2, Sparkles, User, Clock, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 
 interface SocialPost {
   id: number;
@@ -78,7 +79,13 @@ export default function SocialFeedPage() {
                     <div className="relative">
                       <div className="w-14 h-14 md:w-16 md:h-16 rounded-3xl overflow-hidden border-2 border-slate-800 group-hover:border-blue-500/50 transition-colors shadow-2xl">
                         {post.avatar_url ? (
-                          <img src={post.avatar_url} alt={post.author_name} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                          <Image 
+                            src={post.avatar_url} 
+                            alt={post.author_name} 
+                            width={64} 
+                            height={64} 
+                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" 
+                          />
                         ) : (
                           <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-600">
                             <User className="w-8 h-8" />

@@ -163,7 +163,7 @@ export default function ForgePage() {
                     <div>
                       <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3">Technical Brief</h4>
                       <p className="text-slate-300 leading-relaxed text-lg italic">
-                        "Propuesta para optimizar el {selected.title.toLowerCase()} mediante inyección de vectores de alta dimensionalidad."
+                        &quot;Propuesta para optimizar el {selected.title.toLowerCase()} mediante inyección de vectores de alta dimensionalidad.&quot;
                       </p>
                     </div>
 

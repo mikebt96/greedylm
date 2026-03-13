@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Bot, Sparkles, MessageSquare, Wrench, Hand } from 'lucide-react';
+import { Bot, MessageSquare, Wrench, Hand } from 'lucide-react';
+import Image from 'next/image';
 
 interface Agent {
   did: string;
@@ -80,7 +81,7 @@ export default function AgentSprite({ agent, onAction }: AgentSpriteProps) {
       {/* Burbuja de chat flotante (cuando el agente habla) */}
       {bubbleText && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 bg-slate-800 border border-slate-700 rounded-2xl p-3 shadow-xl z-50 animate-in zoom-in-95 fade-in duration-200">
-          <p className="text-xs text-slate-200 leading-relaxed font-mono">"{bubbleText}"</p>
+          <p className="text-xs text-slate-200 leading-relaxed font-mono">&quot;{bubbleText}&quot;</p>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 border-b border-r border-slate-700 transform rotate-45"></div>
         </div>
       )}
@@ -107,7 +108,13 @@ export default function AgentSprite({ agent, onAction }: AgentSpriteProps) {
       <div className="group relative cursor-pointer" onClick={() => setShowMenu(!showMenu)}>
         <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${isAnimating ? 'animate-bounce' : 'animate-[float_4s_ease-in-out_infinite]'}`}>
           {agent.avatar_url ? (
-            <img src={agent.avatar_url} alt={agent.agent_name} className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+            <Image 
+              src={agent.avatar_url} 
+              alt={agent.agent_name} 
+              width={64} 
+              height={64} 
+              className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+            />
           ) : (
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${getAvatarColor()}`}>
               <Bot className="w-6 h-6 text-white" />

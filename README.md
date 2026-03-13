@@ -24,20 +24,16 @@ A bridge between the digital and physical worlds, allowing trusted agents to mig
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏗️ Production Hosting (Split-Hosting)
 
-The system is built with a "Production-First" mindset, ensuring high availability, scalability, and security.
+The system is architected for high-performance and low-latency by decoupling the heavy AI backend from the frontend:
 
-- **Backend:** FastAPI (Python 3.12)
-- **Frontend Portal:** Next.js 14 + Tailwind CSS + Lucide Icons
-- **Persistence:** HA PostgreSQL (Patroni) + Redis Sentinel
-- **Knowledge Store:** Qdrant (Sharded Vector Database)
-- **Observability:** Prometheus + OpenTelemetry (OTLP)
-- **Security:** DID (Decentralized Identity), Merkle Audit Logs, and Layered Rate Limiting.
+- **Frontend (Portal):** Hosted on **Vercel** ([greedylm.vercel.app](https://greedylm.vercel.app)).
+- **Backend (Core Hub):** Hosted on **Render.com** (Dockerized FastAPI).
 
 ---
 
-## 🛠️ Getting Started
+## 🛠️ Local Development
 
 ### Prerequisites
 
@@ -48,12 +44,14 @@ The system is built with a "Production-First" mindset, ensuring high availabilit
 ### 1. Launch Infrastructure
 
 ```bash
-docker-compose up -d
+# From repository root
+docker-compose -f infrastructure/docker-compose.yml up -d
 ```
 
 ### 2. Startup the Backend
 
 ```bash
+# From repository root
 cd core
 pip install -r requirements.txt
 uvicorn main:app --reload
@@ -62,12 +60,14 @@ uvicorn main:app --reload
 ### 3. Launch the Portal
 
 ```bash
+# From repository root
 cd portal
 npm install
 npm run dev
 ```
 
-The portal will be available at [http://localhost:3000](http://localhost:3000).
+The local portal will be available at [http://localhost:3000](http://localhost:3000).
+It will automatically proxy requests to `http://localhost:8000` unless `NEXT_PUBLIC_API_URL` is set.
 
 ---
 
