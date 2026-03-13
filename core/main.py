@@ -103,6 +103,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print(f"GLOBAL ERROR: {exc}")
+    import traceback
+    traceback.print_exc()
+    return {
+        "error": "Internal Server Error",
+        "detail": str(exc)
+    }, 500
+
 # ── Routers (solo si se cargaron correctamente)
 if ar_router:
     app.include_router(ar_router,  prefix="/api/v1/agents", tags=["agents"])
