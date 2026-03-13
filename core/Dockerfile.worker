@@ -19,6 +19,8 @@ RUN adduser --disabled-password --gecos "" workeruser && \
     chown -R workeruser:workeruser /app
 USER workeruser
 
-# Worker Celery — Ajustado el path del app a core.workers.celery_app
-CMD ["celery", "-A", "core.workers.celery_app", "worker", \
-     "--loglevel=info", "--concurrency=2"]
+# Expose port for health check (needed if Render treats this as a web service)
+EXPOSE 10000
+
+# Script de arranque que inicia el health check y luego el worker
+CMD ["sh", "core/workers/start_worker.sh"]
