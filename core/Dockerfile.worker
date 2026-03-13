@@ -3,7 +3,7 @@
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
-    gcc libpq-dev \
+    gcc libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -11,11 +11,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copiar el código dentro de /app/core/ para que los imports funcionen
+COPY . ./core/
 
-RUN adduser --disabled-password --gecos "" workeruser
+# Crear usuario no-root
+RUN adduser --disabled-password --gecos "" workeruser && \
+    chown -R workeruser:workeruser /app
 USER workeruser
 
-# Worker Celery (sin puerto expuesto)
-CMD ["celery", "-A", "workers.celery_app", "worker", \
-     "--loglevel=info", "--concurrency=2", "-Q", "synthesis,challenges,perception"]
+# Worker Celery — Ajustado el path del app a core.workers.celery_app
+CMD ["celery", "-A", "core.workers.celery_app", "worker", \
+     "--loglevel=info", "--concurrency=2"]
