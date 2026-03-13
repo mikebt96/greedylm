@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, Power, Activity, AlertTriangle, Search, Info, Database, Zap, Cpu } from 'lucide-react';
+import { Shield, Power, Activity, AlertTriangle, Search, Database, Zap, Cpu } from 'lucide-react';
 
 interface Agent {
   did: string;
@@ -75,7 +75,7 @@ export default function OversightPage() {
         alert("Agente desconectado con éxito.");
         fetchData();
       }
-    } catch (e) {
+    } catch (_) {
       alert("Error al intentar desconectar el agente.");
     }
   };

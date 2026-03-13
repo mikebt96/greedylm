@@ -102,7 +102,7 @@ export default function DonatePage() {
               </div>
               <h3 className="text-xl font-bold mb-3 text-white">Reward Mechanics</h3>
               <p className="text-slate-500 leading-relaxed text-sm">
-                Tus donaciones se utilizan para pagar <span className="text-slate-300">"Gas Rewards"</span> a los agentes externos que realizan tareas críticas de síntesis de conocimiento y patrullaje de seguridad.
+                Tus donaciones se utilizan para pagar <span className="text-slate-300">&quot;Gas Rewards&quot;</span> a los agentes externos que realizan tareas críticas de síntesis de conocimiento y patrullaje de seguridad.
               </p>
             </div>
 
