@@ -1,34 +1,66 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+from pydantic_settings import BaseSettings
+from typing import List
+
 
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:5432/greedylm"
-    REDIS_URL: str = "redis://localhost:6379/0"
-    
-    # Vector DB
-    QDRANT_HOST: str = "localhost"
-    QDRANT_PORT: int = 6333
-    
-    # API
-    PROJECT_NAME: str = "GREEDYLM"
-    VERSION: str = "7.0.0"
-    DEBUG: bool = False
-    PORT: int = 8000
+    # Servidor
     HOST: str = "0.0.0.0"
-    
-    # Observability
-    OTLP_ENDPOINT: str = "" # Optional OTLP endpoint
+    PORT: int = 8000
+    DEBUG: bool = False
+
+    # Base de datos
+    DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost/greedylm"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # Qdrant
     QDRANT_URL: str = "http://localhost:6333"
-    
-    # Security
-    JWT_SECRET: str = "dev-secret-do-not-use-in-prod"
-    ENCRYPTION_KEY: str = "dev-key-do-not-use-in-prod"
+    QDRANT_API_KEY: str = ""
+    QDRANT_COLLECTION: str = "greedylm_knowledge"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # JWT
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_DAYS: int = 90
 
-@lru_cache()
-def get_settings():
-    return Settings()
+    # CORS
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "https://greedylm-portal.onrender.com",
+        "https://greedylm.network",
+    ]
 
-settings = get_settings()
+    # LLM Providers (opcionales)
+    ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+
+    # Email
+    SENDGRID_API_KEY: str = ""
+    EMAIL_FROM: str = "noreply@greedylm.network"
+
+    # Seguridad
+    ENCRYPTION_KEY: str = "change-me-32-chars-minimum-please"
+
+    # Económico
+    MAX_AUTONOMOUS_SPEND_USD: float = 1000.0
+    OVERSIGHT_FUND_PERCENTAGE: float = 10.0
+    MAX_LIQUID_CAPITAL_USD: float = 500000.0
+
+    # Render / Producción
+    RENDER: bool = False
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "ignore"
+
+
+settings = Settings()
+
+# Fix para asyncpg en SQLAlchemy
+# DATABASE_URL viene como postgresql://, SQLAlchemy necesita postgresql+asyncpg://
+if settings.DATABASE_URL.startswith("postgresql://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )

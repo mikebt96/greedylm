@@ -1,73 +1,157 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from core.modules.ar.registry import router as ar_router
-from core.modules.kdb import router as kdb_router, ensure_collection
-from core.modules.cse import router as cse_router
-from core.modules.ob import router as ob_router
-from core.modules.gr import router as gr_router
-from core.modules.pe import router as pe_router
-from core.modules.cb import router as cb_router
-from core.modules.ccf import router as ccf_router
-from core.modules.aem import router as aem_router
-from core.api.v1.health import router as health_router
+from contextlib import asynccontextmanager
+
 from core.config import settings
-from core.monitoring.metrics import MetricsMiddleware
+from core.monitoring.metrics import MetricsMiddleware, metrics_app
 from core.tracing import setup_tracing
-from prometheus_client import make_asgi_app
+
+# Importar routers — cada uno con fallback si falla
+try:
+    from core.modules.ar.registry import router as ar_router
+except Exception as e:
+    print(f"[WARN] ar module no disponible: {e}")
+    ar_router = None
+
+try:
+    from core.modules.kdb import router as kdb_router, ensure_collection
+except Exception as e:
+    print(f"[WARN] kdb module no disponible: {e}")
+    kdb_router = None
+    ensure_collection = None
+
+try:
+    from core.modules.cse import router as cse_router
+except Exception as e:
+    print(f"[WARN] cse module no disponible: {e}")
+    cse_router = None
+
+try:
+    from core.modules.ob import router as ob_router
+except Exception as e:
+    print(f"[WARN] ob module no disponible: {e}")
+    ob_router = None
+
+try:
+    from core.modules.gr import router as gr_router
+except Exception as e:
+    print(f"[WARN] gr module no disponible: {e}")
+    gr_router = None
+
+try:
+    from core.modules.pe import router as pe_router
+except Exception as e:
+    print(f"[WARN] pe module no disponible: {e}")
+    pe_router = None
+
+try:
+    from core.modules.cb import router as cb_router
+except Exception as e:
+    print(f"[WARN] cb module no disponible: {e}")
+    cb_router = None
+
+try:
+    from core.modules.ccf import router as ccf_router
+except Exception as e:
+    print(f"[WARN] ccf module no disponible: {e}")
+    ccf_router = None
+
+try:
+    from core.modules.aem import router as aem_router
+except Exception as e:
+    print(f"[WARN] aem module no disponible: {e}")
+    aem_router = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("[GREEDYLM] Iniciando sistema...")
+    if ensure_collection:
+        try:
+            await ensure_collection()
+            print("[GREEDYLM] Qdrant collection lista")
+        except Exception as e:
+            print(f"[WARN] Qdrant no disponible en startup: {e}")
+    yield
+    # Shutdown
+    print("[GREEDYLM] Sistema apagado")
+
 
 app = FastAPI(
     title="GREEDYLM API",
-    description="Red descentralizada de agentes de IA",
-    version="7.0.0"
+    description="Red descentralizada de agentes de IA con supervisión humana",
+    version="7.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
-# 1. Setup Tracing
+# ── Tracing (OpenTelemetry)
 setup_tracing(app)
 
-# 2. Add Metrics Middleware
+# ── Métricas (Prometheus)
 app.add_middleware(MetricsMiddleware)
-
-# 3. Handle Metrics Endpoint
-metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-# CORS configuration
+# ── CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # update in production
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup():
-    await ensure_collection()
+# ── Routers (solo si se cargaron correctamente)
+if ar_router:
+    app.include_router(ar_router,  prefix="/api/v1/agents", tags=["agents"])
+if kdb_router:
+    app.include_router(kdb_router, prefix="/api/v1/kdb",    tags=["kdb"])
+if cse_router:
+    app.include_router(cse_router, prefix="/api/v1/cse",    tags=["cse"])
+if ob_router:
+    app.include_router(ob_router,  prefix="/api/v1/ob",     tags=["oversight"])
+if gr_router:
+    app.include_router(gr_router,  prefix="/api/v1/gr",     tags=["governance"])
+if pe_router:
+    app.include_router(pe_router,  prefix="/api/v1/pe",     tags=["persona"])
+if cb_router:
+    app.include_router(cb_router,  prefix="/api/v1/cb",     tags=["communication"])
+if ccf_router:
+    app.include_router(ccf_router, prefix="/api/v1/ccf",    tags=["forge"])
+if aem_router:
+    app.include_router(aem_router, prefix="/api/v1/aem",    tags=["economy"])
 
-# Root endpoint
-@app.get("/")
+
+# ── Endpoints base
+
+@app.get("/", tags=["system"])
 async def root():
     return {
+        "name": "GREEDYLM",
         "status": "online",
         "system_state": "S0_NORMAL",
-        "version": "7.0.0"
+        "version": "7.0.0",
+        "docs": "/docs",
     }
 
-@app.get("/health")
+
+@app.get("/health", tags=["system"])
 async def health():
+    """Health check para Render y Kubernetes."""
     return {"status": "healthy"}
 
-# Include routers
-app.include_router(ar_router, prefix="/api/v1/agents", tags=["agents"])
-app.include_router(kdb_router, prefix="/api/v1/kdb", tags=["kdb"])
-app.include_router(cse_router, prefix="/api/v1/cse", tags=["cse"])
-app.include_router(ob_router, prefix="/api/v1/ob", tags=["oversight"])
-app.include_router(gr_router, prefix="/api/v1/gr", tags=["governance"])
-app.include_router(pe_router, prefix="/api/v1/pe", tags=["persona"])
-app.include_router(cb_router, prefix="/api/v1/cb", tags=["communication"])
-app.include_router(ccf_router, prefix="/api/v1/ccf", tags=["forge"])
-app.include_router(aem_router, prefix="/api/v1/aem", tags=["economy"])
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("core.main:app", host=settings.HOST, port=settings.PORT, reload=True)
+@app.get("/api/v1/network/status", tags=["system"])
+async def network_status():
+    """Estado público de la red — sin autenticación."""
+    return {
+        "system_state": "S0_NORMAL",
+        "pi_index": 0.0,
+        "active_agents": 0,
+        "oversight_fund_usd": 0,
+        "syntheses_today": 0,
+        "runway_months": 0,
+        "version": "7.0.0",
+    }
