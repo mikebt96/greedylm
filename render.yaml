@@ -1,0 +1,110 @@
+# render.yaml
+
+services:
+
+  # ──────────────────────────────────────────
+  # BACKEND — FastAPI
+  # ──────────────────────────────────────────
+  - type: web
+    name: greedylm-api
+    runtime: docker
+    dockerfilePath: ./core/Dockerfile
+    dockerContext: ./core
+    plan: starter
+    region: oregon 
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: greedylm-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: greedylm-redis
+          type: redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          name: greedylm-portal
+          type: web
+          property: host
+    autoDeploy: true
+
+  # ──────────────────────────────────────────
+  # FRONTEND — Next.js
+  # ──────────────────────────────────────────
+  - type: web
+    name: greedylm-portal
+    runtime: docker
+    dockerfilePath: ./portal/Dockerfile
+    dockerContext: ./portal
+    plan: starter
+    region: oregon
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: greedylm-api
+          type: web
+          property: host
+          envVarPrefix: https://
+      - key: NEXT_PUBLIC_WS_URL
+        fromService:
+          name: greedylm-api
+          type: web
+          property: host
+          envVarPrefix: wss://
+    autoDeploy: true
+
+  # ──────────────────────────────────────────
+  # WORKER — Celery
+  # ──────────────────────────────────────────
+  - type: worker
+    name: greedylm-worker
+    runtime: docker
+    dockerfilePath: ./core/Dockerfile.worker
+    dockerContext: ./core
+    plan: starter
+    region: oregon
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: greedylm-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: greedylm-redis
+          type: redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+    autoDeploy: true
+
+# ──────────────────────────────────────────
+# BASES DE DATOS ADMINISTRADAS POR RENDER
+# ──────────────────────────────────────────
+databases:
+  - name: greedylm-db
+    databaseName: greedylm
+    user: greedylm
+    plan: starter
+    region: oregon
+    postgresMajorVersion: 16
+
+  - name: greedylm-redis
+    plan: starter
+    region: oregon
