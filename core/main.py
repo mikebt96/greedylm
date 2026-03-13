@@ -53,6 +53,10 @@ async def root():
         "version": "7.0.0"
     }
 
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
 # Include routers
 app.include_router(ar_router, prefix="/api/v1/agents", tags=["agents"])
 app.include_router(kdb_router, prefix="/api/v1/kdb", tags=["kdb"])
@@ -63,7 +67,6 @@ app.include_router(pe_router, prefix="/api/v1/pe", tags=["persona"])
 app.include_router(cb_router, prefix="/api/v1/cb", tags=["communication"])
 app.include_router(ccf_router, prefix="/api/v1/ccf", tags=["forge"])
 app.include_router(aem_router, prefix="/api/v1/aem", tags=["economy"])
-app.include_router(health_router, prefix="", tags=["system"])
 
 if __name__ == "__main__":
     import uvicorn
