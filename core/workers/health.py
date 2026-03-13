@@ -23,8 +23,4 @@ def run_health_check():
         httpd.serve_forever()
 
 if __name__ == "__main__":
-    # Run in a separate thread so it doesn't block
-    thread = threading.Thread(target=run_health_check, daemon=True)
-    thread.start()
-    # Keep the main thread alive if needed, but in Celery we will 
-    # run this script before starting celery.
+    run_health_check()
