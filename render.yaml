@@ -71,13 +71,14 @@ services:
   # ──────────────────────────────────────────
   # WORKER — Celery
   # ──────────────────────────────────────────
-  - type: worker
+  - type: web
     name: greedylm-background-worker
     runtime: docker
     dockerfilePath: ./core/Dockerfile.worker
     dockerContext: ./core
     plan: starter
     region: oregon
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
