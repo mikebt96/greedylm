@@ -1,15 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["assets.greedylm.network"],
-    formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 86400,
+    unoptimized: true,
   },
-  
-  // CDN for production assets
-  assetPrefix: process.env.NODE_ENV === "production"
-    ? "https://cdn.greedylm.network"
-    : "",
   
   // Security Headers
   async headers() {
