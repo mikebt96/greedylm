@@ -27,12 +27,13 @@ _model = None
 def get_embedding_model():
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        from fastembed import TextEmbedding
+        _model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
     return _model
 
 def embed(text: str) -> list[float]:
-    return get_embedding_model().encode(text).tolist()
+    # fastembed yields a generator, we take the first item
+    return list(next(get_embedding_model().embed([text])))
 
 # ─── Qdrant client helper ─────────────────────────────────────────────────────
 def get_qdrant() -> AsyncQdrantClient:
