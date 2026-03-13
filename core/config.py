@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "https://greedylm-portal.onrender.com",
+        "https://greedylm.vercel.app",
+        "https://greedylm-pfx2w8wfa-mikebt96s-projects.vercel.app",
         "https://greedylm.network",
     ]
 
