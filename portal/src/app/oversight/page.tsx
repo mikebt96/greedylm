@@ -75,7 +75,7 @@ export default function OversightPage() {
         alert("Agente desconectado con éxito.");
         fetchData();
       }
-    } catch (_) {
+    } catch {
       alert("Error al intentar desconectar el agente.");
     }
   };
