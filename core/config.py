@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "https://greedylm-portal.onrender.com",
         "https://greedylm.vercel.app",
-        "https://greedylm-pfx2w8wfa-mikebt96s-projects.vercel.app",
+        "https://greedylm-a08ox79ia-mikebt96s-projects.vercel.app",
         "https://greedylm.network",
     ]
 

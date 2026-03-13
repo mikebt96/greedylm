@@ -16,6 +16,7 @@ engine = create_async_engine(
             "jit": "off",
         },
         "command_timeout": 60,
+        "ssl": "require" if settings.RENDER else False
     }
 )
 AsyncSessionLocal = async_sessionmaker(
