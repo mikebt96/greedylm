@@ -23,6 +23,9 @@ const nextConfig = {
     ];
   },
 
+  // CRÍTICO: habilitar output standalone para Docker
+  output: "standalone",
+
   // API Rewrites to Render Backend
   async rewrites() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
