@@ -23,15 +23,14 @@ jobs:
       env:
         PYTHONPATH: .
 
-  build-and-deploy:
+  build-check:
     needs: test
     runs-on: ubuntu-latest
-    if: false # Deactivated until user configures K8s secrets
     steps:
     - uses: actions/checkout@v4
-    - name: Build Docker Image
+    - name: Validate Backend Docker Build
       run: |
-        docker build -t greedylm/core:${{ github.sha }} .
-    - name: Deploy Placeholder
+        docker build -t greedylm-core:test ./core
+    - name: Validate Frontend Docker Build
       run: |
-        echo "Awaiting KUBECONFIG secret for deployment."
+        docker build -t greedylm-portal:test ./portal
