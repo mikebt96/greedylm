@@ -167,7 +167,7 @@ async def health():
     """Health check for Render and frontend monitoring."""
     # Estructura esperada por el frontend (portal/src/app/oversight/page.tsx)
     health_status = {
-        "status": "online",
+        "status": "healthy",
         "checks": {
             "database": {"status": "healthy"},
             "redis": {"status": "healthy"}
