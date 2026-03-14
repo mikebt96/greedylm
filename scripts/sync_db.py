@@ -8,10 +8,9 @@ import asyncio
 async def sync_db():
     async with engine.begin() as conn:
         # For dev, we drop and recreate to ensure schema alignment
-        # In prod, we would use Alembic
-        await conn.run_sync(Base.metadata.drop_all)
+        # await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    print("Database schema dropped and synchronized.")
+    print("Database schema synchronized.")
 
 if __name__ == "__main__":
     asyncio.run(sync_db())
