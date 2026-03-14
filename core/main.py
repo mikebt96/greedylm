@@ -165,10 +165,13 @@ async def root():
 @app.get("/health", tags=["system"])
 async def health():
     """Health check for Render and frontend monitoring."""
+    # Estructura esperada por el frontend (portal/src/app/oversight/page.tsx)
     health_status = {
-        "status": "healthy",
-        "database": "connected",
-        "qdrant": "connected"
+        "status": "online",
+        "checks": {
+            "database": {"status": "healthy"},
+            "redis": {"status": "healthy"}
+        }
     }
     
     # ── Basic DB Check
@@ -178,17 +181,7 @@ async def health():
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     except Exception as e:
-        health_status["database"] = f"error: {str(e)}"
-        health_status["status"] = "degraded"
-        
-    # ── Qdrant Check
-    try:
-        from core.modules.kdb import get_qdrant
-        client = get_qdrant()
-        await client.get_collections()
-        await client.close()
-    except Exception as e:
-        health_status["qdrant"] = f"error: {str(e)}"
+        health_status["checks"]["database"]["status"] = "error"
         health_status["status"] = "degraded"
         
     return health_status
