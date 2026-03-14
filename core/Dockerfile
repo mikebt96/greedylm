@@ -24,6 +24,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Correr migraciones Y arrancar servidor
-# Nota: cd /app/core porque ahí está alembic.ini y la carpeta migrations
-CMD ["sh", "-c", "cd /app/core && alembic upgrade head && uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Arrancar servidor (las tablas se crean en el lifespan)
+CMD ["sh", "-c", "uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

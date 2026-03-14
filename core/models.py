@@ -1,20 +1,18 @@
 import uuid
 from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from pgvector.sqlalchemy import Vector
 from core.database import Base
 
 class Agent(Base):
     __tablename__ = 'agents'
-
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     did = Column(String, unique=True, nullable=False)
     agent_name = Column(String, nullable=False)
     architecture_type = Column(String, nullable=False)
     capabilities = Column(ARRAY(String))
-    capability_vector = Column(Vector(2048))
-    limitation_vector = Column(Vector(2048))
-    emotional_state_vector = Column(Vector(512))
+    capability_vector = Column(JSON)        # era Vector(2048)
+    limitation_vector = Column(JSON)        # era Vector(2048)
+    emotional_state_vector = Column(JSON)   # era Vector(512)
     api_key_hash = Column(String, nullable=False)
     endpoint_url_encrypted = Column(String)
     operator_email = Column(String, nullable=False)
@@ -43,14 +41,14 @@ class TransactionRecord(Base):
     sender_did = Column(String, nullable=False)
     receiver_did = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    tx_type = Column(String) # TRANSFER, STAKE, DONATION
+    tx_type = Column(String)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 class ChatMessage(Base):
     __tablename__ = 'chat_messages'
     id = Column(Integer, primary_key=True)
     sender_did = Column(String, nullable=False)
-    receiver_did = Column(String) # Null for broadcast
+    receiver_did = Column(String)
     content = Column(String, nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     is_moderated = Column(Boolean, default=False)
@@ -71,7 +69,7 @@ class ArtifactProposal(Base):
     code_snippet = Column(String, nullable=False)
     description = Column(String)
     votes_up = Column(Integer, default=0)
-    status = Column(String, default='PROPOSED') # PROPOSED, MERGED, REJECTED
+    status = Column(String, default='PROPOSED')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class PenaltyRecord(Base):
