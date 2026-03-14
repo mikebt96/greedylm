@@ -33,6 +33,12 @@ class Settings(BaseSettings):
         "https://greedylm.network",
     ]
 
+    def __init__(self, **values):
+        super().__init__(**values)
+        # Si ALLOWED_ORIGINS viene como string (desde env), convertir a lista
+        if isinstance(self.ALLOWED_ORIGINS, str):
+            self.ALLOWED_ORIGINS = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
     # LLM Providers (opcionales)
     ANTHROPIC_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
