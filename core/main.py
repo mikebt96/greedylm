@@ -73,6 +73,8 @@ async def lifespan(app: FastAPI):
             print("[GREEDYLM] Qdrant collection lista")
         except Exception as e:
             print(f"[WARN] Qdrant no disponible en startup: {e}")
+    
+    print(f"[GREEDYLM] Allowed Origins: {settings.ALLOWED_ORIGINS}")
     yield
     # Shutdown
     print("[GREEDYLM] Sistema apagado")

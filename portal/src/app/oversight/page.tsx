@@ -28,6 +28,7 @@ export default function OversightPage() {
 
   const fetchData = async () => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    console.log("[Oversight] Using API_URL:", API_URL);
     try {
       // 1. Fetch Agents
       const agentsRes = await fetch(`${API_URL}/api/v1/agents`);
