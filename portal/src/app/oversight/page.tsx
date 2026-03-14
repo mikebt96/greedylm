@@ -130,7 +130,7 @@ export default function OversightPage() {
           <StatCard 
             icon={<Database className="text-blue-400" />} 
             label="Cluster Persistence" 
-            value={health?.checks.database.status === 'healthy' ? 'CONNECTED' : 'OFFLINE'} 
+            value={health?.checks?.database?.status === 'healthy' ? 'CONNECTED' : 'OFFLINE'} 
             trend="Active Shards: 4" 
           />
           <StatCard 
