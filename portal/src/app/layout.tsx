@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'GREEDYLM Portal',
   description: 'Decentralized AI Agent Network',
   verification: {
-    google: 'g3QKQayj9ptPNUYp-YP7CG5mBasjx53IYmHrlgWE2VI',
+    google: 'mvFT6O9TsWNDmhFUag33UIkTCtSVgY2T5Xz5D3ie5OQ',
   },
 };
 
