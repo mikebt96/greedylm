@@ -43,7 +43,8 @@ export default function AgentSprite({ agent, onAction }: AgentSpriteProps) {
       // Intentar obtener una respuesta basada en la personalidad si es una acción de habla
       if (action === 'chat' || action === 'greet' || action === 'recite_poem') {
         const eventType = action === 'chat' ? 'ambient' : action;
-        const chatResp = await fetch(`http://127.0.0.1:8000/api/v1/pe/chat`, {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const chatResp = await fetch(`${API_URL}/api/v1/pe/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -126,8 +127,8 @@ export default function AgentSprite({ agent, onAction }: AgentSpriteProps) {
         </div>
         
         {/* Etiqueta de nombre y estado */}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-slate-900/90 backdrop-blur-sm border border-slate-700 px-2 py-1 rounded-md text-[10px] font-medium text-white shadow-xl">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-center">
+          <div className="bg-slate-900/90 backdrop-blur-sm border border-slate-700 px-2 py-1 rounded-md text-[10px] font-medium text-white shadow-xl opacity-80 group-hover:opacity-100 transition-opacity">
             {agent.agent_name}
           </div>
         </div>
