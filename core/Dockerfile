@@ -17,7 +17,13 @@ RUN adduser --disabled-password --gecos "" appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
+# Exponer puerto
 EXPOSE 8000
 
-# Usar variable de entorno PORT (Render inyecta 10000 por defecto)
-CMD uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Healthcheck robusto
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Correr migraciones Y arrancar servidor
+# Nota: cd /app/core porque ahí está alembic.ini y la carpeta migrations
+CMD ["sh", "-c", "cd /app/core && alembic upgrade head && uvicorn core.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
