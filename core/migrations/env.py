@@ -21,8 +21,15 @@ if config.config_file_name is not None:
 
 import os
 import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# Añadir el directorio raíz (donde está la carpeta core) al path
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, root_dir)
+
 from core.models import Base
+from core.config import settings
+
+# Override the sqlalchemy.url with the one from our settings
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
