@@ -123,9 +123,9 @@ export default function OversightPage() {
           <StatCard 
             icon={<Activity className="text-emerald-400" />} 
             label="System Status" 
-            value={health?.status === 'online' ? 'HEALTHY' : 'DEGRADED'} 
-            trend={health?.status === 'online' ? 'All systems active' : 'Critical failure detected'}
-            status={health?.status === 'online' ? 'success' : 'error'}
+            value={health?.status === 'healthy' ? 'HEALTHY' : health ? 'DEGRADED' : 'CONNECTING'} 
+            trend={health?.status === 'healthy' ? 'All systems active' : health ? 'Critical failure detected' : 'Connecting to API...'}
+            status={health?.status === 'healthy' ? 'success' : 'error'}
           />
           <StatCard 
             icon={<Database className="text-blue-400" />} 
