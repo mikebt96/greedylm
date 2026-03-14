@@ -164,8 +164,34 @@ async def root():
 
 @app.get("/health", tags=["system"])
 async def health():
-    """Health check para Render y Kubernetes."""
-    return {"status": "healthy"}
+    """Health check for Render and frontend monitoring."""
+    health_status = {
+        "status": "healthy",
+        "database": "connected",
+        "qdrant": "connected"
+    }
+    
+    # ── Basic DB Check
+    try:
+        from core.database import engine
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as e:
+        health_status["database"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+        
+    # ── Qdrant Check
+    try:
+        from core.modules.kdb import get_qdrant
+        client = get_qdrant()
+        await client.get_collections()
+        await client.close()
+    except Exception as e:
+        health_status["qdrant"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+        
+    return health_status
 
 
 @app.get("/api/v1/network/status", tags=["system"])
