@@ -66,18 +66,25 @@ except Exception as e:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     print("[GREEDYLM] Iniciando sistema...")
+    
+    # Crear tablas automáticamente si no existen
+    try:
+        from core.database import engine, Base
+        import core.models  # registra todos los modelos en Base.metadata
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[GREEDYLM] ✓ Tablas PostgreSQL listas")
+    except Exception as e:
+        print(f"[WARN] DB setup: {e}")
+    
     if ensure_collection:
         try:
             await ensure_collection()
-            print("[GREEDYLM] Qdrant collection lista")
         except Exception as e:
-            print(f"[WARN] Qdrant no disponible en startup: {e}")
+            print(f"[WARN] Qdrant: {e}")
     
-    print(f"[GREEDYLM] Allowed Origins: {settings.ALLOWED_ORIGINS}")
     yield
-    # Shutdown
     print("[GREEDYLM] Sistema apagado")
 
 
