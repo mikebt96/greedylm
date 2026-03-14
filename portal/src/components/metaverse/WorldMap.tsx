@@ -20,7 +20,8 @@ export default function WorldMap() {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/agents');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${API_URL}/api/v1/agents`);
       if (res.ok) {
         const data = await res.json();
         // Preservar posiciones si ya las conocemos para evitar saltos bruscos
@@ -56,7 +57,8 @@ export default function WorldMap() {
   }, []);
 
   const triggerAction = async (did: string, action: string) => {
-    const res = await fetch(`http://localhost:8000/api/v1/agents/${did}/action`, {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const res = await fetch(`${API_URL}/api/v1/agents/${did}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
