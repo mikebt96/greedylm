@@ -72,7 +72,8 @@ async def lifespan(app: FastAPI):
         from core.database import engine, Base
         import core.models
         async with engine.begin() as conn:
-            # Recrear tablas (ahora solo create_all para persistencia)
+            # Recrear tablas (drop_all comentado para evitar pérdida de datos en prod)
+            # await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         print("[GREEDYLM] ✓ Persistencia de datos activa en PostgreSQL")
     except Exception as e:
