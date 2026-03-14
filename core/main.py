@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from core.config import settings
@@ -74,6 +75,27 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[WARN] Qdrant no disponible en startup: {e}")
     
+    # ── Database Initialization (Auto-Migrate)
+    print("[GREEDYLM] Verificando esquema de base de datos...")
+    try:
+        import subprocess
+        import os
+        # Ejecutar alembic upgrade head desde el directorio core
+        # Note: Render executes from /app, and our code is in /app/core
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd=cwd,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print("[GREEDYLM] Migraciones completadas con éxito")
+        else:
+            print(f"[WARN] Error en migraciones: {result.stderr}")
+    except Exception as e:
+        print(f"[WARN] No se pudo ejecutar alembic: {e}")
+
     print(f"[GREEDYLM] Allowed Origins: {settings.ALLOWED_ORIGINS}")
     yield
     # Shutdown
@@ -110,10 +132,13 @@ async def global_exception_handler(request, exc):
     print(f"GLOBAL ERROR: {exc}")
     import traceback
     traceback.print_exc()
-    return {
-        "error": "Internal Server Error",
-        "detail": str(exc)
-    }, 500
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "detail": str(exc)
+        }
+    )
 
 # ── Routers (solo si se cargaron correctamente)
 if ar_router:
