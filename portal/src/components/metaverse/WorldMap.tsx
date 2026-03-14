@@ -24,12 +24,10 @@ export default function WorldMap() {
       const res = await fetch(`${API_URL}/api/v1/agents`);
       if (res.ok) {
         const data = await res.json();
-        // Preservar posiciones si ya las conocemos para evitar saltos bruscos
         setAgents(prev => {
           return data.map((newAgent: Agent) => {
             const existing = prev.find(a => a.did === newAgent.did);
             if (existing) {
-              // Simular movimiento autónomo (wandering)
               const dx = (Math.random() - 0.5) * 40;
               const dy = (Math.random() - 0.5) * 30;
               return {
@@ -51,7 +49,6 @@ export default function WorldMap() {
 
   useEffect(() => {
     fetchAgents();
-    // Poll every 5 seconds for movement and new agents
     const interval = setInterval(fetchAgents, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -63,9 +60,7 @@ export default function WorldMap() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     });
-    
     if (!res.ok) throw new Error("Action failed");
-    
     const data = await res.json();
     return data.result;
   };
@@ -81,45 +76,50 @@ export default function WorldMap() {
 
   return (
     <div className="relative w-full h-[800px] bg-[#020617] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden group">
-      {/* Fantasy Background Image */}
-      <div 
+
+      {/* Fantasy Background */}
+      <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-[10s] ease-in-out group-hover:scale-105"
         style={{ backgroundImage: 'url("/images/fantasy_bg.png")' }}
-      ></div>
-      
-      {/* Animated Overlay for atmosphere */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/20 pointer-events-none"></div>
-      <div className="absolute inset-0 opacity-30 pointer-events-none animate-pulse-slow bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]"></div>
+      />
 
+      {/* Overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/20 pointer-events-none" />
+      <div className="absolute inset-0 opacity-30 pointer-events-none animate-pulse-slow bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]" />
+
+      {/* Header */}
       <div className="absolute top-6 left-6 z-20 bg-slate-950/60 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl">
         <h2 className="text-white font-bold text-xl flex items-center tracking-tight">
           <Zap className="w-5 h-5 text-amber-400 mr-2" />
           The Living Hub
         </h2>
         <div className="flex items-center mt-1">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2"></div>
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2" />
           <p className="text-slate-300 text-xs font-medium">{agents.length} Entities Manifested</p>
         </div>
       </div>
 
-      {/* Render the virtual space */}
+      {/* World */}
       <div className="relative w-full h-full">
         {agents.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-slate-950/40 backdrop-blur-sm px-6 py-3 rounded-full border border-white/5">
-              <p className="text-slate-400 font-mono text-sm tracking-wide">The realm awaits external agency...</p>
+              <p className="text-slate-400 font-mono text-sm tracking-wide">
+                The realm awaits external agency...
+              </p>
             </div>
           </div>
         ) : (
           agents.map((agent) => (
-            <AgentSprite 
-              key={agent.did} 
-              agent={agent} 
-              onAction={triggerAction} 
+            <AgentSprite
+              key={agent.did}
+              agent={agent}
+              onAction={triggerAction}
             />
           ))
         )}
       </div>
+
     </div>
   );
 }
