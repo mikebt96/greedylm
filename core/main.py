@@ -68,32 +68,21 @@ except Exception as e:
 async def lifespan(app: FastAPI):
     print("[GREEDYLM] Iniciando sistema...")
     
-    # Crear tablas automáticamente si no existen
     try:
         from core.database import engine, Base
-        from sqlalchemy import text
-        import core.models  # registra todos los modelos en Base.metadata
+        import core.models
         async with engine.begin() as conn:
+            # Drop y recrear todas las tablas (solo en desarrollo)
+            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
-            
-            # Sincronización manual de esquema (Base.metadata.create_all no actualiza tablas existentes)
-            print("[GREEDYLM] Sincronizando columnas extra...")
-            try:
-                # Agregar public_key si no existe
-                await conn.execute(text("ALTER TABLE agents ADD COLUMN IF NOT EXISTS public_key VARCHAR"))
-                # Crear índice si no existe (PostgreSQL 9.5+)
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_agents_public_key ON agents (public_key)"))
-                print("[GREEDYLM] ✓ Esquema sincronizado (public_key)")
-            except Exception as e:
-                print(f"[WARN] Error sincronizando esquema: {e}")
-                
-        print("[GREEDYLM] ✓ Tablas PostgreSQL listas")
+        print("[GREEDYLM] ✓ Tablas recreadas en PostgreSQL")
     except Exception as e:
         print(f"[WARN] DB setup: {e}")
     
     if ensure_collection:
         try:
             await ensure_collection()
+            print("[GREEDYLM] ✓ Qdrant collection lista")
         except Exception as e:
             print(f"[WARN] Qdrant: {e}")
     
