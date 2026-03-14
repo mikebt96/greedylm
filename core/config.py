@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # Qdrant
-    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_URL: str = "https://8ac60b40-4a34-43ae-a091-79e0512099b4.us-west-1-0.aws.cloud.qdrant.io:6333"
     QDRANT_API_KEY: str = ""
     QDRANT_COLLECTION: str = "greedylm_knowledge"
 
