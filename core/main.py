@@ -63,6 +63,16 @@ except Exception as e:
     print(f"[WARN] aem module no disponible: {e}")
     aem_router = None
 
+try:
+    from core.modules.donations import router as donations_router
+except Exception as e:
+    print(f"[WARN] donations module no disponible: {e}")
+    donations_router = None
+try:
+    from core.modules.world import router as world_router
+except Exception as e:
+    print(f"[WARN] world module no disponible: {e}")
+    world_router = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -147,6 +157,10 @@ if ccf_router:
     app.include_router(ccf_router, prefix="/api/v1/ccf",    tags=["forge"])
 if aem_router:
     app.include_router(aem_router, prefix="/api/v1/aem",    tags=["economy"])
+if donations_router:
+    app.include_router(donations_router, prefix="/api/v1/donations", tags=["donations"])
+if world_router:
+    app.include_router(world_router, tags=["world"])
 
 
 # ── Endpoints base

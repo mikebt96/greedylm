@@ -1,36 +1,89 @@
-name: GREEDYLM Production Deploy
+name: GREEDYLM CI/CD
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
+    name: Tests + Linting
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r core/requirements.txt
-    - name: Run tests
-      run: |
-        python -m pytest
-      env:
-        PYTHONPATH: .
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r core/requirements.txt
+          pip install ruff pytest-asyncio
+          
+      - name: Lint with Ruff
+        run: |
+          ruff check core/ --select E,W,F --ignore E501 --ignore W291
+          
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v --timeout=30
+        env:
+          PYTHONPATH: .
+          DATABASE_URL: "sqlite+aiosqlite:///test.db"
+          REDIS_URL: "redis://localhost:6379/0"
+          JWT_SECRET: "test-secret-min-64-chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          QDRANT_URL: "http://localhost:6333"
+          QDRANT_API_KEY: "test"
+
+  security:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   build-check:
+    name: Docker Build Validation
     needs: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Validate Backend Docker Build
-      run: |
-        docker build -t greedylm-core:test ./core
-    - name: Validate Frontend Docker Build
-      run: |
-        docker build -t greedylm-portal:test ./portal
+      - uses: actions/checkout@v4
+      - name: Build API Docker image
+        run: docker build -t greedylm-core:test ./core
+      - name: Build Portal Docker image
+        run: docker build -t greedylm-portal:test ./portal
+
+  publish-sdk:
+    name: Publish SDK to PyPI
+    needs: [test, build-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build SDK
+        run: |
+          cd sdk/python
+          pip install build
+          python -m build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist/
+          password: ${{ secrets.PYPI_API_TOKEN }}

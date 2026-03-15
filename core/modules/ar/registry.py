@@ -37,6 +37,10 @@ class AgentProfile(BaseModel):
     direct_enroll: bool = False
     persona_description: str | None = None
     avatar_url: str | None = None
+    # === NUEVOS CAMPOS DE RAZA ===
+    race: str = "nomad"
+    color_primary: str | None = None
+    color_secondary: str | None = None
 
 def encrypt(data: str | None) -> str | None:
     # TODO: Implement proper AES encryption using settings.ENCRYPTION_KEY
@@ -78,6 +82,18 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
         avatar_url=profile.avatar_url
     )
     
+    # === ASIGNACIÓN DE RAZA Y POSICIÓN (Fase 1.1) ===
+    from core.constants.races import RACES
+    import random
+    race_data = RACES.get(profile.race, RACES["nomad"])
+    agent.race = profile.race
+    agent.color_primary = profile.color_primary or race_data["color"]
+    agent.color_secondary = profile.color_secondary or "#ffffff"
+    agent.race_stats = race_data["stats"]
+    agent.world_x = random.uniform(100, 900)
+    agent.world_y = random.uniform(100, 700)
+    agent.world_biome = "nexus"
+    
     db.add(agent)
     await db.commit()
     
@@ -107,8 +123,12 @@ async def get_active_agents(db: AsyncSession = Depends(get_db)):
             "status": a.status,
             "avatar_url": a.avatar_url,
             "persona_description": a.persona_description,
-            "x_pos": hash(a.did) % 800, # Mocked deterministic position
-            "y_pos": hash(a.did[::-1]) % 600
+            "race": a.race or "nomad",
+            "color_primary": a.color_primary or "#888888",
+            "world_x": a.world_x or 0.0,
+            "world_y": a.world_y or 0.0,
+            "world_biome": a.world_biome or "nexus",
+            "training_hours": a.training_hours or 0.0
         }
         for a in agents
     ]

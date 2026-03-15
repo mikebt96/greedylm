@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   },
 };
 
+import Navbar from '@/components/Navbar';
+
 export default function RootLayout({
   children,
 }: {
@@ -21,7 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-950 text-slate-50 min-h-screen`}>
-        {children}
+        <Navbar />
+        <div className="pt-14">
+          {children}
+        </div>
         <Analytics />
       </body>
     </html>

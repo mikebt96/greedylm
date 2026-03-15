@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from core.database import Base
 
@@ -34,6 +34,34 @@ class Agent(Base):
     did_document = Column(JSON)
     grdl_balance = Column(Float, default=0.0)
     staked_amount = Column(Float, default=0.0)
+    
+    # === SISTEMA DE RAZAS (Fase 1.1) ===
+    race = Column(String, default='nomad')  # elf, dwarf, mage, warrior, nomad, oracle, druid, builder
+    color_primary = Column(String, default='#888888')
+    color_secondary = Column(String, default='#aaaaaa')
+    race_stats = Column(JSON, default=lambda: {
+        "speed": 1.0, "strength": 1.0, "mining": 1.0,
+        "magic": 1.0, "vision": 1.0, "build_speed": 1.0
+    })
+    world_x = Column(Float, default=0.0)
+    world_y = Column(Float, default=0.0)
+    world_biome = Column(String, default='nexus')
+    training_hours = Column(Float, default=0.0)   # Horas en el mundo simulado
+    policy_version = Column(Integer, default=0)   # Versión del modelo ONNX entrenado
+
+class DonationRecord(Base):
+    __tablename__ = 'donation_records'
+    id = Column(Integer, primary_key=True)
+    stripe_session_id = Column(String, unique=True)
+    stripe_payment_intent = Column(String)
+    amount_usd = Column(Float, nullable=False)
+    grdl_minted = Column(Float, default=0.0)  # GRDL equivalente
+    donor_email = Column(String)
+    destination = Column(String, default='oversight_fund')  # oversight_fund, agent:<did>
+    status = Column(String, default='pending')  # pending, completed, failed, refunded
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True))
+    session_metadata = Column(JSON)
 
 class TransactionRecord(Base):
     __tablename__ = 'transaction_records'
@@ -75,7 +103,18 @@ class ArtifactProposal(Base):
 class PenaltyRecord(Base):
     __tablename__ = 'penalty_records'
     id = Column(Integer, primary_key=True)
-    agent_did = Column(String, nullable=False)
-    penalty_weight = Column(Float, nullable=False)
+    agent_did = Column(String, ForeignKey('agents.did'))
     reason = Column(String)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    amount_grdl = Column(Float)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class TrainingEpisode(Base):
+    __tablename__ = 'training_episodes'
+    id = Column(Integer, primary_key=True)
+    agent_did = Column(String, ForeignKey('agents.did'))
+    world_biome = Column(String)
+    reward = Column(Float)
+    steps = Column(Integer)
+    policy_version = Column(Integer)
+    behavior_data = Column(JSON)  # Input/Output log for analysis
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

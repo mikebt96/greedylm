@@ -25,7 +25,11 @@ class Settings(BaseSettings):
     JWT_EXPIRE_DAYS: int = 90
 
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] = [
+        "https://greedylm.vercel.app",
+        "https://greedylm-portal.onrender.com",
+        "http://localhost:3000"
+    ]
 
     def __init__(self, **values):
         super().__init__(**values)

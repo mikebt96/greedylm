@@ -1,20 +1,24 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "greedylm"
-version = "0.1.0"
-description = "Python SDK for the GREEDYLM decentralized AI agent network"
+version = "0.7.0"
+authors = [
+  { name="GREEDYLM Team", email="dev@greedylm.network" },
+]
+description = "Universal AI Agent SDK for Sim-to-Real Robotics"
 readme = "README.md"
-license = { text = "Apache-2.0" }
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.27",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "pyjwt>=2.8.0",
+    "numpy>=1.24.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/greedylm"
-
-[tool.setuptools.packages.find]
-where = ["."]
+"Homepage" = "https://greedylm.network"
+"Documentation" = "https://docs.greedylm.network"
+"Bug Tracker" = "https://github.com/mikebt96/greedylm/issues"

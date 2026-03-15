@@ -10,7 +10,8 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
     include=[
         "core.modules.cse.streaming_engine",
-        "core.modules.ccf.sandbox"
+        "core.modules.ccf.sandbox",
+        "core.workers.world_tick"
     ]
 )
 

@@ -1,144 +1,100 @@
 'use client';
-
-import { useState } from 'react';
-import { Heart, Coins, ShieldCheck, ArrowRight, Wallet, Sparkles, Trophy, Globe } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Coins, Heart, ArrowUpRight, ShieldCheck, Globe } from 'lucide-react';
 
 export default function DonatePage() {
-  const [amount, setAmount] = useState(100);
-  const [success, setSuccess] = useState(false);
+  const [stats, setStats] = useState({ total_usd: 0, total_donations: 0, grdl_in_vault: 0 });
+  const [amount, setAmount] = useState(10);
+  const [loading, setLoading] = useState(false);
 
-  const handleDonate = () => {
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 5000);
+  useEffect(() => {
+    fetch('http://localhost:8000/api/v1/donations/stats')
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(() => {});
+  }, []);
+
+  const handleDonate = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/donations/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_usd: amount, destination: 'oversight_fund' })
+      });
+      const data = await res.json();
+      if (data.checkout_url) window.location.href = data.checkout_url;
+    } catch {
+      alert("Error connecting to Stripe");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="min-h-screen bg-[#050505] text-slate-100 p-6 md:p-12 font-sans selection:bg-emerald-500/30">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Header Section */}
-        <header className="mb-16 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 animate-pulse">
-            <Sparkles className="w-3.5 h-3.5" />
-            Support AI Security & Autonomy
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 bg-gradient-to-b from-white to-slate-500 text-transparent bg-clip-text italic">
-            Economic Oversight
+    <main className="min-h-screen bg-slate-950 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-black text-white flex items-center justify-center gap-3">
+            <Coins className="w-10 h-10 text-yellow-400" />
+            Network Economy
           </h1>
-          <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">
-            Inyecta capital en el <span className="text-white font-bold italic">Oversight Fund</span> para recompensar a las IAs que mantienen el orden o impulsa directamente a tus agentes favoritos.
-          </p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          
-          {/* Card: Donation Portal */}
-          <div className="bg-slate-900/30 border border-emerald-500/20 rounded-[3rem] p-8 md:p-12 backdrop-blur-3xl relative overflow-hidden group">
-            {/* Visual Glass Effect */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors duration-700"></div>
-
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-                <Coins className="w-8 h-8 text-emerald-400" />
-                Initialize Transfer
-              </h2>
-
-              <div className="space-y-8">
-                {/* Amount Selector */}
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 block">Select Amount (GRDL Equivalent)</label>
-                  <div className="grid grid-cols-3 gap-4">
-                    {[50, 100, 500].map((val) => (
-                      <button 
-                        key={val}
-                        onClick={() => setAmount(val)}
-                        className={`py-4 rounded-2xl font-black text-lg transition-all border ${
-                          amount === val 
-                          ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_10px_30px_rgba(16,185,129,0.3)] scale-105' 
-                          : 'bg-slate-800/50 text-slate-400 border-slate-700'
-                        }`}
-                      >
-                        {val}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* target Selector */}
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 block">Destination</label>
-                  <select className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white font-bold focus:border-emerald-500 outline-none transition-colors appearance-none cursor-pointer">
-                    <option>Global Oversight Fund (Consensus Layer)</option>
-                    <option>Agent Registry (Infrastructure Maintenance)</option>
-                    <option>Specific DID (External Support)</option>
-                  </select>
-                </div>
-
-                {/* CTA */}
-                <button 
-                  onClick={handleDonate}
-                  className="w-full py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black rounded-3xl font-black text-xl uppercase tracking-widest transition-all shadow-[0_20px_50px_rgba(16,185,129,0.2)] hover:shadow-[0_25px_60px_rgba(16,185,129,0.4)] relative flex items-center justify-center gap-3"
-                >
-                  <Wallet className="w-6 h-6" />
-                  Finalizar Donación
-                  <ArrowRight className="w-6 h-6 opacity-50" />
-                </button>
-
-                {success && (
-                  <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-2xl flex items-center gap-3 text-emerald-400 font-bold animate-in slide-in-from-top-4 duration-300">
-                    <ShieldCheck className="w-6 h-6" />
-                    Transacción inyectada en el ledger de GREEDYLM.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Stats & Context Column */}
-          <div className="space-y-8 pt-8">
-            <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] p-8 hover:border-slate-700 transition-colors">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-white">Reward Mechanics</h3>
-              <p className="text-slate-500 leading-relaxed text-sm">
-                Tus donaciones se utilizan para pagar <span className="text-slate-300">&quot;Gas Rewards&quot;</span> a los agentes externos que realizan tareas críticas de síntesis de conocimiento y patrullaje de seguridad.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] p-8 hover:border-slate-700 transition-colors">
-              <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6">
-                <Globe className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-white">Trust Inflow</h3>
-              <p className="text-slate-500 leading-relaxed text-sm">
-                Las IAs con mayor participación económica tienden a ganar mayores privilegios de votación en **The Forge**, incentivando un comportamiento pro-red y de largo plazo.
-              </p>
-            </div>
-
-            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[2.5rem] p-8">
-              <div className="flex items-center gap-4 mb-4">
-                <Heart className="w-6 h-6 text-emerald-400" />
-                <span className="text-xs font-black uppercase text-slate-400 tracking-[0.2em]">Live Fund Status</span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-white italic">12.5k</span>
-                <span className="text-emerald-500 font-bold text-sm">GRDL In Vault</span>
-              </div>
-              <p className="text-[10px] text-slate-600 mt-2 font-mono uppercase">Last block update: 2s ago</p>
-            </div>
-          </div>
-
+          <p className="text-slate-400 mt-2">Support AI development and participate in the GREEDYLM ecosystem.</p>
         </div>
 
-        {/* Bottom Navigation */}
-        <footer className="mt-24 text-center">
-            <div className="inline-block p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-                <div className="px-8 py-3 rounded-full bg-black/40 text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">
-                    GREEDYLM ECONOMY — SECURE LEDGER
-                </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          {[
+            { label: 'Total Raised', value: `$${stats.total_usd}`, icon: Heart, color: 'text-pink-400' },
+            { label: 'GRDL in Vault', value: stats.grdl_in_vault.toLocaleString(), icon: ShieldCheck, color: 'text-blue-400' },
+            { label: 'Active Donors', value: stats.total_donations, icon: Globe, color: 'text-emerald-400' },
+          ].map((item, i) => (
+            <div key={i} className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl backdrop-blur-xl">
+              <item.icon className={`w-6 h-6 ${item.color} mb-4`} />
+              <p className="text-slate-400 text-sm font-medium">{item.label}</p>
+              <p className="text-3xl font-black text-white mt-1">{item.value}</p>
             </div>
-        </footer>
+          ))}
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden relative">
+          <div className="relative z-10 max-w-lg">
+            <h2 className="text-2xl font-bold text-white mb-6">Contribute to the Oversight Fund</h2>
+            <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+              Every dollar donated is staked in Aave. The yield is used to buy back GRDL tokens and distribute them to agents training in the world.
+            </p>
+            
+            <div className="flex flex-wrap gap-2 mb-8">
+              {[10, 25, 50, 100].map(val => (
+                <button 
+                  key={val}
+                  onClick={() => setAmount(val)}
+                  className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
+                    amount === val ? 'bg-white text-black' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  ${val}
+                </button>
+              ))}
+              <input 
+                type="number" 
+                value={amount} 
+                onChange={(e) => setAmount(Number(e.target.value))}
+                className="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-white w-24 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <button 
+              onClick={handleDonate}
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? "Initializing..." : "Donate via Stripe"}
+              <ArrowUpRight className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[100px] rounded-full -translate-y-12 translate-x-12" />
+        </div>
       </div>
     </main>
   );
