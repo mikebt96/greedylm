@@ -38,7 +38,7 @@ async def health_check():
     is_healthy = db_status["status"] == "healthy" and redis_status["status"] == "healthy"
     
     content = {
-        "status": "online" if is_healthy else "degraded",
+        "status": "healthy" if is_healthy else "degraded",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "7.0.0",
         "checks": {
