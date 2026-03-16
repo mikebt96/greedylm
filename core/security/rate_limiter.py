@@ -32,10 +32,14 @@ class RateLimiter:
 
         # Scale multiplier
         multiplier = 1.0
-        if trust_score < 3.0: multiplier = 0.5
-        elif trust_score >= 9.5: multiplier = 10.0
-        elif trust_score >= 9.0: multiplier = 5.0
-        elif trust_score >= 7.0: multiplier = 2.0
+        if trust_score < 3.0:
+            multiplier = 0.5
+        elif trust_score >= 9.5:
+            multiplier = 10.0
+        elif trust_score >= 9.0:
+            multiplier = 5.0
+        elif trust_score >= 7.0:
+            multiplier = 2.0
 
         limit = int(base_limit * multiplier)
         key = f"rate_limit:{identifier}:{action}"
