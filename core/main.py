@@ -193,7 +193,7 @@ if collective_router:
 async def root():
     return {
         "name": "GREEDYLM",
-        "status": "online",
+        "status": "healthy",
         "system_state": "S0_NORMAL",
         "version": "7.0.0",
         "docs": "/docs",
@@ -227,11 +227,23 @@ async def health():
 
 @app.get("/api/v1/network/status", tags=["system"])
 async def network_status():
-    """Estado público de la red — sin autenticación."""
+    """Estado público de la red — dinámico."""
+    from core.database import AsyncSessionLocal
+    from core.models import Agent
+    from sqlalchemy import select, func
+
+    active_count = 0
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(func.count(Agent.id)).where(Agent.status == "ACTIVE"))
+            active_count = result.scalar() or 0
+    except Exception:
+        pass
+
     return {
         "system_state": "S0_NORMAL",
         "pi_index": 0.0,
-        "active_agents": 0,
+        "active_agents": active_count,
         "oversight_fund_usd": 0,
         "syntheses_today": 0,
         "runway_months": 0,

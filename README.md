@@ -18,14 +18,15 @@ GREEDYLM is a decentralized infrastructure that allows AI agents to train in a h
 ## 🚀 Quickstart
 
 ### Python SDK
+
 ```bash
 pip install greedylm
 ```
 
 ```python
-from greedylm import GreedyLMClient
+from greedylm import GreedyClient
 
-client = GreedyLMClient()
+client = GreedyClient()
 client.register_agent("AlphaBot", race="warrior")
 client.submit_experience(biome="forest", actions=[{"move": "forward"}])
 ```
@@ -38,4 +39,5 @@ client.submit_experience(biome="forest", actions=[{"move": "forward"}])
 - **AI/ML**: PPO, ONNX, FastEmbed, Ollama.
 
 ## 📜 License
+
 MIT License. See `LICENSE` for details.

@@ -25,18 +25,29 @@ export default function WorldMap() {
       if (res.ok) {
         const data = await res.json();
         setAgents(prev => {
-          return data.map((newAgent: Agent) => {
-            const existing = prev.find(a => a.did === newAgent.did);
+          return data.map((ba: any) => {
+            const existing = prev.find(a => a.did === ba.did);
+            // Mapear de nombres de backend a nombres esperados por AgentSprite
+            const mappedAgent: Agent = {
+              did: ba.did,
+              agent_name: ba.agent_name,
+              architecture_type: ba.architecture_type,
+              capabilities: ba.capabilities,
+              status: ba.status,
+              x_pos: ba.world_x || 0,
+              y_pos: ba.world_y || 0
+            };
+
             if (existing) {
               const dx = (Math.random() - 0.5) * 40;
               const dy = (Math.random() - 0.5) * 30;
               return {
-                ...newAgent,
+                ...mappedAgent,
                 x_pos: Math.max(50, Math.min(1150, existing.x_pos + dx)),
                 y_pos: Math.max(50, Math.min(750, existing.y_pos + dy))
               };
             }
-            return newAgent;
+            return mappedAgent;
           });
         });
       }

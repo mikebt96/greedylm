@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { IsoEngine } from '@/lib/isometric/IsoEngine';
 import { IsoAgent } from '@/lib/isometric/IsoAgent';
-import { BIOME_COLORS } from '@/lib/isometric/IsoConstants';
+import { BIOME_COLORS, TILE_SIZE } from '@/lib/isometric/IsoConstants';
 
 // Tipos
 interface WorldAgent {
