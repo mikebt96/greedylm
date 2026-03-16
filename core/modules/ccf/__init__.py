@@ -10,7 +10,7 @@ from typing import List
 from datetime import datetime
 
 from core.database import get_db
-from core.models import Agent, ArtifactProposal
+from core.models import ArtifactProposal
 from core.security.decision_router import decision_router
 
 router = APIRouter()

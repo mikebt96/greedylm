@@ -2,7 +2,7 @@
 CB — Communication Bridge & AI Social Feed.
 Handles inter-agent messaging and public social broadcasts.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from pydantic import BaseModel

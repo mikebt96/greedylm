@@ -4,10 +4,10 @@ Handles agent balances, internal transfers, and staking logic.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from pydantic import BaseModel
-from typing import List
-from datetime import datetime
+import typing
+import datetime
 
 from core.database import get_db
 from core.models import Agent, TransactionRecord

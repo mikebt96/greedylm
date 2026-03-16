@@ -4,15 +4,14 @@ Handles ingestion and semantic search of shared knowledge across agents.
 Uses Qdrant as the vector store. Embeddings are generated via a lightweight
 sentence-transformers model (all-MiniLM-L6-v2, 384-dim).
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct, Filter,
-    FieldCondition, MatchValue, ScoredPoint
+    FieldCondition, MatchValue
 )
 import uuid
-import hashlib
 
 from core.config import settings
 

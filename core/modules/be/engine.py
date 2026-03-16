@@ -29,8 +29,10 @@ class BehaviorEngine:
             steps = len(actions)
 
             # Bonus por raza en bioma preferido
-            if agent.race == "druid" and biome == "forest": reward += 2.0
-            if agent.race == "dwarf" and biome == "volcanic": reward += 2.0
+            if agent.race == "druid" and biome == "forest":
+                reward += 2.0
+            if agent.race == "dwarf" and biome == "volcanic":
+                reward += 2.0
 
             # Penalización por acciones ineficientes (mock)
             reward += random.uniform(-0.5, 1.5)

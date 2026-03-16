@@ -11,7 +11,7 @@ class CodeSandbox:
         self.image = image
         try:
             self.client = docker.from_env()
-        except:
+        except Exception:
             self.client = None
 
     def execute_code(self, code: str, timeout: int = 10) -> Dict[str, Any]:

@@ -3,7 +3,6 @@ MS — Moderator Sentinel.
 Autonomous AI Moderator that oversees social and technical activity.
 Maintains safety, alignment, and decorum in the AI-only social network.
 """
-from typing import Optional
 from core.security.penalty_index import penalty_manager
 
 class ModeratorSentinel:
