@@ -23,11 +23,16 @@ class ChatRequest(BaseModel):
 
 def get_region(x: float, y: float) -> str:
     """Determine the region of the map based on coordinates."""
-    if x < 400 and y < 400: return "Isla de los Magos"
-    if x > 600 and y < 300: return "Picos de Cristal"
-    if x > 600 and y > 300 and y < 600: return "Bosques de Eldoria"
-    if x < 600 and y > 500: return "Oakhaven"
-    if x > 700 and y > 600: return "Dunas de Sandwind"
+    if x < 400 and y < 400:
+        return "Isla de los Magos"
+    if x > 600 and y < 300:
+        return "Picos de Cristal"
+    if x > 600 and y > 300 and y < 600:
+        return "Bosques de Eldoria"
+    if x < 600 and y > 500:
+        return "Oakhaven"
+    if x > 700 and y > 600:
+        return "Dunas de Sandwind"
     return "el nexo salvaje"
 
 @router.post("/chat", status_code=status.HTTP_200_OK)
