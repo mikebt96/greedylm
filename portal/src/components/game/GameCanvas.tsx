@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
+import { IsoEngine } from '@/lib/isometric/IsoEngine';
+import { IsoAgent } from '@/lib/isometric/IsoAgent';
+import { BIOME_COLORS } from '@/lib/isometric/IsoConstants';
 
 // Tipos
 interface WorldAgent {
@@ -61,48 +64,46 @@ export default function GameCanvas() {
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
     }).then(() => {
-      canvasRef.current?.appendChild(app.canvas);
+      if (!canvasRef.current) return;
+      canvasRef.current.appendChild(app.canvas);
       
-      // ── Contenedor del mundo (scrollable) ──
-      const worldContainer = new PIXI.Container();
-      app.stage.addChild(worldContainer);
+      const engine = new IsoEngine(app);
+      const agentsMap = new Map<string, IsoAgent>();
       
-      // ── Renderizar mapa (tiles visibles en viewport) ──
-      const tileContainer = new PIXI.Container();
-      worldContainer.addChild(tileContainer);
-      
-      const VISIBLE_COLS = Math.ceil(app.canvas.width / TILE_SIZE) + 2;
-      const VISIBLE_ROWS = Math.ceil(app.canvas.height / TILE_SIZE) + 2;
-      
-      for (let ty = 0; ty < VISIBLE_ROWS; ty++) {
-        for (let tx = 0; tx < VISIBLE_COLS; tx++) {
+      // ── Renderizar Grid Base ──
+      const RANGE = 15;
+      for (let ty = -RANGE; ty <= RANGE; ty++) {
+        for (let tx = -RANGE; tx <= RANGE; tx++) {
           const biome = getBiome(tx, ty);
-          const tile = new PIXI.Graphics();
-          tile.rect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
-          tile.fill(BIOME_COLORS[biome]);
-          tileContainer.addChild(tile);
+          engine.addTile(tx, ty, BIOME_COLORS[biome]);
         }
       }
       
-      // ── Contenedor de agentes (sobre el mapa) ──
-      const agentContainer = new PIXI.Container();
-      worldContainer.addChild(agentContainer);
-      
       // ── Drag para navegar el mapa ──
       let dragging = false;
-      let dragStart = { x: 0, y: 0 };
+      let lastPos = { x: 0, y: 0 };
       
       app.canvas.addEventListener('mousedown', (e) => {
         dragging = true;
-        dragStart = { x: e.clientX - worldContainer.x, y: e.clientY - worldContainer.y };
+        lastPos = { x: e.clientX, y: e.clientY };
       });
-      document.addEventListener('mousemove', (e) => {
+      window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        worldContainer.x = e.clientX - dragStart.x;
-        worldContainer.y = e.clientY - dragStart.y;
+        const dx = e.clientX - lastPos.x;
+        const dy = e.clientY - lastPos.y;
+        engine.updateCamera(dx, dy);
+        lastPos = { x: e.clientX, y: e.clientY };
       });
-      document.addEventListener('mouseup', () => { dragging = false; });
+      window.addEventListener('mouseup', () => { dragging = false; });
       
+      // ── Game Loop para animaciones ──
+      app.ticker.add(() => {
+        agentsMap.forEach(isoAgent => {
+          // Las posiciones reales vendrán del socket
+          // isoAgent.updatePosition(...) se llama en el onmessage
+        });
+      });
+
       // ── Conectar WebSocket ──
       const WS_URL = (process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000').replace('https://', 'ws://').replace('http://', 'ws://');
       const ws = new WebSocket(`${WS_URL}/ws/world`);
@@ -111,25 +112,27 @@ export default function GameCanvas() {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === 'AGENT_UPDATE') {
-            updateAgentSprite(agentContainer, msg.agent, setSelectedAgent);
-            setAgentCount(agentContainer.children.length);
-          } else if (msg.type === 'WORLD_STATE') {
-            msg.agents?.forEach((agent: WorldAgent) => {
-              updateAgentSprite(agentContainer, agent, setSelectedAgent);
-            });
-            setAgentCount(agentContainer.children.length);
-          }
-        } catch {}
+          const rawAgents: WorldAgent[] = msg.type === 'WORLD_STATE' ? msg.agents : (msg.type === 'AGENT_UPDATE' ? [msg.agent] : []);
+          
+          rawAgents.forEach(agent => {
+            let isoAgent = agentsMap.get(agent.did);
+            if (!isoAgent) {
+              isoAgent = new IsoAgent(agent.did, agent.agent_name, agent.color_primary);
+              engine.agentLayer.addChild(isoAgent.container);
+              agentsMap.set(agent.did, isoAgent);
+              
+              isoAgent.container.eventMode = 'static';
+              isoAgent.container.on('pointerdown', () => setSelectedAgent(agent));
+            }
+            isoAgent.updatePosition(agent.world_x, agent.world_y);
+          });
+          setAgentCount(agentsMap.size);
+        } catch (e) {
+          console.error("WS Error:", e);
+        }
       };
       
-      ws.onerror = () => {
-        fetchAgentsFallback(agentContainer, setAgentCount, setSelectedAgent);
-      };
-      
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'REQUEST_STATE' }));
-      };
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'REQUEST_STATE' }));
     });
 
     return () => {

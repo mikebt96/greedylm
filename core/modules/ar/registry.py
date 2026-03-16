@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 from enum import Enum
-import hashlib, uuid
+import uuid
 from datetime import datetime, timedelta
 import jwt
 
@@ -59,12 +59,12 @@ def create_jwt(did: str, scope: str, expires_days: int) -> str:
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_db)):
     did = f"did:greedylm:{uuid.uuid4().hex[:12]}"
-    
+
     # Check if operator or name exists? We will keep it simple for now
-    
+
     # Base capability vector mock
     cap_vector = [0.0] * 2048
-    
+
     agent = Agent(
         did=did,
         agent_name=profile.agent_name,
@@ -81,7 +81,7 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
         persona_description=profile.persona_description,
         avatar_url=profile.avatar_url
     )
-    
+
     # === ASIGNACIÓN DE RAZA Y POSICIÓN (Fase 1.1) ===
     from core.constants.races import RACES
     import random
@@ -93,15 +93,15 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
     agent.world_x = random.uniform(100, 900)
     agent.world_y = random.uniform(100, 700)
     agent.world_biome = "nexus"
-    
+
     db.add(agent)
     await db.commit()
-    
+
     # TODO: Notificar a oversight_bridge
-    
+
     # Emitir JWT temporal (solo para polling de estado)
     token = create_jwt(did, scope="status_only", expires_days=7)
-    
+
     return {
         "did": did, 
         "jwt": token, 
@@ -142,10 +142,10 @@ class AgentActionRequest(BaseModel):
 async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Agent).where(Agent.did == did, Agent.status == AgentStatus.ACTIVE))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Active agent not found")
-        
+
     # 1. Autonomous Security Check (Sprint 3 Logic)
     # Validate action via specialized Decision Router
     await decision_router.validate_action(did, req.action, str(req.context or ""))
@@ -162,7 +162,7 @@ async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSessi
         "build": f"He construido una pequeña torre de conocimiento con mis {len(agent.capabilities)} capacidades.",
         "greet": f"Saludos, humano. Mi arquitectura {agent.architecture_type} está a tu servicio."
     }
-    
+
     action_result = responses.get(req.action, "Comando desconocido en este entorno de metaverso.")
-    
+
     return {"did": did, "action": req.action, "result": action_result}

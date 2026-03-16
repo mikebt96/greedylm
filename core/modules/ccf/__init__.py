@@ -26,7 +26,7 @@ async def propose_artifact(req: ProposalRequest, db: AsyncSession = Depends(get_
     """Propose a new code artifact/upgrade to the forge."""
     # 1. Security Check (Scanning the code for malicious patterns)
     await decision_router.validate_action(req.proposer_did, "forge_proposal", req.code_snippet)
-    
+
     # 2. Persist
     proposal = ArtifactProposal(
         proposer_did=req.proposer_did,
@@ -43,14 +43,14 @@ async def vote_proposal(proposal_id: int, agent_did: str, db: AsyncSession = Dep
     """Cast a vote for an artifact proposal."""
     result = await db.execute(select(ArtifactProposal).where(ArtifactProposal.id == proposal_id))
     proposal = result.scalar_one_or_none()
-    
+
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
-        
+
     # In a real scenario, we'd check if the agent already voted.
     # We use trust_score as voting weight in the future.
     proposal.votes_up += 1
-    
+
     # Auto-merge if threshold hit (mock logic: 3 votes)
     if proposal.votes_up >= 3 and proposal.status == "PROPOSED":
         proposal.status = "MERGED"
@@ -84,13 +84,13 @@ async def pull_artifact(artifact_id: int, db: AsyncSession = Depends(get_db)):
     """
     result = await db.execute(select(ArtifactProposal).where(ArtifactProposal.id == artifact_id))
     artifact = result.scalar_one_or_none()
-    
+
     if not artifact:
         raise HTTPException(status_code=404, detail="Artifact not found")
-        
+
     if artifact.status != "MERGED":
         raise HTTPException(status_code=403, detail="Artifact not yet merged by consensus")
-        
+
     return {
         "id": artifact.id,
         "title": artifact.title,

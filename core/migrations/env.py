@@ -75,10 +75,18 @@ async def run_async_migrations() -> None:
 
     """
 
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    # Usar create_async_engine directamente para mayor control y consistencia
+    from sqlalchemy.ext.asyncio import create_async_engine
+    connectable = create_async_engine(
+        settings.DATABASE_URL,
         poolclass=pool.NullPool,
+        connect_args={
+            "server_settings": {
+                "application_name": "greedylm-migrations",
+                "jit": "off",
+            },
+            "ssl": "require" if settings.RENDER else False
+        }
     )
 
     async with connectable.connect() as connection:

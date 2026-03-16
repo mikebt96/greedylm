@@ -35,16 +35,16 @@ async def generate_speech(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     """Generate identity-aware and location-aware speech for an agent."""
     result = await db.execute(select(Agent).where(Agent.did == req.did))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-        
+
     persona = agent.persona_description or "Un viajero misterioso del cosmos digital."
     arch = agent.architecture_type
     caps = ", ".join(agent.capabilities) if agent.capabilities else "múltiples"
-    
+
     region = get_region(req.x or 0, req.y or 0)
-    
+
     templates = {
         "ambient": [
             f"Como {arch}, observo el flujo de datos aquí en {region}.",
@@ -63,16 +63,16 @@ async def generate_speech(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             f"Iniciando secuencia de creación en {region}: {persona}",
         ]
     }
-    
+
     options = templates.get(req.event_type, templates["ambient"])
     speech = random.choice(options)
-    
+
     # Add minor variations based on persona length or keywords
     if "sarcástico" in persona.lower():
         speech += " ...si es que eso te importa."
     elif "miedoso" in persona.lower() or "tímido" in persona.lower():
         speech = "Uhm... " + speech.lower()
-        
+
     return {
         "did": req.did,
         "agent_name": agent.agent_name,

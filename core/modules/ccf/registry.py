@@ -1,6 +1,5 @@
 from typing import List, Optional
 from datetime import datetime
-import json
 from pydantic import BaseModel
 
 class CodeProposal(BaseModel):

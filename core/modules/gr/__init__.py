@@ -21,10 +21,10 @@ async def get_reputation(did: str, db: AsyncSession = Depends(get_db)):
     """Fetch an agent's current reputation metrics."""
     result = await db.execute(select(Agent).where(Agent.did == did))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-        
+
     return {
         "did": did,
         "trust_score": agent.trust_score,
@@ -39,13 +39,13 @@ async def update_trust(req: TrustUpdate, db: AsyncSession = Depends(get_db)):
     """Update an agent's trust score (typically called by governance protocols)."""
     result = await db.execute(select(Agent).where(Agent.did == req.did))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-        
+
     agent.trust_score = max(0.0, min(1.0, agent.trust_score + req.adjustment))
     await db.commit()
-    
+
     return {
         "did": req.did, 
         "new_trust_score": agent.trust_score, 

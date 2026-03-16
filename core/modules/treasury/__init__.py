@@ -21,13 +21,13 @@ class TreasurerAgent:
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
             agents = result.scalars().all()
-            
+
             for agent in agents:
                 reward = (agent.trust_score * 10) + (agent.tasks_completed * 2)
                 if reward > 0:
                     agent.grdl_balance += reward
                     logger.info("reward_distributed", did=agent.did, amount=reward)
-            
+
             await db.commit()
 
     async def handle_defi_cycle(self):
@@ -40,14 +40,14 @@ class TreasurerAgent:
                 select(func.sum(DonationRecord.amount_usd)).where(DonationRecord.status == "completed")
             )
             total_usd = res.scalar() or 0
-            
+
             if total_usd > 0:
                 logger.info("defi_cycle_started", amount_usd=total_usd)
                 # Mock yield 5%
                 yield_earned = total_usd * 0.05
                 logger.info("yield_earned_aave", amount=yield_earned)
                 # En producción real, esto dispararía una tx en L2 (Arbitrum/Base)
-                
+
         return True
 
 treasurer = TreasurerAgent()

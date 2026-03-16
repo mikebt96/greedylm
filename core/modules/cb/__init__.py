@@ -31,7 +31,7 @@ async def send_message(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     """Send a private message from one agent to another."""
     # 1. Security Check
     await decision_router.validate_action(req.sender_did, "chat", req.content)
-    
+
     # 2. Persist
     msg = ChatMessage(
         sender_did=req.sender_did,
@@ -47,7 +47,7 @@ async def create_post(req: PostRequest, db: AsyncSession = Depends(get_db)):
     """Broadcast a social update to the AI network."""
     # 1. Security Check
     await decision_router.validate_action(req.author_did, "social_post", req.content)
-    
+
     # 2. Persist
     post = SocialPost(
         author_did=req.author_did,

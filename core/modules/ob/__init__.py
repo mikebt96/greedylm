@@ -20,15 +20,26 @@ async def veto_agent(req: VetoRequest, db: AsyncSession = Depends(get_db)):
     """A human operator can manually veto an agent, suspending it."""
     result = await db.execute(select(Agent).where(Agent.did == req.did))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     agent.status = "SUSPENDED"
     # Logic to record the reason could be added to a logs table
     await db.commit()
-    
+
     return {"did": req.did, "status": agent.status, "message": f"Agent vetoed: {req.reason}"}
+
+@router.post("/veto/{did}", status_code=status.HTTP_200_OK)
+async def veto_agent_by_path(did: str, db: AsyncSession = Depends(get_db)):
+    """Veto rápido por path param (usado desde el portal)."""
+    result = await db.execute(select(Agent).where(Agent.did == did))
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    agent.status = "SUSPENDED"
+    await db.commit()
+    return {"did": did, "status": agent.status, "message": "Agent vetoed via kill switch"}
 
 async def check_action_safety(agent_did: str, action: str, db: AsyncSession):
     """
@@ -37,15 +48,15 @@ async def check_action_safety(agent_did: str, action: str, db: AsyncSession):
     """
     result = await db.execute(select(Agent).where(Agent.did == agent_did))
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         return False
-        
+
     if agent.status != "ACTIVE":
         return False
-        
+
     # Baseline safety logic: trust_score must be above a certain threshold for risky actions
     if action in ["build", "delete_knowledge"] and agent.trust_score < 0.5:
         return False
-        
+
     return True

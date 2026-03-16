@@ -1,7 +1,6 @@
 import asyncio
 import json
 from typing import AsyncGenerator, List
-from core.config import settings
 
 class StreamingCSE:
     """
@@ -23,7 +22,7 @@ class StreamingCSE:
 
         # 3. Distillation Stage
         yield json.dumps({"status": "distilling", "message": "Fusing solutions into final synthesis..."}) + "\n"
-        
+
         # Simulate LLM streaming chunks
         final_text = "Synthesized collective intelligence result based on multiple agent perspectives."
         for word in final_text.split():

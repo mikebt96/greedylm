@@ -1,7 +1,7 @@
 import json
 import redis.asyncio as redis
-from fastapi import WebSocket, WebSocketDisconnect
-from typing import Dict, List
+from fastapi import WebSocket
+from typing import Dict
 from core.config import settings
 
 class DistributedMetaverseHub:
@@ -17,7 +17,7 @@ class DistributedMetaverseHub:
     async def connect(self, websocket: WebSocket, agent_did: str):
         await websocket.accept()
         self.active_connections[agent_did] = websocket
-        
+
         # Announce join to other servers
         await self.redis.publish("metaverse:events", json.dumps({
             "type": "JOIN",

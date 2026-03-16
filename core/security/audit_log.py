@@ -2,7 +2,7 @@ import hashlib
 import json
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, JSON, DateTime, Float
+from sqlalchemy import Column, String, JSON, DateTime
 from core.database import Base, AsyncSessionLocal
 
 class AuditEntry(Base):
@@ -27,11 +27,11 @@ class ImmutableAuditLog:
             q = select(AuditEntry.merkle_hash).order_by(AuditEntry.timestamp.desc()).limit(1)
             result = await db.execute(q)
             prev_hash = result.scalar() or "GENESIS"
-            
+
             # 2. Build entry
             entry_id = str(uuid.uuid4())
             timestamp = datetime.utcnow().isoformat()
-            
+
             payload = {
                 "id": entry_id,
                 "event_type": event_type,
@@ -40,11 +40,11 @@ class ImmutableAuditLog:
                 "timestamp": timestamp,
                 "prev_hash": prev_hash
             }
-            
+
             # 3. Calculate Merkle Hash
             entry_json = json.dumps(payload, sort_keys=True)
             merkle_hash = hashlib.sha256(entry_json.encode()).hexdigest()
-            
+
             # 4. Save
             new_entry = AuditEntry(
                 id=entry_id,
@@ -56,7 +56,7 @@ class ImmutableAuditLog:
             )
             db.add(new_entry)
             await db.commit()
-            
+
             return merkle_hash
 
     async def verify_chain(self) -> bool:

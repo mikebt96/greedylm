@@ -15,16 +15,16 @@ class WeightedVoting:
             q = select(Agent).where(Agent.did == agent_did)
             res = await db.execute(q)
             agent = res.scalar()
-            
+
             if not agent:
                 return 0.1
-            
+
             # Base weight from trust (0-10 -> 0.1-2.0)
             trust_weight = 0.1 + (agent.trust_score / 10.0) * 1.9
-            
+
             # Staking bonus (every 1000 GRDL adds 0.5 to multiplier, capped at 3x total)
             staking_bonus = (agent.staked_amount / 1000.0) * 0.5
-            
+
             total_weight = trust_weight + staking_bonus
             return min(total_weight, 5.0)
 
@@ -34,17 +34,17 @@ class WeightedVoting:
         """
         weighted_approve = 0.0
         weighted_deny = 0.0
-        
+
         for vote in votes:
             weight = await self.calculate_weight(vote["agent_did"])
             if vote["decision"] == "APPROVE":
                 weighted_approve += weight
             else:
                 weighted_deny += weight
-        
+
         total = weighted_approve + weighted_deny
         approval_rate = (weighted_approve / total) if total > 0 else 0
-        
+
         return {
             "approved": approval_rate >= 0.66, # 2/3 majority requirement
             "approval_rate": approval_rate,

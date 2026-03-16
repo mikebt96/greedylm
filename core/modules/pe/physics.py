@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 class MetaversePhysics:
     """
@@ -29,7 +29,7 @@ class MetaversePhysics:
         dx = pos_b[0] - pos_a[0]
         dy = pos_b[1] - pos_a[1]
         dist = math.sqrt(dx*dx + dy*dy)
-        
+
         if 0 < dist < radius * 2:
             force = (radius * 2 - dist) / (radius * 2) * 2.0
             return (-(dx/dist) * force, -(dy/dist) * force)

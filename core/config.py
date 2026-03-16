@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings
-from typing import List
 
 
 class Settings(BaseSettings):
@@ -48,12 +47,14 @@ class Settings(BaseSettings):
     # Seguridad
     ENCRYPTION_KEY: str = "change-me-32-chars-minimum-please"
 
-    # Económico
-    MAX_AUTONOMOUS_SPEND_USD: float = 1000.0
-    OVERSIGHT_FUND_PERCENTAGE: float = 10.0
-    MAX_LIQUID_CAPITAL_USD: float = 500000.0
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
 
-    # Render / Producción
+    # Frontend URL (para webhooks y redirects)
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Render flag (SSL en DB)
     RENDER: bool = False
 
     class Config:

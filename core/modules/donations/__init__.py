@@ -21,7 +21,7 @@ class DonationRequest(BaseModel):
 async def create_checkout(req: DonationRequest, db: AsyncSession = Depends(get_db)):
     if req.amount_usd < 1:
         raise HTTPException(400, "Mínimo $1 USD")
-    
+
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=[{
@@ -44,7 +44,7 @@ async def create_checkout(req: DonationRequest, db: AsyncSession = Depends(get_d
             "grdl_amount": str(int(req.amount_usd * GRDL_RATE))
         }
     )
-    
+
     # Registrar intent en BD
     record = DonationRecord(
         stripe_session_id=session.id,
@@ -56,14 +56,14 @@ async def create_checkout(req: DonationRequest, db: AsyncSession = Depends(get_d
     )
     db.add(record)
     await db.commit()
-    
+
     return {"checkout_url": session.url, "session_id": session.id}
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
@@ -72,7 +72,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Invalid payload")
     except stripe.error.SignatureVerificationError:
         raise HTTPException(400, "Invalid signature")
-    
+
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         # Actualizar registro
@@ -86,7 +86,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             record.stripe_payment_intent = session.get("payment_intent")
             record.completed_at = datetime.datetime.utcnow()
             await db.commit()
-    
+
     return {"status": "ok"}
 
 @router.get("/stats")

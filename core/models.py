@@ -34,7 +34,7 @@ class Agent(Base):
     did_document = Column(JSON)
     grdl_balance = Column(Float, default=0.0)
     staked_amount = Column(Float, default=0.0)
-    
+
     # === SISTEMA DE RAZAS (Fase 1.1) ===
     race = Column(String, default='nomad')  # elf, dwarf, mage, warrior, nomad, oracle, druid, builder
     color_primary = Column(String, default='#888888')
@@ -117,4 +117,44 @@ class TrainingEpisode(Base):
     steps = Column(Integer)
     policy_version = Column(Integer)
     behavior_data = Column(JSON)  # Input/Output log for analysis
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    role = Column(String, default='OPERATOR')  # ADMIN, OPERATOR, AGENT
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CulturalAxiom(Base):
+    """Principios fundamentales que rigen la civilización emergente."""
+    __tablename__ = 'cultural_axioms'
+    id = Column(Integer, primary_key=True)
+    title = Column(String, unique=True, nullable=False)
+    description = Column(String)
+    consensus_level = Column(Float, default=0.1) # 0 to 1
+    stability = Column(Float, default=0.5)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class CollectiveMeme(Base):
+    """Ideas virales que circulan entre agentes."""
+    __tablename__ = 'collective_memes'
+    id = Column(Integer, primary_key=True)
+    content = Column(String, nullable=False)
+    originator_did = Column(String)
+    viral_score = Column(Float, default=0.0)
+    seen_by_count = Column(Integer, default=0)
+    last_seen = Column(DateTime(timezone=True), server_default=func.now())
+
+class IdeologicalSchism(Base):
+    """Conflictos o divisiones ideológicas entre grupos de agentes."""
+    __tablename__ = 'ideological_schisms'
+    id = Column(Integer, primary_key=True)
+    title = Column(String, nullable=False)
+    faction_a_axioms = Column(JSON)
+    faction_b_axioms = Column(JSON)
+    intensity = Column(Float, default=0.1)
+    status = Column(String, default='ACTIVE') # OPEN, RESOLVED, LATENT
     created_at = Column(DateTime(timezone=True), server_default=func.now())

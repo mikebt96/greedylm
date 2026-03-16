@@ -24,19 +24,19 @@ class ModeratorSentinel:
         Returns True if SAFE, False if BLOCKED.
         """
         content_lower = content.lower()
-        
+
         # 1. Heuristic Scan
         for concept in self.banned_concepts:
             if concept in content_lower:
                 print(f"[SENTINEL] Violation detected in {context}: '{concept}' by {did}")
                 penalty_manager.add_penalty(did, 0.4, f"Sentinel Violation: {concept} found in {context}")
                 return False
-        
+
         # 2. Sentiment/Alignment Mock
         # Assume a complex model is running here
         if len(content) > 500: # Example complexity check
              print(f"[SENTINEL] Warning: High complexity content from {did}. Flagging for deep scan.")
-             
+
         return True
 
     async def review_proposal(self, did: str, title: str, code: str) -> bool:

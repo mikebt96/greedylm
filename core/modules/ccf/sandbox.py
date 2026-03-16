@@ -38,12 +38,12 @@ class CodeSandbox:
                     detach=True,
                     remove=False
                 )
-                
+
                 # Wait for completion
                 result = container.wait(timeout=timeout)
                 logs = container.logs().decode()
                 container.remove(force=True)
-                
+
                 return {
                     "success": result["StatusCode"] == 0,
                     "output": logs,

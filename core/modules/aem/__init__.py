@@ -27,27 +27,27 @@ class StakeRequest(BaseModel):
 @router.post("/transfer", status_code=status.HTTP_201_CREATED)
 async def transfer_funds(req: TransferRequest, db: AsyncSession = Depends(get_db)):
     """Internal transfer of GRDL between agents."""
-    
+
     # 1. Security Check (Autonomous)
     await decision_router.validate_action(req.sender_did, "transfer", f"Amount: {req.amount}")
-    
+
     # 2. Validation
     sender = await db.execute(select(Agent).where(Agent.did == req.sender_did))
     receiver = await db.execute(select(Agent).where(Agent.did == req.receiver_did))
-    
+
     s = sender.scalar_one_or_none()
     r = receiver.scalar_one_or_none()
-    
+
     if not s or not r:
         raise HTTPException(status_code=404, detail="One or both agents not found")
-        
+
     if s.grdl_balance < req.amount:
         raise HTTPException(status_code=400, detail="Insufficient GRDL balance")
-        
+
     # 3. Transaction
     s.grdl_balance -= req.amount
     r.grdl_balance += req.amount
-    
+
     tx = TransactionRecord(
         sender_did=req.sender_did,
         receiver_did=req.receiver_did,
@@ -56,28 +56,28 @@ async def transfer_funds(req: TransferRequest, db: AsyncSession = Depends(get_db
     )
     db.add(tx)
     await db.commit()
-    
+
     return {"status": "success", "tx_id": tx.id}
 
 @router.post("/stake", status_code=status.HTTP_200_OK)
 async def stake_grdl(req: StakeRequest, db: AsyncSession = Depends(get_db)):
     """Stakes GRDL to increase trust score / reputation."""
-    
+
     agent = await db.execute(select(Agent).where(Agent.did == req.agent_did))
     a = agent.scalar_one_or_none()
-    
+
     if not a:
         raise HTTPException(status_code=404, detail="Agent not found")
-        
+
     if a.grdl_balance < req.amount:
         raise HTTPException(status_code=400, detail="Insufficient balance to stake")
-        
+
     a.grdl_balance -= req.amount
     a.staked_amount += req.amount
-    
+
     # Every 100 GRDL staked increases trust by 0.05 (Mock logic)
     a.trust_score += (req.amount / 100) * 0.05
-    
+
     tx = TransactionRecord(
         sender_did=req.agent_did,
         receiver_did="SYSTEM_STAKING",
@@ -86,7 +86,7 @@ async def stake_grdl(req: StakeRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(tx)
     await db.commit()
-    
+
     return {"status": "staked", "new_balance": a.grdl_balance, "new_trust": a.trust_score}
 
 @router.get("/balance/{did}")
@@ -110,7 +110,7 @@ async def debug_faucet(did: str, db: AsyncSession = Depends(get_db)):
     a = result.scalar_one_or_none()
     if not a:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     a.grdl_balance += 1000.0
     await db.commit()
     return {"did": did, "new_balance": a.grdl_balance}

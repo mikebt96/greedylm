@@ -68,19 +68,37 @@ try:
 except Exception as e:
     print(f"[WARN] donations module no disponible: {e}")
     donations_router = None
+
 try:
     from core.modules.world import router as world_router
 except Exception as e:
     print(f"[WARN] world module no disponible: {e}")
     world_router = None
 
+try:
+    from core.security.auth_routes import router as auth_router
+except Exception as e:
+    print(f"[WARN] auth module no disponible: {e}")
+    auth_router = None
+
+try:
+    from core.modules.psyche.router import router as psyche_router
+except Exception as e:
+    print(f"[WARN] psyche module no disponible: {e}")
+    psyche_router = None
+
+try:
+    from core.modules.collective.router import router as collective_router
+except Exception as e:
+    print(f"[WARN] collective module no disponible: {e}")
+    collective_router = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[GREEDYLM] Iniciando sistema...")
-    
+
     try:
         from core.database import engine, Base
-        import core.models
         async with engine.begin() as conn:
             # Recrear tablas (drop_all comentado para evitar pérdida de datos en prod)
             # await conn.run_sync(Base.metadata.drop_all)
@@ -88,14 +106,14 @@ async def lifespan(app: FastAPI):
         print("[GREEDYLM] ✓ Persistencia de datos activa en PostgreSQL")
     except Exception as e:
         print(f"[WARN] DB setup: {e}")
-    
+
     if ensure_collection:
         try:
             await ensure_collection()
             print("[GREEDYLM] ✓ Qdrant collection lista")
         except Exception as e:
             print(f"[WARN] Qdrant: {e}")
-    
+
     yield
     print("[GREEDYLM] Sistema apagado")
 
@@ -161,6 +179,12 @@ if donations_router:
     app.include_router(donations_router, prefix="/api/v1/donations", tags=["donations"])
 if world_router:
     app.include_router(world_router, tags=["world"])
+if auth_router:
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+if psyche_router:
+    app.include_router(psyche_router, prefix="/api/v1/psyche", tags=["psyche"])
+if collective_router:
+    app.include_router(collective_router, prefix="/api/v1/collective", tags=["collective"])
 
 
 # ── Endpoints base
@@ -187,17 +211,17 @@ async def health():
             "redis": {"status": "healthy"}
         }
     }
-    
+
     # ── Basic DB Check
     try:
         from core.database import engine
         from sqlalchemy import text
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception as e:
+    except Exception:
         health_status["checks"]["database"]["status"] = "error"
         health_status["status"] = "degraded"
-        
+
     return health_status
 
 

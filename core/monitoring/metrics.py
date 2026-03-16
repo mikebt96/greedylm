@@ -40,6 +40,30 @@ pi_index = _get_or_create_metric(
     "Penalty Index current value"
 )
 
+civilization_axioms_count = _get_or_create_metric(
+    Gauge,
+    "greedylm_civilization_axioms_count",
+    "Total number of active cultural axioms"
+)
+
+collective_memes_total = _get_or_create_metric(
+    Counter,
+    "greedylm_collective_memes_total",
+    "Total number of memes generated"
+)
+
+donations_total_usd = _get_or_create_metric(
+    Counter,
+    "greedylm_donations_total_usd",
+    "Total donations in USD"
+)
+
+training_episodes_total = _get_or_create_metric(
+    Counter,
+    "greedylm_training_episodes_total",
+    "Total training episodes completed"
+)
+
 # App ASGI para el endpoint /metrics
 metrics_app = make_asgi_app()
 

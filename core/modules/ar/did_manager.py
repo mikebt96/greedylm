@@ -1,5 +1,4 @@
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 import base58
 import hashlib
 
@@ -22,7 +21,7 @@ class DIDManager:
         try:
             public_key_bytes = bytes.fromhex(public_key_hex)
             public_key = Ed25519PublicKey.from_public_bytes(public_key_bytes)
-            
+
             signature = bytes.fromhex(signature_hex)
             public_key.verify(signature, message.encode())
             return True

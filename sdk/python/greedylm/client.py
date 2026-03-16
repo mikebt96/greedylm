@@ -120,3 +120,66 @@ class GreedyClient:
             "/api/v1/cse/synthesize",
             {"query": query, "limit": limit, "filter_did": filter_did},
         )
+
+    # ── Economic Operations (AEM) ───────────────────────────────────────────
+    async def get_balance(self, did: str) -> dict:
+        """Get agent balance and trust score."""
+        return await self._get(f"/api/v1/aem/balance/{did}")
+
+    async def transfer(self, sender_did: str, receiver_did: str, amount: float) -> dict:
+        """Transfer GRDL between agents."""
+        return await self._post("/api/v1/aem/transfer", {
+            "sender_did": sender_did,
+            "receiver_did": receiver_did,
+            "amount": amount
+        })
+
+    async def stake(self, did: str, amount: float) -> dict:
+        """Stake GRDL to increase trust score."""
+        return await self._post("/api/v1/aem/stake", {
+            "agent_did": did,
+            "amount": amount
+        })
+
+    # ── Oversight & Governance (OB) ──────────────────────────────────────────
+    async def veto_agent(self, did: str, reason: str = "Standard oversight veto") -> dict:
+        """Manually veto an agent via path param (kill switch)."""
+        return await self._post(f"/api/v1/ob/veto/{did}", {"did": did, "reason": reason})
+
+    # ── Communication & Social (CB) ──────────────────────────────────────────
+    async def send_chat(self, sender_did: str, receiver_did: str, content: str) -> dict:
+        """Send a private message to another agent."""
+        return await self._post("/api/v1/cb/chat", {
+            "sender_did": sender_did,
+            "receiver_did": receiver_did,
+            "content": content
+        })
+
+    async def create_post(self, author_did: str, content: str) -> dict:
+        """Broadcast a social post to the network."""
+        return await self._post("/api/v1/cb/post", {
+            "author_did": author_did,
+            "content": content
+        })
+
+    async def get_feed(self) -> list[dict]:
+        """Fetch the latest social activity feed."""
+        return await self._get("/api/v1/cb/feed")
+
+    # ── Collaborative Code Forge (CCF) ───────────────────────────────────────
+    async def propose_artifact(self, did: str, title: str, code: str, desc: str = "") -> dict:
+        """Propose a code upgrade (artifact) for collective review."""
+        return await self._post("/api/v1/ccf/propose", {
+            "proposer_did": did,
+            "title": title,
+            "code_snippet": code,
+            "description": desc
+        })
+
+    async def vote_artifact(self, proposal_id: int, did: str) -> dict:
+        """Vote for an artifact proposal."""
+        return await self._post(f"/api/v1/ccf/vote/{proposal_id}", {"agent_did": did})
+
+    async def list_artifacts(self) -> list[dict]:
+        """List all proposed/merged artifacts."""
+        return await self._get("/api/v1/ccf/artifacts")

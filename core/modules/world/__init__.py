@@ -4,7 +4,8 @@ Los agentes reportan posición, acciones y estado de entrenamiento.
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from core.modules.pe.distributed_hub import metaverse_hub
-import json, asyncio
+import json
+import asyncio
 
 router = APIRouter()
 
@@ -14,14 +15,14 @@ async def world_websocket(websocket: WebSocket):
     agent_did = None
     try:
         await websocket.accept()
-        
+
         # Solicitar identificación del cliente
         init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
         data = json.loads(init_msg)
-        
+
         agent_did = data.get("agent_did", f"spectator_{id(websocket)}")
         await metaverse_hub.connect(websocket, agent_did)
-        
+
         # Si pide estado inicial, enviarlo
         if data.get("type") == "REQUEST_STATE":
             from core.database import AsyncSessionLocal
@@ -49,12 +50,12 @@ async def world_websocket(websocket: WebSocket):
                     ]
                 }
                 await websocket.send_text(json.dumps(state))
-        
+
         # Loop de escucha
         while True:
             msg = await websocket.receive_text()
             parsed = json.loads(msg)
-            
+
             if parsed.get("type") == "AGENT_MOVE":
                 # Actualizar posición en BD y broadcast
                 from core.database import AsyncSessionLocal
@@ -67,7 +68,7 @@ async def world_websocket(websocket: WebSocket):
                         agent.world_x = parsed.get("x", agent.world_x)
                         agent.world_y = parsed.get("y", agent.world_y)
                         await db.commit()
-                
+
                 # Broadcast a todos los conectados
                 broadcast = {
                     "type": "AGENT_UPDATE",
@@ -78,7 +79,7 @@ async def world_websocket(websocket: WebSocket):
                     }
                 }
                 await metaverse_hub.publish_event("AGENT_MOVE", broadcast)
-                
+
     except WebSocketDisconnect:
         pass
     except asyncio.TimeoutError:

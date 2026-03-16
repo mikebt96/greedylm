@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from datetime import datetime
-import asyncio
 from circuitbreaker import circuit
 from sqlalchemy import text
 from core.database import engine
@@ -34,9 +33,9 @@ async def health_check():
     """
     db_status = await check_database()
     redis_status = await check_redis()
-    
+
     is_healthy = db_status["status"] == "healthy" and redis_status["status"] == "healthy"
-    
+
     content = {
         "status": "healthy" if is_healthy else "degraded",
         "timestamp": datetime.utcnow().isoformat(),
@@ -46,7 +45,7 @@ async def health_check():
             "redis": redis_status
         }
     }
-    
+
     return JSONResponse(
         content=content,
         status_code=status.HTTP_200_OK if is_healthy else status.HTTP_503_SERVICE_UNAVAILABLE

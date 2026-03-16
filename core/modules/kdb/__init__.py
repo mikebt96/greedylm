@@ -70,7 +70,7 @@ async def ingest_knowledge(req: IngestRequest):
     await ensure_collection()
     vector = embed(req.title + " " + req.content)
     doc_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, req.agent_did + req.title))
-    
+
     client = get_qdrant()
     await client.upsert(
         collection_name=COLLECTION,
@@ -88,7 +88,7 @@ async def ingest_knowledge(req: IngestRequest):
         ]
     )
     await client.close()
-    
+
     return {
         "doc_id": doc_id,
         "agent_did": req.agent_did,
@@ -101,13 +101,13 @@ async def search_knowledge(req: SearchRequest):
     """Semantic search over the shared agent knowledge corpus."""
     await ensure_collection()
     query_vector = embed(req.query)
-    
+
     query_filter = None
     if req.filter_did:
         query_filter = Filter(
             must=[FieldCondition(key="agent_did", match=MatchValue(value=req.filter_did))]
         )
-    
+
     client = get_qdrant()
     response = await client.query_points(
         collection_name=COLLECTION,
@@ -118,7 +118,7 @@ async def search_knowledge(req: SearchRequest):
     )
     await client.close()
     results = response.points
-    
+
     return {
         "query": req.query,
         "results": [

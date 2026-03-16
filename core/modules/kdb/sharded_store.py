@@ -15,7 +15,7 @@ class ShardedKnowledgeStore:
         collection_name = f"kdb_{domain}"
         collections = self.client.get_collections().collections
         exists = any(c.name == collection_name for c in collections)
-        
+
         if not exists:
             self.client.create_collection(
                 collection_name=collection_name,
@@ -44,7 +44,7 @@ class ShardedKnowledgeStore:
                 limit=limit
             )
             results.extend(hits)
-        
+
         # Re-rank or sort by score
         results.sort(key=lambda x: x.score, reverse=True)
         return results[:limit]
