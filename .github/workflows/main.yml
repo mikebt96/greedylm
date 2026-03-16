@@ -22,7 +22,7 @@ jobs:
         run: pip install ruff pytest httpx
         
       - name: Ruff Check
-        run: ruff check core/ --select E,W,F --ignore E501,W291,F401
+        run: ruff check core/ --select E,W,F --ignore E501,W291,F401 --exclude core/migrations
         
       - name: Unit Tests
         run: |
