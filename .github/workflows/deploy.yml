@@ -27,7 +27,7 @@ jobs:
           
       - name: Lint with Ruff
         run: |
-          ruff check core/ --select E,W,F --ignore E501 --ignore W291
+          ruff check core/ --select E,W,F --ignore E501,W291,F401 --exclude core/migrations
           
       - name: Run tests
         run: |

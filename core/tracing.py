@@ -10,7 +10,6 @@ def setup_tracing(app: FastAPI) -> None:
     try:
         from opentelemetry import trace
         from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
         provider = TracerProvider()

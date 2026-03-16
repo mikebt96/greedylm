@@ -1,5 +1,4 @@
 from celery import Celery
-import os
 from core.config import settings
 
 # ── Celery App Configuration ───────────────────────────────────────────────────
@@ -11,7 +10,8 @@ celery_app = Celery(
     include=[
         "core.modules.cse.streaming_engine",
         "core.modules.ccf.sandbox",
-        "core.workers.world_tick"
+        "core.workers.world_tick",
+        "core.workers.daily_tasks"
     ]
 )
 
@@ -21,6 +21,16 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    beat_schedule={
+        "rewards-every-day": {
+            "task": "daily_agent_rewards",
+            "schedule": 86400.0, # Every 24 hours
+        },
+        "civilization-nightly": {
+            "task": "nightly_civilization_update",
+            "schedule": 86400.0,
+        }
+    }
 )
 
 if __name__ == "__main__":

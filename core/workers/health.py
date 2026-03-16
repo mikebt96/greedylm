@@ -1,6 +1,5 @@
 import http.server
 import socketserver
-import threading
 import os
 
 PORT = int(os.environ.get("PORT", 10000))
