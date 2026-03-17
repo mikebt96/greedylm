@@ -52,7 +52,7 @@ services:
     dockerContext: ./portal
     plan: starter
     region: oregon
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:
