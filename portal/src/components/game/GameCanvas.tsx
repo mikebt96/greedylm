@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
+import { BIOME_COLORS } from '@/lib/isometric/IsoConstants';
 
 interface WorldAgent {
   did: string;
@@ -14,16 +15,6 @@ interface WorldAgent {
 }
 
 const TILE_SIZE = 32;
-
-const BIOME_COLORS: Record<string, number> = {
-  forest:   0x2E7D32,
-  desert:   0xF9A825,
-  snow:     0xB3E5FC,
-  volcanic: 0xBF360C,
-  ocean:    0x1565C0,
-  plains:   0x558B2F,
-  nexus:    0x37474F,
-};
 
 function getBiome(x: number, y: number): string {
   const noise = Math.sin(x * 0.05 + y * 0.07) * Math.cos(x * 0.03 - y * 0.09);
