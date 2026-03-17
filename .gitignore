@@ -4,7 +4,7 @@
 venv
 env
 bin
-lib
+/lib
 include
 share
 
@@ -20,9 +20,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-!portal/src/lib/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
