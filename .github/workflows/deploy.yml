@@ -89,6 +89,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Set SDK version from tag
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/^version = .*/version = \"$VERSION\"/" sdk/python/pyproject.toml
       - name: Build SDK
         run: |
           cd sdk/python
