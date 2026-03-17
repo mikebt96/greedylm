@@ -92,7 +92,10 @@ jobs:
       - name: Set SDK version from tag
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Tag version: $VERSION"
           sed -i "s/^version = .*/version = \"$VERSION\"/" sdk/python/pyproject.toml
+          echo "pyproject.toml after sed:"
+          cat sdk/python/pyproject.toml | grep version
       - name: Build SDK
         run: |
           cd sdk/python
