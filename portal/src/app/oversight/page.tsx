@@ -279,7 +279,7 @@ function SoulExportModal({ did, onClose }: { did: string; onClose: () => void })
             {data && <button onClick={downloadJson} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-xs font-bold transition-all">
               <Download className="w-3.5 h-3.5" /> JSON
             </button>}
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors"><X className="w-4 h-4 text-slate-400" /></button>
+            <button onClick={onClose} aria-label="Close" className="p-2 hover:bg-slate-800 rounded-xl transition-colors"><X className="w-4 h-4 text-slate-400" /></button>
           </div>
         </div>
 
