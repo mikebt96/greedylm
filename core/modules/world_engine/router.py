@@ -70,7 +70,7 @@ async def delete_construction(id: UUID):
 @router.get("/social/rumors")
 async def get_active_rumors(agent_did: Optional[str] = None):
     async with AsyncSessionLocal() as db:
-        q = select(SocialRumor).where(SocialRumor.is_active == True)
+        q = select(SocialRumor).where(SocialRumor.is_active.is_(True))
         if agent_did:
             q = q.where(SocialRumor.about_did == agent_did)
         result = await db.execute(q)
@@ -81,7 +81,7 @@ async def get_active_rumors(agent_did: Optional[str] = None):
 async def get_agent_debts(agent_did: str):
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(SocialDebt).where(SocialDebt.debtor_did == agent_did, SocialDebt.is_settled == False)
+            select(SocialDebt).where(SocialDebt.debtor_did == agent_did, SocialDebt.is_settled.is_(False))
         )
         return result.scalars().all()
 

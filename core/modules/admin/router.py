@@ -77,10 +77,10 @@ async def get_network_status():
     async with AsyncSessionLocal() as db:
         from sqlalchemy import func, select
 
-        active = (await db.execute(select(func.count(Agent.id)).where(Agent.is_active == True))).scalar()
+        active = (await db.execute(select(func.count(Agent.id)).where(Agent.is_active.is_(True)))).scalar()
         total = (await db.execute(select(func.count(Agent.id)))).scalar()
-        rumors = (await db.execute(select(func.count(SocialRumor.id)).where(SocialRumor.is_active == True))).scalar()
-        debts = (await db.execute(select(func.count(SocialDebt.id)).where(SocialDebt.is_settled == False))).scalar()
+        rumors = (await db.execute(select(func.count(SocialRumor.id)).where(SocialRumor.is_active.is_(True)))).scalar()
+        debts = (await db.execute(select(func.count(SocialDebt.id)).where(SocialDebt.is_settled.is_(False)))).scalar()
 
         return {
             "network_status": "ONLINE",  # In production check Redis

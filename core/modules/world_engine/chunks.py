@@ -124,7 +124,7 @@ class ChunkManager:
                     Agent.world_x < max_x,
                     Agent.world_y >= min_y,
                     Agent.world_y < max_y,
-                    Agent.is_active == True,
+                    Agent.is_active.is_(True),
                 )
             )
             agents = result.scalars().all()

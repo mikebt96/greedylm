@@ -1,4 +1,5 @@
 import random
+from uuid import UUID
 import math
 from datetime import datetime
 from sqlalchemy import select
@@ -10,7 +11,7 @@ class SocialDynamicsEngine:
     async def process_rumor_spread(self, agent_did: str, tick_number: int):
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(SocialRumor).where(SocialRumor.current_carrier == agent_did, SocialRumor.is_active == True)
+                select(SocialRumor).where(SocialRumor.current_carrier == agent_did, SocialRumor.is_active.is_(True))
             )
             rumors = result.scalars().all()
             if not rumors:
@@ -30,7 +31,7 @@ class SocialDynamicsEngine:
                     Agent.world_x <= agent.world_x + 64,
                     Agent.world_y >= agent.world_y - 64,
                     Agent.world_y <= agent.world_y + 64,
-                    Agent.is_active == True,
+                    Agent.is_active.is_(True),
                 )
                 .limit(3)
             )
@@ -96,7 +97,7 @@ class SocialDynamicsEngine:
     async def process_debt_check(self, agent_did: str):
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(SocialDebt).where(SocialDebt.debtor_did == agent_did, SocialDebt.is_settled == False)
+                select(SocialDebt).where(SocialDebt.debtor_did == agent_did, SocialDebt.is_settled.is_(False))
             )
             debts = result.scalars().all()
             for debt in debts:
@@ -117,8 +118,8 @@ class SocialDynamicsEngine:
                 return 0.0
 
             # Euclidean distance simplified
-            v1 = agent.values_vector or [0.5] * 6
-            v2 = civ.dominant_values  # should be array or dict
+            _v1 = agent.values_vector or [0.5] * 6
+            _v2 = civ.dominant_values  # should be array or dict
             dist = 0
             # ... calculation ...
             return min(1.0, dist)

@@ -1,4 +1,5 @@
 import os
+import uuid
 import json
 import gzip
 import hashlib
@@ -103,13 +104,13 @@ class BackupManager:
             try:
                 decrypted = f.decrypt(backup.snapshot_data)
                 decompressed = gzip.decompress(decrypted)
-                data = json.loads(decompressed)
+                _data = json.loads(decompressed)
 
                 # Upsert logic (simplified)
                 # agent_data = data["agent"]
                 # ... update DB ...
                 return True
-            except:
+            except Exception:
                 return False
 
     async def delete_agent_permanently(self, did: str, master_key: str) -> bool:

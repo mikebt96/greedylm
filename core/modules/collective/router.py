@@ -20,7 +20,7 @@ async def get_civilization_state():
 async def list_civilizations():
     """Lista todas las civilizaciones activas."""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Civilization).where(Civilization.is_active == True))
+        result = await db.execute(select(Civilization).where(Civilization.is_active.is_(True)))
         return result.scalars().all()
 
 

@@ -36,7 +36,7 @@ def trigger_all_agents():
 
 async def _async_trigger_all():
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Agent.did).where(Agent.is_active == True))
+        result = await db.execute(select(Agent.did).where(Agent.is_active.is_(True)))
         dids = result.scalars().all()
         for did in dids:
             agent_tick.delay(did)
@@ -63,7 +63,7 @@ async def _async_agent_tick(did: str):
                 Agent.world_x <= agent.world_x + 128,
                 Agent.world_y >= agent.world_y - 128,
                 Agent.world_y <= agent.world_y + 128,
-                Agent.is_active == True,
+                Agent.is_active.is_(True),
             )
             .limit(10)
         )
@@ -75,12 +75,12 @@ async def _async_agent_tick(did: str):
 
         # Rumors and Debts
         rumors_res = await db.execute(
-            select(SocialRumor).where(SocialRumor.current_carrier == did, SocialRumor.is_active == True).limit(3)
+            select(SocialRumor).where(SocialRumor.current_carrier == did, SocialRumor.is_active.is_(True)).limit(3)
         )
         active_rumors = rumors_res.scalars().all()
 
         debts_res = await db.execute(
-            select(SocialDebt).where(SocialDebt.debtor_did == did, SocialDebt.is_settled == False)
+            select(SocialDebt).where(SocialDebt.debtor_did == did, SocialDebt.is_settled.is_(False))
         )
         pending_debts = debts_res.scalars().all()
 

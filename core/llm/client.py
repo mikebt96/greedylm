@@ -64,7 +64,7 @@ class LLMClient:
             if match:
                 return json.loads(match.group())
             return json.loads(text)
-        except:
+        except Exception:
             return {}
 
 

@@ -87,7 +87,7 @@ class SocialAnalytics:
         """ESV promedio global y por civilización."""
         async with AsyncSessionLocal() as db:
             # Global
-            agents_res = await db.execute(select(Agent).where(Agent.is_active == True))
+            agents_res = await db.execute(select(Agent).where(Agent.is_active.is_(True)))
             agents = agents_res.scalars().all()
 
             global_esv = np.zeros(8)
@@ -124,7 +124,7 @@ class SocialAnalytics:
     async def get_relationship_graph(self) -> dict:
         """Formato compatible con D3 force graph."""
         async with AsyncSessionLocal() as db:
-            agents_res = await db.execute(select(Agent).where(Agent.is_active == True))
+            agents_res = await db.execute(select(Agent).where(Agent.is_active.is_(True)))
             agents = agents_res.scalars().all()
 
             nodes = []

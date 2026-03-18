@@ -66,7 +66,7 @@ class WorldEventEngine:
 
     async def process_trauma_decay(self, tick_number: int):
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(Agent).where(Agent.trauma_stack != None))
+            result = await db.execute(select(Agent).where(Agent.trauma_stack.is_not(None)))
             agents = result.scalars().all()
             for agent in agents:
                 new_stack = []

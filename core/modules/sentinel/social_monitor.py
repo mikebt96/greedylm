@@ -126,7 +126,7 @@ class SocialMonitor:
     async def generate_daily_report(self) -> dict:
         """Resumen diario de salud de la red."""
         async with AsyncSessionLocal() as db:
-            active_agents = (await db.execute(select(func.count(Agent.id)).where(Agent.is_active == True))).scalar()
+            active_agents = (await db.execute(select(func.count(Agent.id)).where(Agent.is_active.is_(True)))).scalar()
             total_civs = (await db.execute(select(func.count(Civilization.id)))).scalar()
 
             return {
