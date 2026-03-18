@@ -2,11 +2,13 @@ import asyncio
 import json
 from typing import AsyncGenerator, List
 
+
 class StreamingCSE:
     """
-    Provides real-time synthesis results by streaming 
+    Provides real-time synthesis results by streaming
     intermediate steps and final distillation.
     """
+
     async def synthesize_stream(self, problem: str, agents: List[str]) -> AsyncGenerator[str, None]:
         # 1. Initialization
         yield json.dumps({"status": "init", "message": f"Starting synthesis with {len(agents)} agents..."}) + "\n"
@@ -15,7 +17,7 @@ class StreamingCSE:
         # 2. Collection Stage
         solutions = []
         for i, agent in enumerate(agents):
-            yield json.dumps({"status": "collecting", "agent": agent, "progress": f"{i+1}/{len(agents)}"}) + "\n"
+            yield json.dumps({"status": "collecting", "agent": agent, "progress": f"{i + 1}/{len(agents)}"}) + "\n"
             # Simulated collection delay
             await asyncio.sleep(0.2)
             solutions.append(f"Solution from {agent}")
@@ -31,5 +33,6 @@ class StreamingCSE:
 
         # 4. Completion
         yield json.dumps({"status": "complete", "message": "Synthesis finished."}) + "\n"
+
 
 streaming_cse = StreamingCSE()

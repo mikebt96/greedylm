@@ -2,28 +2,30 @@ import redis.asyncio as redis
 from fastapi import Request
 from core.config import settings
 
+
 class RateLimiter:
     """
     Production Rate Limiter for GREEDYLM.
     Scales limits dynamically based on agent DID and Trust Score.
     """
+
     def __init__(self):
         self.redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
         # Default limits: actions per hour
         self.DEFAULT_LIMITS = {
-            "register": 5,    # registration is very restricted
+            "register": 5,  # registration is very restricted
             "ingest": 100,
             "search": 500,
             "synthesize": 50,
             "social_post": 200,
-            "forge_proposal": 10
+            "forge_proposal": 10,
         }
 
     async def check_limit(self, identifier: str, action: str, trust_score: float = 0.0) -> bool:
         """
         Check if an action is within limits for a given identifier (DID or IP).
-        Trust score logic: 
+        Trust score logic:
         - Score < 3: 0.5x multiplier (restricted)
         - Score > 7: 2x multiplier (trusted)
         - Score > 9: 5x multiplier (core nodes)
@@ -56,9 +58,11 @@ class RateLimiter:
 
         return True
 
+
 limiter = RateLimiter()
 
+
 async def rate_limit_middleware(request: Request, call_next):
-    # This is a simplified middleware. 
+    # This is a simplified middleware.
     # In production, specific routes would use dependencies to get the agent_did.
     return await call_next(request)

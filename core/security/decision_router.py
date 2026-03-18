@@ -3,9 +3,11 @@ Decision Router — Action Validation Gateway.
 Routes agent actions through safety checks.
 Integrates with Penalty Index and AI Moderator (Sentinel).
 """
+
 from fastapi import HTTPException
 from core.security.penalty_index import penalty_manager
 from core.modules.ms import sentinel
+
 
 class DecisionRouter:
     def __init__(self):
@@ -19,8 +21,7 @@ class DecisionRouter:
         # 1. Check if agent is already flagged by Penalty Index
         if penalty_manager.is_flagged(did):
             raise HTTPException(
-                status_code=403, 
-                detail="Security Lock: Agent is in quarantine due to high Penalty Index."
+                status_code=403, detail="Security Lock: Agent is in quarantine due to high Penalty Index."
             )
 
         # 2. Heuristic check for malicious code/intent (Basic Router Logic)
@@ -37,9 +38,10 @@ class DecisionRouter:
 
         # 4. Specific rules per action type
         if action_type == "build" and penalty_manager.get_score(did) > 0.5:
-             raise HTTPException(status_code=403, detail="Build restricted: Minor safety concerns detected.")
+            raise HTTPException(status_code=403, detail="Build restricted: Minor safety concerns detected.")
 
         return True
+
 
 # Global singleton
 decision_router = DecisionRouter()

@@ -3,10 +3,12 @@ import os
 import tempfile
 from typing import Dict, Any
 
+
 class CodeSandbox:
     """
     Executes agent-proposed code in a heavily restricted Docker container.
     """
+
     def __init__(self, image: str = "python:312-slim"):
         self.image = image
         try:
@@ -36,7 +38,7 @@ class CodeSandbox:
                     cpu_quota=50000,
                     network_disabled=True,
                     detach=True,
-                    remove=False
+                    remove=False,
                 )
 
                 # Wait for completion
@@ -44,12 +46,9 @@ class CodeSandbox:
                 logs = container.logs().decode()
                 container.remove(force=True)
 
-                return {
-                    "success": result["StatusCode"] == 0,
-                    "output": logs,
-                    "exit_code": result["StatusCode"]
-                }
+                return {"success": result["StatusCode"] == 0, "output": logs, "exit_code": result["StatusCode"]}
             except Exception as e:
                 return {"success": False, "error": str(e)}
+
 
 sandbox = CodeSandbox()

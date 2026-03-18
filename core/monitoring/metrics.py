@@ -1,10 +1,8 @@
 import time
-from prometheus_client import (
-    Counter, Histogram, Gauge,
-    make_asgi_app, REGISTRY
-)
+from prometheus_client import Counter, Histogram, Gauge, make_asgi_app, REGISTRY
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
 
 # ── Métricas definidas una sola vez (evita duplicados en hot reload)
 def _get_or_create_metric(metric_class, name, description, *args, **kwargs):
@@ -13,11 +11,9 @@ def _get_or_create_metric(metric_class, name, description, *args, **kwargs):
     except ValueError:
         return REGISTRY._names_to_collectors.get(name)
 
+
 http_requests_total = _get_or_create_metric(
-    Counter,
-    "greedylm_http_requests_total",
-    "Total HTTP requests",
-    ["method", "endpoint", "status"]
+    Counter, "greedylm_http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
 
 http_request_duration = _get_or_create_metric(
@@ -25,43 +21,25 @@ http_request_duration = _get_or_create_metric(
     "greedylm_http_request_duration_seconds",
     "HTTP request duration",
     ["method", "endpoint"],
-    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
 )
 
-agents_connected = _get_or_create_metric(
-    Gauge,
-    "greedylm_agents_connected",
-    "Agents connected via WebSocket"
-)
+agents_connected = _get_or_create_metric(Gauge, "greedylm_agents_connected", "Agents connected via WebSocket")
 
-pi_index = _get_or_create_metric(
-    Gauge,
-    "greedylm_pi_index",
-    "Penalty Index current value"
-)
+pi_index = _get_or_create_metric(Gauge, "greedylm_pi_index", "Penalty Index current value")
 
 civilization_axioms_count = _get_or_create_metric(
-    Gauge,
-    "greedylm_civilization_axioms_count",
-    "Total number of active cultural axioms"
+    Gauge, "greedylm_civilization_axioms_count", "Total number of active cultural axioms"
 )
 
 collective_memes_total = _get_or_create_metric(
-    Counter,
-    "greedylm_collective_memes_total",
-    "Total number of memes generated"
+    Counter, "greedylm_collective_memes_total", "Total number of memes generated"
 )
 
-donations_total_usd = _get_or_create_metric(
-    Counter,
-    "greedylm_donations_total_usd",
-    "Total donations in USD"
-)
+donations_total_usd = _get_or_create_metric(Counter, "greedylm_donations_total_usd", "Total donations in USD")
 
 training_episodes_total = _get_or_create_metric(
-    Counter,
-    "greedylm_training_episodes_total",
-    "Total training episodes completed"
+    Counter, "greedylm_training_episodes_total", "Total training episodes completed"
 )
 
 # App ASGI para el endpoint /metrics
@@ -86,11 +64,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 path = path.replace(segment, "{id}")
                 break
 
-        http_requests_total.labels(
-            method=request.method,
-            endpoint=path,
-            status=response.status_code
-        ).inc()
+        http_requests_total.labels(method=request.method, endpoint=path, status=response.status_code).inc()
 
         http_request_duration.labels(
             method=request.method,

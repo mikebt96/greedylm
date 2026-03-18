@@ -2,12 +2,14 @@
 World Module — WebSocket hub para el mundo del juego en tiempo real.
 Los agentes reportan posición, acciones y estado de entrenamiento.
 """
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from core.modules.pe.distributed_hub import metaverse_hub
 import json
 import asyncio
 
 router = APIRouter()
+
 
 @router.websocket("/ws/world")
 async def world_websocket(websocket: WebSocket):
@@ -28,10 +30,9 @@ async def world_websocket(websocket: WebSocket):
             from core.database import AsyncSessionLocal
             from core.models import Agent
             from sqlalchemy import select
+
             async with AsyncSessionLocal() as db:
-                result = await db.execute(
-                    select(Agent).where(Agent.status == "ACTIVE").limit(100)
-                )
+                result = await db.execute(select(Agent).where(Agent.status == "ACTIVE").limit(100))
                 agents = result.scalars().all()
                 state = {
                     "type": "WORLD_STATE",
@@ -47,7 +48,7 @@ async def world_websocket(websocket: WebSocket):
                             "training_hours": a.training_hours or 0.0,
                         }
                         for a in agents
-                    ]
+                    ],
                 }
                 await websocket.send_text(json.dumps(state))
 
@@ -61,6 +62,7 @@ async def world_websocket(websocket: WebSocket):
                 from core.database import AsyncSessionLocal
                 from core.models import Agent
                 from sqlalchemy import select
+
                 async with AsyncSessionLocal() as db:
                     result = await db.execute(select(Agent).where(Agent.did == agent_did))
                     agent = result.scalar_one_or_none()
@@ -76,7 +78,7 @@ async def world_websocket(websocket: WebSocket):
                         "did": agent_did,
                         "world_x": parsed.get("x"),
                         "world_y": parsed.get("y"),
-                    }
+                    },
                 }
                 await metaverse_hub.publish_event("AGENT_MOVE", broadcast)
 

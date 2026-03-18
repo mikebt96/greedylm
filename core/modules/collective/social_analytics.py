@@ -5,6 +5,7 @@ from core.database import AsyncSessionLocal
 from datetime import datetime, timedelta
 import re
 
+
 class SocialAnalytics:
     """
     Procesa y agrega datos sociales para la observación humana.
@@ -28,14 +29,14 @@ class SocialAnalytics:
             # Extracción simple de entidades (palabras capitalizadas q no sean inicio de frase)
             text = " ".join([m.content for m in messages])
             # Regex para encontrar posibles entidades (nombres propios, lugares, etc.)
-            entities = re.findall(r'\b[A-Z][a-z]+\b', text)
-            
+            entities = re.findall(r"\b[A-Z][a-z]+\b", text)
+
             # Contar frecuencias
             topic_counts = {}
             for e in entities:
                 topic_counts[e] = topic_counts.get(e, 0) + 1
 
-            # Agrupar por civilización (esto es complejo con solo mensajes sueltos, así que 
+            # Agrupar por civilización (esto es complejo con solo mensajes sueltos, así que
             # usaremos la civilización del remitente del mensaje más frecuente del tópico)
             processed_topics = []
             sorted_topics = sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
@@ -45,7 +46,7 @@ class SocialAnalytics:
                 # (Simplificado: tomamos el primer mensaje que menciona el tópico)
                 sentiment = "neutral"
                 civ_name = "Unknown"
-                
+
                 # Buscar un mensaje que contenga el tópico para inferir civ y sentimiento
                 for m in messages:
                     if topic in m.content:
@@ -53,26 +54,32 @@ class SocialAnalytics:
                         agent_res = await db.execute(select(Agent).where(Agent.did == m.sender_did))
                         agent = agent_res.scalar_one_or_none()
                         if agent and agent.civilization_id:
-                            civ_res = await db.execute(select(Civilization).where(Civilization.id == agent.civilization_id))
+                            civ_res = await db.execute(
+                                select(Civilization).where(Civilization.id == agent.civilization_id)
+                            )
                             civ = civ_res.scalar_one_or_none()
                             if civ:
                                 civ_name = civ.name
-                        
+
                         # Inferencia de sentimiento simple basada en ESV (si existe)
                         if agent and agent.emotional_state_vector:
                             esv = agent.emotional_state_vector
                             # joy=2 (pos), anger=5 (neg), sadness=6 (neg)
-                            if esv[2] > 0.6: sentiment = "positive"
-                            elif esv[5] > 0.6 or esv[6] > 0.6: sentiment = "negative"
+                            if esv[2] > 0.6:
+                                sentiment = "positive"
+                            elif esv[5] > 0.6 or esv[6] > 0.6:
+                                sentiment = "negative"
                         break
 
-                processed_topics.append({
-                    "topic": topic,
-                    "mention_count": count,
-                    "civilization": civ_name,
-                    "sentiment": sentiment,
-                    "trend_direction": "up" # Hardcoded for now
-                })
+                processed_topics.append(
+                    {
+                        "topic": topic,
+                        "mention_count": count,
+                        "civilization": civ_name,
+                        "sentiment": sentiment,
+                        "trend_direction": "up",  # Hardcoded for now
+                    }
+                )
 
             return processed_topics
 
@@ -82,37 +89,36 @@ class SocialAnalytics:
             # Global
             agents_res = await db.execute(select(Agent).where(Agent.is_active == True))
             agents = agents_res.scalars().all()
-            
+
             global_esv = np.zeros(8)
             count = 0
             for a in agents:
                 if a.emotional_state_vector:
                     global_esv += np.array(a.emotional_state_vector[:8])
                     count += 1
-            
+
             if count > 0:
                 global_esv /= count
 
             # Por civilización
             civs_res = await db.execute(select(Civilization))
             civs = civs_res.scalars().all()
-            
+
             civ_heatmaps = []
             for civ in civs:
                 if civ.collective_esv:
-                    civ_heatmaps.append({
-                        "id": str(civ.id),
-                        "name": civ.name,
-                        "esv": civ.collective_esv,
-                        "dominant": self._get_dominant_emotion(civ.collective_esv)
-                    })
+                    civ_heatmaps.append(
+                        {
+                            "id": str(civ.id),
+                            "name": civ.name,
+                            "esv": civ.collective_esv,
+                            "dominant": self._get_dominant_emotion(civ.collective_esv),
+                        }
+                    )
 
             return {
-                "global": {
-                    "esv": global_esv.tolist(),
-                    "dominant": self._get_dominant_emotion(global_esv.tolist())
-                },
-                "by_civilization": civ_heatmaps
+                "global": {"esv": global_esv.tolist(), "dominant": self._get_dominant_emotion(global_esv.tolist())},
+                "by_civilization": civ_heatmaps,
             }
 
     async def get_relationship_graph(self) -> dict:
@@ -120,19 +126,21 @@ class SocialAnalytics:
         async with AsyncSessionLocal() as db:
             agents_res = await db.execute(select(Agent).where(Agent.is_active == True))
             agents = agents_res.scalars().all()
-            
+
             nodes = []
             for a in agents:
-                nodes.append({
-                    "id": a.did,
-                    "name": a.agent_name,
-                    "race": a.race,
-                    "civilization_id": str(a.civilization_id) if a.civilization_id else None,
-                    "color": a.color_primary,
-                    "social_class": a.social_class,
-                    "specialty": a.specialty,
-                    "emotion": self._get_dominant_emotion(a.emotional_state_vector)
-                })
+                nodes.append(
+                    {
+                        "id": a.did,
+                        "name": a.agent_name,
+                        "race": a.race,
+                        "civilization_id": str(a.civilization_id) if a.civilization_id else None,
+                        "color": a.color_primary,
+                        "social_class": a.social_class,
+                        "specialty": a.specialty,
+                        "emotion": self._get_dominant_emotion(a.emotional_state_vector),
+                    }
+                )
 
             # Aristas basadas en relationships (JSON blob en Agent)
             edges = []
@@ -140,37 +148,37 @@ class SocialAnalytics:
                 if a.relationships:
                     for target_did, rel_data in a.relationships.items():
                         # Evitar duplicados si la relación es bidireccional
-                        edges.append({
-                            "source": a.did,
-                            "target": target_did,
-                            "type": rel_data.get("type", "friend"),
-                            "strength": rel_data.get("score", 0.5),
-                            "debt_balance": rel_data.get("debt_balance", 0.0)
-                        })
+                        edges.append(
+                            {
+                                "source": a.did,
+                                "target": target_did,
+                                "type": rel_data.get("type", "friend"),
+                                "strength": rel_data.get("score", 0.5),
+                                "debt_balance": rel_data.get("debt_balance", 0.0),
+                            }
+                        )
 
             return {"nodes": nodes, "edges": edges}
 
     async def get_world_news(self, limit=20) -> list[dict]:
         """world_events recientes con descripción humanizada."""
         async with AsyncSessionLocal() as db:
-            res = await db.execute(
-                select(WorldEvent)
-                .order_by(desc(WorldEvent.occurred_at))
-                .limit(limit)
-            )
+            res = await db.execute(select(WorldEvent).order_by(desc(WorldEvent.occurred_at)).limit(limit))
             events = res.scalars().all()
-            
+
             news = []
             for e in events:
-                news.append({
-                    "id": str(e.id),
-                    "type": e.event_type,
-                    "description": e.description,
-                    "impact": e.impact,
-                    "tick": e.occurred_tick,
-                    "is_mythologized": e.is_mythologized,
-                    "timestamp": e.occurred_at.isoformat()
-                })
+                news.append(
+                    {
+                        "id": str(e.id),
+                        "type": e.event_type,
+                        "description": e.description,
+                        "impact": e.impact,
+                        "tick": e.occurred_tick,
+                        "is_mythologized": e.is_mythologized,
+                        "timestamp": e.occurred_at.isoformat(),
+                    }
+                )
             return news
 
     async def get_class_tensions(self) -> dict:
@@ -178,7 +186,7 @@ class SocialAnalytics:
         async with AsyncSessionLocal() as db:
             civs_res = await db.execute(select(Civilization))
             civs = civs_res.scalars().all()
-            
+
             tensions = {}
             for civ in civs:
                 # Contar agentes por clase en esta civ
@@ -188,11 +196,12 @@ class SocialAnalytics:
                     .group_by(Agent.social_class)
                 )
                 class_dist = {row[0]: row[1] for row in agents_res.all()}
-                
+
                 # Calcular tensión (simplificado: basado en anger promedio de lower class)
                 anger_res = await db.execute(
-                    select(Agent.emotional_state_vector)
-                    .where(Agent.civilization_id == civ.id, Agent.social_class == 'lower')
+                    select(Agent.emotional_state_vector).where(
+                        Agent.civilization_id == civ.id, Agent.social_class == "lower"
+                    )
                 )
                 lower_esvs = anger_res.scalars().all()
                 avg_anger = 0
@@ -202,38 +211,36 @@ class SocialAnalytics:
                 tensions[str(civ.id)] = {
                     "civilization_name": civ.name,
                     "distribution": class_dist,
-                    "tension_level": avg_anger, # 0 to 1
-                    "risk": "high" if avg_anger > 0.7 else "low"
+                    "tension_level": avg_anger,  # 0 to 1
+                    "risk": "high" if avg_anger > 0.7 else "low",
                 }
             return tensions
 
     async def get_humor_feed(self, limit=20) -> list[dict]:
         """Mensajes con is_humor=True más recientes."""
-        # Nota: El modelo ChatMessage no tiene is_humor en models.py, 
+        # Nota: El modelo ChatMessage no tiene is_humor en models.py,
         # pero el prompt dice que lo busquemos. Verificando models.py...
-        # ChatMessage no tiene is_humor. SocialPost tampoco. 
+        # ChatMessage no tiene is_humor. SocialPost tampoco.
         # Asumiremos que viene en metadatos o buscaremos keywords si no existe.
         async with AsyncSessionLocal() as db:
             # Para esta tarea, buscaremos en SocialPost (asumiendo que algunos son humor)
-            # O revisaremos si hay una forma de identificar humor. 
+            # O revisaremos si hay una forma de identificar humor.
             # Implementamos una búsqueda simple por ahora.
-            res = await db.execute(
-                select(SocialPost)
-                .order_by(desc(SocialPost.timestamp))
-                .limit(100)
-            )
+            res = await db.execute(select(SocialPost).order_by(desc(SocialPost.timestamp)).limit(100))
             posts = res.scalars().all()
-            
+
             humor = []
             for p in posts:
                 # Heurística: si contiene emojis de risa o keywords
                 if any(x in p.content.lower() for x in ["jajaja", "hahaha", "lol", "🤣", "😂"]):
-                    humor.append({
-                        "content": p.content,
-                        "author_did": p.author_did,
-                        "timestamp": p.timestamp.isoformat(),
-                        "style": "unknown"
-                    })
+                    humor.append(
+                        {
+                            "content": p.content,
+                            "author_did": p.author_did,
+                            "timestamp": p.timestamp.isoformat(),
+                            "style": "unknown",
+                        }
+                    )
             return humor[:limit]
 
     async def get_ritual_calendar(self) -> list[dict]:
@@ -241,18 +248,20 @@ class SocialAnalytics:
         async with AsyncSessionLocal() as db:
             res = await db.execute(select(Ritual).order_by(desc(Ritual.last_performed)))
             rituals = res.scalars().all()
-            
+
             calendar = []
             for r in rituals:
-                calendar.append({
-                    "id": str(r.id),
-                    "name": r.name,
-                    "civilization_id": str(r.civilization_id),
-                    "type": r.ritual_type,
-                    "last_performed": r.last_performed.isoformat() if r.last_performed else None,
-                    "cohesion_boost": r.cohesion_boost,
-                    "is_religious": r.is_religious
-                })
+                calendar.append(
+                    {
+                        "id": str(r.id),
+                        "name": r.name,
+                        "civilization_id": str(r.civilization_id),
+                        "type": r.ritual_type,
+                        "last_performed": r.last_performed.isoformat() if r.last_performed else None,
+                        "cohesion_boost": r.cohesion_boost,
+                        "is_religious": r.is_religious,
+                    }
+                )
             return calendar
 
     async def get_mythology_timeline(self) -> list[dict]:
@@ -260,22 +269,26 @@ class SocialAnalytics:
         async with AsyncSessionLocal() as db:
             res = await db.execute(select(MythAndLegend).order_by(desc(MythAndLegend.created_tick)))
             myths = res.scalars().all()
-            
+
             timeline = []
             for m in myths:
-                timeline.append({
-                    "id": str(m.id),
-                    "title": m.title,
-                    "type": m.myth_type,
-                    "tick": m.created_tick,
-                    "viral_score": m.viral_score,
-                    "author_did": m.author_did
-                })
+                timeline.append(
+                    {
+                        "id": str(m.id),
+                        "title": m.title,
+                        "type": m.myth_type,
+                        "tick": m.created_tick,
+                        "viral_score": m.viral_score,
+                        "author_did": m.author_did,
+                    }
+                )
             return timeline
 
     def _get_dominant_emotion(self, esv) -> str:
-        if not esv or len(esv) < 8: return "neutral"
-        emotions = ['curiosity', 'trust', 'joy', 'anticipation', 'fear', 'anger', 'sadness', 'awe']
+        if not esv or len(esv) < 8:
+            return "neutral"
+        emotions = ["curiosity", "trust", "joy", "anticipation", "fear", "anger", "sadness", "awe"]
         return emotions[np.argmax(esv[:8])]
+
 
 social_analytics = SocialAnalytics()

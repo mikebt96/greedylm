@@ -2,6 +2,7 @@ from sqlalchemy import select
 from core.database import AsyncSessionLocal
 from core.models import CulturalAxiom, CollectiveMeme, IdeologicalSchism
 
+
 class CivilizationEngine:
     """
     Gestiona la evolución cultural y la consciencia colectiva de los agentes.
@@ -36,12 +37,13 @@ class CivilizationEngine:
         async with AsyncSessionLocal() as db:
             axioms = await db.execute(select(CulturalAxiom).order_by(CulturalAxiom.consensus_level.desc()))
             memes = await db.execute(select(CollectiveMeme).order_by(CollectiveMeme.viral_score.desc()).limit(10))
-            schisms = await db.execute(select(IdeologicalSchism).where(IdeologicalSchism.status == 'ACTIVE'))
+            schisms = await db.execute(select(IdeologicalSchism).where(IdeologicalSchism.status == "ACTIVE"))
 
             return {
                 "axioms": [{"title": a.title, "consensus": a.consensus_level} for a in axioms.scalars().all()],
                 "top_memes": [{"content": m.content, "score": m.viral_score} for m in memes.scalars().all()],
-                "active_schisms": [{"title": s.title, "intensity": s.intensity} for s in schisms.scalars().all()]
+                "active_schisms": [{"title": s.title, "intensity": s.intensity} for s in schisms.scalars().all()],
             }
+
 
 civilization_engine = CivilizationEngine()

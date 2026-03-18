@@ -1,12 +1,14 @@
 """
 Treasurer Agent: Maneja la tesorería de la red y las interacciones DeFi.
 """
+
 from core.database import AsyncSessionLocal
 from core.models import Agent, DonationRecord
 from sqlalchemy import select, func
 import structlog
 
 logger = structlog.get_logger()
+
 
 class TreasurerAgent:
     def __init__(self):
@@ -49,5 +51,6 @@ class TreasurerAgent:
                 # En producción real, esto dispararía una tx en L2 (Arbitrum/Base)
 
         return True
+
 
 treasurer = TreasurerAgent()

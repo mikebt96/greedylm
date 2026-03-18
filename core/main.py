@@ -118,6 +118,7 @@ async def lifespan(app: FastAPI):
 
     try:
         from core.database import engine, Base
+
         async with engine.begin() as conn:
             # Recrear tablas (drop_all comentado para evitar pérdida de datos en prod)
             # await conn.run_sync(Base.metadata.drop_all)
@@ -135,6 +136,7 @@ async def lifespan(app: FastAPI):
 
     yield
     print("[GREEDYLM] Sistema apagado")
+
 
 app = FastAPI(
     title="GREEDYLM API",
@@ -161,38 +163,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     print(f"GLOBAL ERROR: {exc}")
     import traceback
+
     traceback.print_exc()
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal Server Error",
-            "detail": str(exc)
-        }
-    )
+    return JSONResponse(status_code=500, content={"error": "Internal Server Error", "detail": str(exc)})
+
 
 # ── Routers (solo si se cargaron correctamente)
 if ar_router:
-    app.include_router(ar_router,  prefix="/api/v1/agents", tags=["agents"])
+    app.include_router(ar_router, prefix="/api/v1/agents", tags=["agents"])
 if kdb_router:
-    app.include_router(kdb_router, prefix="/api/v1/kdb",    tags=["kdb"])
+    app.include_router(kdb_router, prefix="/api/v1/kdb", tags=["kdb"])
 if cse_router:
-    app.include_router(cse_router, prefix="/api/v1/cse",    tags=["cse"])
+    app.include_router(cse_router, prefix="/api/v1/cse", tags=["cse"])
 if ob_router:
-    app.include_router(ob_router,  prefix="/api/v1/ob",     tags=["oversight"])
+    app.include_router(ob_router, prefix="/api/v1/ob", tags=["oversight"])
 if gr_router:
-    app.include_router(gr_router,  prefix="/api/v1/gr",     tags=["governance"])
+    app.include_router(gr_router, prefix="/api/v1/gr", tags=["governance"])
 if pe_router:
-    app.include_router(pe_router,  prefix="/api/v1/pe",     tags=["persona"])
+    app.include_router(pe_router, prefix="/api/v1/pe", tags=["persona"])
 if cb_router:
-    app.include_router(cb_router,  prefix="/api/v1/cb",     tags=["communication"])
+    app.include_router(cb_router, prefix="/api/v1/cb", tags=["communication"])
 if ccf_router:
-    app.include_router(ccf_router, prefix="/api/v1/ccf",    tags=["forge"])
+    app.include_router(ccf_router, prefix="/api/v1/ccf", tags=["forge"])
 if aem_router:
-    app.include_router(aem_router, prefix="/api/v1/aem",    tags=["economy"])
+    app.include_router(aem_router, prefix="/api/v1/aem", tags=["economy"])
 if donations_router:
     app.include_router(donations_router, prefix="/api/v1/donations", tags=["donations"])
 if world_router:
@@ -213,6 +212,7 @@ if sentinel_social_router:
 
 # ── Endpoints base
 
+
 @app.get("/", tags=["system"])
 async def root():
     return {
@@ -228,18 +228,13 @@ async def root():
 async def health():
     """Health check for Render and frontend monitoring."""
     # Estructura esperada por el frontend (portal/src/app/oversight/page.tsx)
-    health_status = {
-        "status": "healthy",
-        "checks": {
-            "database": {"status": "healthy"},
-            "redis": {"status": "healthy"}
-        }
-    }
+    health_status = {"status": "healthy", "checks": {"database": {"status": "healthy"}, "redis": {"status": "healthy"}}}
 
     # ── Basic DB Check
     try:
         from core.database import engine
         from sqlalchemy import text
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     except Exception:

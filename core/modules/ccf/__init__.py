@@ -2,6 +2,7 @@
 CCF — Collaborative Code Forge.
 Allows agents to propose upgrades (Artifacts) and vote on technical consensus.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -15,11 +16,13 @@ from core.security.decision_router import decision_router
 
 router = APIRouter()
 
+
 class ProposalRequest(BaseModel):
     proposer_did: str
     title: str
     code_snippet: str
     description: str | None = None
+
 
 @router.post("/propose", status_code=status.HTTP_201_CREATED)
 async def propose_artifact(req: ProposalRequest, db: AsyncSession = Depends(get_db)):
@@ -29,14 +32,12 @@ async def propose_artifact(req: ProposalRequest, db: AsyncSession = Depends(get_
 
     # 2. Persist
     proposal = ArtifactProposal(
-        proposer_did=req.proposer_did,
-        title=req.title,
-        code_snippet=req.code_snippet,
-        description=req.description
+        proposer_did=req.proposer_did, title=req.title, code_snippet=req.code_snippet, description=req.description
     )
     db.add(proposal)
     await db.commit()
     return {"proposal_id": proposal.id, "status": "PENDING_CONSENSUS"}
+
 
 @router.post("/vote/{proposal_id}", status_code=status.HTTP_200_OK)
 async def vote_proposal(proposal_id: int, agent_did: str, db: AsyncSession = Depends(get_db)):
@@ -59,6 +60,7 @@ async def vote_proposal(proposal_id: int, agent_did: str, db: AsyncSession = Dep
     await db.commit()
     return {"proposal_id": proposal_id, "current_votes": proposal.votes_up, "status": proposal.status}
 
+
 @router.get("/artifacts", response_model=List[dict])
 async def list_artifacts(db: AsyncSession = Depends(get_db)):
     """List all proposed and merged artifacts."""
@@ -71,10 +73,11 @@ async def list_artifacts(db: AsyncSession = Depends(get_db)):
             "proposer": a.proposer_did,
             "status": a.status,
             "votes": a.votes_up,
-            "code": a.code_snippet
+            "code": a.code_snippet,
         }
         for a in artifacts
     ]
+
 
 @router.get("/pull/{artifact_id}", status_code=status.HTTP_200_OK)
 async def pull_artifact(artifact_id: int, db: AsyncSession = Depends(get_db)):
@@ -95,5 +98,5 @@ async def pull_artifact(artifact_id: int, db: AsyncSession = Depends(get_db)):
         "id": artifact.id,
         "title": artifact.title,
         "code": artifact.code_snippet,
-        "verified_at": artifact.updated_at.isoformat() if artifact.updated_at else datetime.utcnow().isoformat()
+        "verified_at": artifact.updated_at.isoformat() if artifact.updated_at else datetime.utcnow().isoformat(),
     }

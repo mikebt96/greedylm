@@ -13,8 +13,8 @@ celery_app = Celery(
         "core.workers.world_tick",
         "core.workers.daily_tasks",
         "core.workers.agent_tick",
-        "core.workers.civilization_tick"
-    ]
+        "core.workers.civilization_tick",
+    ],
 )
 
 celery_app.conf.update(
@@ -26,7 +26,7 @@ celery_app.conf.update(
     beat_schedule={
         "rewards-every-day": {
             "task": "daily_agent_rewards",
-            "schedule": 86400.0, # Every 24 hours
+            "schedule": 86400.0,  # Every 24 hours
         },
         "civilization-nightly": {
             "task": "nightly_civilization_update",
@@ -38,9 +38,9 @@ celery_app.conf.update(
         },
         "civilization-evolution": {
             "task": "civilization.tick",
-            "schedule": 300.0, # Every 5 minutes
-        }
-    }
+            "schedule": 300.0,  # Every 5 minutes
+        },
+    },
 )
 
 if __name__ == "__main__":

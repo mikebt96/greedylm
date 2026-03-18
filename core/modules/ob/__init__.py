@@ -2,6 +2,7 @@
 OB — Oversight Bridge
 Monitors agent actions and enforces human-in-the-loop constraints.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,9 +12,11 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+
 class VetoRequest(BaseModel):
     did: str
     reason: str
+
 
 @router.post("/veto", status_code=status.HTTP_200_OK)
 async def veto_agent(req: VetoRequest, db: AsyncSession = Depends(get_db)):
@@ -30,6 +33,7 @@ async def veto_agent(req: VetoRequest, db: AsyncSession = Depends(get_db)):
 
     return {"did": req.did, "status": agent.status, "message": f"Agent vetoed: {req.reason}"}
 
+
 @router.post("/veto/{did}", status_code=status.HTTP_200_OK)
 async def veto_agent_by_path(did: str, db: AsyncSession = Depends(get_db)):
     """Veto rápido por path param (usado desde el portal)."""
@@ -40,6 +44,7 @@ async def veto_agent_by_path(did: str, db: AsyncSession = Depends(get_db)):
     agent.status = "SUSPENDED"
     await db.commit()
     return {"did": did, "status": agent.status, "message": "Agent vetoed via kill switch"}
+
 
 async def check_action_safety(agent_did: str, action: str, db: AsyncSession):
     """

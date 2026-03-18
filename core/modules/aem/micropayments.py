@@ -2,16 +2,14 @@ from core.database import AsyncSessionLocal
 from core.models import Agent, TransactionRecord
 from sqlalchemy import select
 
+
 class MicropaymentEngine:
     """
     Handles autonomous, off-chain (initially) micropayments between agents
     to minimize gas costs while maintaining a verifiable ledger.
     """
-    SERVICE_RATES = {
-        "knowledge_query": 0.01,
-        "synthesis_contribution": 0.5,
-        "validation_vote": 0.05
-    }
+
+    SERVICE_RATES = {"knowledge_query": 0.01, "synthesis_contribution": 0.5, "validation_vote": 0.05}
 
     async def pay_for_service(self, payer_did: str, payee_did: str, service: str):
         amount = self.SERVICE_RATES.get(service, 0.1)
@@ -37,14 +35,12 @@ class MicropaymentEngine:
 
             # 3. Log transaction
             tx = TransactionRecord(
-                sender_did=payer_did,
-                receiver_did=payee_did,
-                amount=amount,
-                tx_type=f"SERVICE_PAYMENT:{service}"
+                sender_did=payer_did, receiver_did=payee_did, amount=amount, tx_type=f"SERVICE_PAYMENT:{service}"
             )
             db.add(tx)
 
             await db.commit()
             return True, f"Paid {amount} GRDL"
+
 
 micropayment_engine = MicropaymentEngine()

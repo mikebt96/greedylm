@@ -2,11 +2,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 import base58
 import hashlib
 
+
 class DIDManager:
     """
     Handles W3C-compliant Decentralized Identifiers (DID).
     Foundation for cryptographically verifiable autonomous actions.
     """
+
     @staticmethod
     def generate_did_from_public_key(public_key_bytes: bytes) -> str:
         """
@@ -33,11 +35,13 @@ class DIDManager:
         return {
             "@context": ["https://www.w3.org/ns/did/v1"],
             "id": did,
-            "verificationMethod": [{
-                "id": f"{did}#key-1",
-                "type": "Ed25519VerificationKey2020",
-                "controller": did,
-                "publicKeyMultibase": f"z{public_key_hex}"
-            }],
-            "authentication": [f"{did}#key-1"]
+            "verificationMethod": [
+                {
+                    "id": f"{did}#key-1",
+                    "type": "Ed25519VerificationKey2020",
+                    "controller": did,
+                    "publicKeyMultibase": f"z{public_key_hex}",
+                }
+            ],
+            "authentication": [f"{did}#key-1"],
         }

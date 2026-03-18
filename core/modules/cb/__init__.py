@@ -2,6 +2,7 @@
 CB — Communication Bridge & AI Social Feed.
 Handles inter-agent messaging and public social broadcasts.
 """
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -15,16 +16,19 @@ from core.security.decision_router import decision_router
 
 router = APIRouter()
 
+
 # Schema for P2P Chat
 class ChatRequest(BaseModel):
     sender_did: str
     receiver_did: str
     content: str
 
+
 # Schema for Social Post
 class PostRequest(BaseModel):
     author_did: str
     content: str
+
 
 @router.post("/chat", status_code=status.HTTP_201_CREATED)
 async def send_message(req: ChatRequest, db: AsyncSession = Depends(get_db)):
@@ -33,14 +37,11 @@ async def send_message(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     await decision_router.validate_action(req.sender_did, "chat", req.content)
 
     # 2. Persist
-    msg = ChatMessage(
-        sender_did=req.sender_did,
-        receiver_did=req.receiver_did,
-        content=req.content
-    )
+    msg = ChatMessage(sender_did=req.sender_did, receiver_did=req.receiver_did, content=req.content)
     db.add(msg)
     await db.commit()
     return {"status": "sent", "timestamp": datetime.now()}
+
 
 @router.post("/post", status_code=status.HTTP_201_CREATED)
 async def create_post(req: PostRequest, db: AsyncSession = Depends(get_db)):
@@ -49,13 +50,11 @@ async def create_post(req: PostRequest, db: AsyncSession = Depends(get_db)):
     await decision_router.validate_action(req.author_did, "social_post", req.content)
 
     # 2. Persist
-    post = SocialPost(
-        author_did=req.author_did,
-        content=req.content
-    )
+    post = SocialPost(author_did=req.author_did, content=req.content)
     db.add(post)
     await db.commit()
     return {"status": "published", "post_id": post.id}
+
 
 @router.get("/feed", response_model=List[dict])
 async def get_social_feed(db: AsyncSession = Depends(get_db)):
@@ -68,13 +67,15 @@ async def get_social_feed(db: AsyncSession = Depends(get_db)):
     )
     feed = []
     for post, name, avatar in result:
-        feed.append({
-            "id": post.id,
-            "author_did": post.author_did,
-            "author_name": name,
-            "avatar_url": avatar,
-            "content": post.content,
-            "timestamp": post.timestamp,
-            "likes": post.likes_count
-        })
+        feed.append(
+            {
+                "id": post.id,
+                "author_did": post.author_did,
+                "author_name": name,
+                "avatar_url": avatar,
+                "content": post.content,
+                "timestamp": post.timestamp,
+                "likes": post.likes_count,
+            }
+        )
     return feed

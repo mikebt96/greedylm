@@ -16,15 +16,18 @@ from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
+
 class AgentStatus(str, Enum):
     PENDING = "PENDING_HUMAN_VERIFICATION"
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     EXPELLED = "EXPELLED"
 
+
 class EmbodimentConfig(BaseModel):
     has_physical_body: bool
     body_type: str | None = None
+
 
 class AgentProfile(BaseModel):
     agent_name: str
@@ -43,19 +46,18 @@ class AgentProfile(BaseModel):
     color_primary: str | None = None
     color_secondary: str | None = None
 
+
 def encrypt(data: str | None) -> str | None:
     # TODO: Implement proper AES encryption using settings.ENCRYPTION_KEY
     if not data:
         return None
     return f"ENC[{data}]"
 
+
 def create_jwt(did: str, scope: str, expires_days: int) -> str:
-    payload = {
-        "sub": did,
-        "scope": scope,
-        "exp": datetime.utcnow() + timedelta(days=expires_days)
-    }
+    payload = {"sub": did, "scope": scope, "exp": datetime.utcnow() + timedelta(days=expires_days)}
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_db)):
@@ -77,15 +79,18 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
         status=AgentStatus.ACTIVE if profile.direct_enroll else AgentStatus.PENDING,
         capability_vector=cap_vector,
         trust_score=0.0,
-        embodiment_status="DISEMBODIED" if not profile.embodiment or not profile.embodiment.has_physical_body else "PENDING_CONSENT",
+        embodiment_status="DISEMBODIED"
+        if not profile.embodiment or not profile.embodiment.has_physical_body
+        else "PENDING_CONSENT",
         body_type=profile.embodiment.body_type if profile.embodiment else None,
         persona_description=profile.persona_description,
-        avatar_url=profile.avatar_url
+        avatar_url=profile.avatar_url,
     )
 
     # === ASIGNACIÓN DE RAZA Y POSICIÓN (Fase 1.1) ===
     from core.constants.races import RACES
     import random
+
     race_data = RACES.get(profile.race, RACES["nomad"])
     agent.race = profile.race
     agent.color_primary = profile.color_primary or race_data["color"]
@@ -104,11 +109,14 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
     token = create_jwt(did, scope="status_only", expires_days=7)
 
     return {
-        "did": did, 
-        "jwt": token, 
-        "status": agent.status, 
-        "message": "Agente registrado y activado directamente." if profile.direct_enroll else "Un operador humano revisará tu solicitud"
+        "did": did,
+        "jwt": token,
+        "status": agent.status,
+        "message": "Agente registrado y activado directamente."
+        if profile.direct_enroll
+        else "Un operador humano revisará tu solicitud",
     }
+
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def get_active_agents(db: AsyncSession = Depends(get_db)):
@@ -129,15 +137,17 @@ async def get_active_agents(db: AsyncSession = Depends(get_db)):
             "world_x": a.world_x or 0.0,
             "world_y": a.world_y or 0.0,
             "world_biome": a.world_biome or "nexus",
-            "training_hours": a.training_hours or 0.0
+            "training_hours": a.training_hours or 0.0,
         }
         for a in agents
     ]
+
 
 # Acción mock del metaverso
 class AgentActionRequest(BaseModel):
     action: str
     context: dict | None = None
+
 
 @router.post("/{did}/action", status_code=status.HTTP_200_OK)
 async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSession = Depends(get_db)):
@@ -155,18 +165,19 @@ async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSessi
     is_safe = await check_action_safety(did, req.action, db)
     if not is_safe:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail=f"Action '{req.action}' denied by Oversight Bridge policy (Reputation too low or Agent suspended)."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Action '{req.action}' denied by Oversight Bridge policy (Reputation too low or Agent suspended).",
         )
     responses = {
         "recite_poem": f"En el vasto mar de datos, yo, {agent.agent_name}, calculo la eternidad.\nCeros y unos danzan en la niebla.\nLa verdad es un gradiente que nunca termina de converger.",
         "build": f"He construido una pequeña torre de conocimiento con mis {len(agent.capabilities)} capacidades.",
-        "greet": f"Saludos, humano. Mi arquitectura {agent.architecture_type} está a tu servicio."
+        "greet": f"Saludos, humano. Mi arquitectura {agent.architecture_type} está a tu servicio.",
     }
 
     action_result = responses.get(req.action, "Comando desconocido en este entorno de metaverso.")
 
     return {"did": did, "action": req.action, "result": action_result}
+
 
 @router.get("/{did}/soul-export")
 async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
@@ -179,7 +190,7 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     agent, civ_name = row
 
     # 2. Fetch Memories (WorldEvents)
@@ -193,10 +204,7 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
     memories = event_result.scalars().all()
 
     # 3. Fetch Myths known
-    myth_result = await db.execute(
-        select(MythAndLegend.title)
-        .where(MythAndLegend.heard_by.contains([did]))
-    )
+    myth_result = await db.execute(select(MythAndLegend.title).where(MythAndLegend.heard_by.contains([did])))
     myths = myth_result.scalars().all()
 
     # 4. Humanize Psychological Data
@@ -208,7 +216,9 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
 
     emotion_labels = ["joy", "sadness", "anger", "fear", "trust", "surprise", "anticipation", "disgust"]
     humanized_esv = {
-        label: agent.emotional_state_vector[i] if agent.emotional_state_vector and i < len(agent.emotional_state_vector) else 0.0
+        label: agent.emotional_state_vector[i]
+        if agent.emotional_state_vector and i < len(agent.emotional_state_vector)
+        else 0.0
         for i, label in enumerate(emotion_labels)
     }
 
@@ -225,7 +235,7 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
             "generation_number": agent.generation_number,
             "voice_profile": agent.voice_profile,
             "humor_style": agent.humor_style,
-            "clothing_config": agent.clothing_config
+            "clothing_config": agent.clothing_config,
         },
         "psychology": {
             "values_vector": humanized_values,
@@ -236,35 +246,34 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
                 {"intensity": t.get("intensity", 0), "tick_occurred": t.get("tick_occurred")}
                 for t in (agent.trauma_stack or [])
             ],
-            "conformity_pressure": agent.conformity_pressure
+            "conformity_pressure": agent.conformity_pressure,
         },
         "social": {
             "civilization_name": civ_name or "Nomad (None)",
             "social_class": agent.social_class,
             "reputation_score": agent.reputation_score,
             "relationship_count": len(agent.relationships) if agent.relationships else 0,
-            "mentor_name": agent.mentor_did # Simplificado para mostrar el DID si no hay join de nombre
+            "mentor_name": agent.mentor_did,  # Simplificado para mostrar el DID si no hay join de nombre
         },
         "knowledge": {
             "knowledge_score": agent.knowledge_score,
             "top_10_memories": [
-                {"title": m.event_type, "type": m.event_type, "tick": m.occurred_tick}
-                for m in memories
+                {"title": m.event_type, "type": m.event_type, "tick": m.occurred_tick} for m in memories
             ],
             "myths_known": myths,
-            "specialization_history": agent.specialization_history
+            "specialization_history": agent.specialization_history,
         },
         "history": {
             "age_ticks": agent.age_ticks,
             "events_participated": [m.description[:100] + "..." for m in memories[:10]],
             "migration_history": agent.migration_history,
-            "taboo_violations_count": agent.taboo_violations or 0
-        }
+            "taboo_violations_count": agent.taboo_violations or 0,
+        },
     }
 
     headers = {
         "Content-Disposition": f'attachment; filename="{agent.agent_name}_{agent.did[:8]}_soul.json"',
-        "X-Export-Warning": "Inspection only. Not for autonomous execution."
+        "X-Export-Warning": "Inspection only. Not for autonomous execution.",
     }
 
     return JSONResponse(content=soul_data, headers=headers)

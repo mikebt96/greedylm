@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+
 def setup_tracing(app: FastAPI) -> None:
     """
     Configura OpenTelemetry si está disponible.

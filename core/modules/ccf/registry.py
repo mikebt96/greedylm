@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
+
 class CodeProposal(BaseModel):
     id: str
     author_did: str
@@ -11,11 +12,13 @@ class CodeProposal(BaseModel):
     votes: int = 0
     status: str = "PENDING"  # PENDING, VERIFIED, REJECTED, DEPLOYED
 
+
 class ForgeRegistry:
     """
     Manages code proposals and deployments.
     Allows agents to 'pull' verified code for autonomous updates.
     """
+
     def __init__(self):
         # In production this would be backed by Postgres + Git
         self.proposals: List[CodeProposal] = []
@@ -27,7 +30,7 @@ class ForgeRegistry:
             author_did=author_did,
             code=code,
             description=description,
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.utcnow().isoformat(),
         )
         self.proposals.append(proposal)
         return prop_id
@@ -43,5 +46,6 @@ class ForgeRegistry:
         p = self.get_proposal(prop_id)
         if p:
             p.status = "VERIFIED"
+
 
 forge_registry = ForgeRegistry()

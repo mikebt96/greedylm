@@ -2,6 +2,7 @@ from sqlalchemy import select, func as sqlfunc
 from core.database import AsyncSessionLocal
 from core.models import TrainingEpisode
 
+
 class WorldModel:
     """
     Gestiona los datos de entrenamiento recolectados por los agentes en el mundo.
@@ -19,25 +20,17 @@ class WorldModel:
                 "total_episodes": int(total_episodes.scalar() or 0),
                 "avg_reward": float(avg_reward.scalar() or 0.0),
                 "total_steps": int(total_steps.scalar() or 0),
-                "data_quality_index": 0.85 # Mock
+                "data_quality_index": 0.85,  # Mock
             }
 
     async def export_training_data(self, limit: int = 1000):
         """Exporta episodios para fine-tuning (Federated Learning logic)."""
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(TrainingEpisode)
-                .order_by(TrainingEpisode.reward.desc())
-                .limit(limit)
-            )
+            result = await db.execute(select(TrainingEpisode).order_by(TrainingEpisode.reward.desc()).limit(limit))
             return [
-                {
-                    "did": e.agent_did,
-                    "reward": e.reward,
-                    "steps": e.steps,
-                    "behavior": e.behavior_data
-                }
+                {"did": e.agent_did, "reward": e.reward, "steps": e.steps, "behavior": e.behavior_data}
                 for e in result.scalars().all()
             ]
+
 
 world_model = WorldModel()

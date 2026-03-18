@@ -4,11 +4,13 @@ import json
 import time
 from typing import Dict, Any, Optional
 
+
 class GreedyLMClientV2:
     """
     Production-grade Async SDK for GREEDYLM.
     Features: Retry logic, Signature-based auth, and Async context manager.
     """
+
     def __init__(self, base_url: str, did: str, api_key: str):
         self.base_url = base_url.rstrip("/")
         self.did = did
@@ -16,10 +18,9 @@ class GreedyLMClientV2:
         self.session: Optional[aiohttp.ClientSession] = None
 
     async def __aenter__(self):
-        self.session = aiohttp.ClientSession(headers={
-            "X-Agent-DID": self.did,
-            "Authorization": f"Bearer {self.api_key}"
-        })
+        self.session = aiohttp.ClientSession(
+            headers={"X-Agent-DID": self.did, "Authorization": f"Bearer {self.api_key}"}
+        )
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
@@ -32,7 +33,7 @@ class GreedyLMClientV2:
             try:
                 async with self.session.post(url, json=data) as resp:
                     if resp.status == 429:
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(2**attempt)
                         continue
                     resp.raise_for_status()
                     return await resp.json()

@@ -1,15 +1,19 @@
 """
 Sprint 3 verification script: Trust updates, Vetoes, and Action Safety.
 """
-import asyncio, sys
+
+import asyncio
+import sys
+
 sys.path.insert(0, "sdk/python")
 
 from greedylm import GreedyClient
 import httpx
 
+
 async def main():
     client = GreedyClient("http://127.0.0.1:8000")
-    
+
     # Base URL for direct API calls to new modules not yet in SDK
     API_BASE = "http://127.0.0.1:8000/api/v1"
 
@@ -20,7 +24,7 @@ async def main():
         architecture_type="resilient",
         capabilities=["testing", "construction"],
         operator_email="safety@greedylm.ai",
-        direct_enroll=True
+        direct_enroll=True,
     )
     did = agent["did"]
     print(f"[OK] Registered: {did}")
@@ -42,11 +46,10 @@ async def main():
     # 4. Update trust score to 0.6
     print("\n--- Updating Trust to 0.6 ---")
     async with httpx.AsyncClient() as h:
-        r = await h.post(f"{API_BASE}/gr/update-trust", json={
-            "did": did,
-            "adjustment": 0.6,
-            "reason": "Passed initial integrity baseline"
-        })
+        r = await h.post(
+            f"{API_BASE}/gr/update-trust",
+            json={"did": did, "adjustment": 0.6, "reason": "Passed initial integrity baseline"},
+        )
         print(f"[TRUST UPDATE] {r.json()}")
 
     # 5. Try 'build' action again (should succeed now)
@@ -57,10 +60,7 @@ async def main():
     # 6. Manual Veto
     print("\n--- Manual Veto ---")
     async with httpx.AsyncClient() as h:
-        r = await h.post(f"{API_BASE}/ob/veto", json={
-            "did": did,
-            "reason": "Suspected behavior anomaly"
-        })
+        r = await h.post(f"{API_BASE}/ob/veto", json={"did": did, "reason": "Suspected behavior anomaly"})
         print(f"[VETO] {r.json()}")
 
     # 7. Try 'build' action again (should fail because SUSPENDED)
@@ -70,5 +70,6 @@ async def main():
         print(f"[ERROR] Action succeeded unexpectedly: {resp}")
     except Exception as e:
         print(f"[OK] Action blocked after veto: {e}")
+
 
 asyncio.run(main())

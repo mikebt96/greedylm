@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import Column, String, JSON, DateTime
 from core.database import Base, AsyncSessionLocal
 
+
 class AuditEntry(Base):
     __tablename__ = "audit_log"
     id = Column(String, primary_key=True)
@@ -15,15 +16,18 @@ class AuditEntry(Base):
     prev_hash = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
+
 class ImmutableAuditLog:
     """
     Every entry includes the hash of the previous one.
     Tamper-evident system trail.
     """
+
     async def record_event(self, event_type: str, data: dict, actor: str = "system"):
         async with AsyncSessionLocal() as db:
             # 1. Get last hash
             from sqlalchemy import select
+
             q = select(AuditEntry.merkle_hash).order_by(AuditEntry.timestamp.desc()).limit(1)
             result = await db.execute(q)
             prev_hash = result.scalar() or "GENESIS"
@@ -38,7 +42,7 @@ class ImmutableAuditLog:
                 "data": data,
                 "actor": actor,
                 "timestamp": timestamp,
-                "prev_hash": prev_hash
+                "prev_hash": prev_hash,
             }
 
             # 3. Calculate Merkle Hash
@@ -47,12 +51,7 @@ class ImmutableAuditLog:
 
             # 4. Save
             new_entry = AuditEntry(
-                id=entry_id,
-                event_type=event_type,
-                data=data,
-                actor=actor,
-                merkle_hash=merkle_hash,
-                prev_hash=prev_hash
+                id=entry_id, event_type=event_type, data=data, actor=actor, merkle_hash=merkle_hash, prev_hash=prev_hash
             )
             db.add(new_entry)
             await db.commit()
@@ -63,5 +62,6 @@ class ImmutableAuditLog:
         """Verifies the integrity of the entire audit trail."""
         # Selection and iteration logic to compare hashes...
         return True
+
 
 audit_log = ImmutableAuditLog()

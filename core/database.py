@@ -11,28 +11,29 @@ _engine_kwargs = {
 }
 
 if not _is_sqlite:
-    _engine_kwargs.update({
-        "pool_size": 20,
-        "max_overflow": 40,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
-        "connect_args": {
-            "server_settings": {
-                "application_name": "greedylm-core",
-                "jit": "off",
+    _engine_kwargs.update(
+        {
+            "pool_size": 20,
+            "max_overflow": 40,
+            "pool_timeout": 30,
+            "pool_recycle": 1800,
+            "connect_args": {
+                "server_settings": {
+                    "application_name": "greedylm-core",
+                    "jit": "off",
+                },
+                "command_timeout": 60,
+                "ssl": "require" if settings.RENDER else False,
             },
-            "command_timeout": 60,
-            "ssl": "require" if settings.RENDER else False,
-        },
-    })
+        }
+    )
 
 engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
-AsyncSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 Base = declarative_base()
+
 
 async def get_db():
     async with AsyncSessionLocal() as session:

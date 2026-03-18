@@ -3,11 +3,13 @@ from pydantic import BaseModel
 from core.modules.psyche.engine import psyche_engine
 from core.modules.psyche.memory_graph import memory_graph
 
+
 class DialogueTurn(BaseModel):
     agent_did: str
     role: str  # proponent | opponent | moderator
     content: str
     emotional_state: list
+
 
 class DialogueEngine:
     """
@@ -15,19 +17,14 @@ class DialogueEngine:
     Implementa el PDS (Protocol for Structured Dissent) para generar datos de entrenamiento.
     """
 
-    async def generate_pds_prompt(
-        self,
-        agents: List[dict],
-        topic: str,
-        context: str = ""
-    ) -> str:
+    async def generate_pds_prompt(self, agents: List[dict], topic: str, context: str = "") -> str:
         """
         Genera el prompt inicial para un debate estructurado (PDS).
         """
         agent_descriptions = []
         for a in agents:
             # Reconstruir contexto emocional para el prompt
-            emo_ctx = psyche_engine.build_emotional_context(a.get('esv'), a.get('race'))
+            emo_ctx = psyche_engine.build_emotional_context(a.get("esv"), a.get("race"))
             desc = f"- Agent {a['did']} ({a['race']}): {emo_ctx}"
             agent_descriptions.append(desc)
 
@@ -62,8 +59,9 @@ REGLAS DE INTERACCIÓN:
             agent_did=turn.agent_did,
             title=f"Diálogo: {turn.role}",
             content=turn.content,
-            dominant_emotion='anticipation',
-            emotional_weight=0.6
+            dominant_emotion="anticipation",
+            emotional_weight=0.6,
         )
+
 
 dialogue_engine = DialogueEngine()

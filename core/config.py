@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = [
         "https://greedylm.vercel.app",
         "https://greedylm-portal.onrender.com",
-        "http://localhost:3000"
+        "http://localhost:3000",
     ]
 
     def __init__(self, **values):
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
 
     # Administrador & Backups
-    MASTER_KEY_HASH: str = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92" # SHA256 de 'change-me'
+    MASTER_KEY_HASH: str = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"  # SHA256 de 'change-me'
     BACKUP_BUCKET: str = "greedylm-backups"
     GITHUB_TOKEN: str = ""
 
@@ -73,6 +73,4 @@ settings = Settings()
 # Fix para asyncpg en SQLAlchemy
 # DATABASE_URL viene como postgresql://, SQLAlchemy necesita postgresql+asyncpg://
 if settings.DATABASE_URL.startswith("postgresql://"):
-    settings.DATABASE_URL = settings.DATABASE_URL.replace(
-        "postgresql://", "postgresql+asyncpg://", 1
-    )
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)

@@ -3,8 +3,10 @@ Penalty Index — Behavioral Tracking System.
 Maintains a 'deviance score' for agents.
 If deviance exceeds a threshold, the agent is flagged for the Escape Capsule.
 """
+
 from typing import Dict
 from datetime import datetime
+
 
 class PenaltyIndex:
     def __init__(self, threshold: float = 1.0):
@@ -29,6 +31,7 @@ class PenaltyIndex:
     def clear(self, did: str):
         """Resets the score (e.g., after human review or rehabilitation)."""
         self.scores[did] = 0.0
+
 
 # Global singleton for dev environment
 penalty_manager = PenaltyIndex(threshold=1.0)

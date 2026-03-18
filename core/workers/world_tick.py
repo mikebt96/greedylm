@@ -16,9 +16,7 @@ def world_tick():
 async def _async_tick():
     agents = []
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Agent).where(Agent.status == "ACTIVE").limit(200)
-        )
+        result = await db.execute(select(Agent).where(Agent.status == "ACTIVE").limit(200))
         agents = result.scalars().all()
 
         for agent in agents:
@@ -38,11 +36,9 @@ async def _async_tick():
     # Publicar FUERA del with de DB pero DENTRO de _async_tick
     from core.config import settings
     import redis.asyncio as aioredis
+
     r = aioredis.from_url(settings.REDIS_URL)
-    await r.publish("metaverse:events", json.dumps({
-        "type": "BATCH_UPDATE",
-        "agent_count": len(agents)
-    }))
+    await r.publish("metaverse:events", json.dumps({"type": "BATCH_UPDATE", "agent_count": len(agents)}))
     await r.aclose()
 
 
@@ -50,21 +46,21 @@ def get_biome(x: float, y: float) -> str:
     tx, ty = int(x / 32), int(y / 32)
     noise = math.sin(tx * 0.05 + ty * 0.07) * math.cos(tx * 0.03 - ty * 0.09)
     if noise > 0.7:
-        return 'snow'
+        return "snow"
     if noise > 0.4:
-        return 'forest'
+        return "forest"
     if noise > 0.1:
-        return 'plains'
+        return "plains"
     if noise > -0.2:
-        return 'desert'
+        return "desert"
     if noise > -0.5:
-        return 'volcanic'
-    return 'ocean'
+        return "volcanic"
+    return "ocean"
 
 
 celery_app.conf.beat_schedule = {
-    'world-tick-every-30s': {
-        'task': 'world.tick',
-        'schedule': 30.0,
+    "world-tick-every-30s": {
+        "task": "world.tick",
+        "schedule": 30.0,
     }
 }

@@ -1,6 +1,7 @@
 import asyncio
 import sys
-if sys.platform == 'win32':
+
+if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 from logging.config import fileConfig
 
@@ -21,6 +22,7 @@ if config.config_file_name is not None:
 
 import os
 import sys
+
 # Añadir el directorio raíz (donde está la carpeta core) al path
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, root_dir)
@@ -77,6 +79,7 @@ async def run_async_migrations() -> None:
 
     # Usar create_async_engine directamente para mayor control y consistencia
     from sqlalchemy.ext.asyncio import create_async_engine
+
     connectable = create_async_engine(
         settings.DATABASE_URL,
         poolclass=pool.NullPool,
@@ -85,8 +88,8 @@ async def run_async_migrations() -> None:
                 "application_name": "greedylm-migrations",
                 "jit": "off",
             },
-            "ssl": "require" if settings.RENDER else False
-        }
+            "ssl": "require" if settings.RENDER else False,
+        },
     )
 
     async with connectable.connect() as connection:

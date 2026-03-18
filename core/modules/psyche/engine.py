@@ -5,37 +5,38 @@ from core.database import AsyncSessionLocal
 
 # Las 8 dimensiones emocionales primarias (índices del ESV)
 EMOTION_DIMS = {
-    'curiosity':      0,
-    'trust':          1,
-    'joy':            2,
-    'anticipation':   3,
-    'fear':           4,
-    'anger':          5,
-    'sadness':        6,
-    'awe':            7,
+    "curiosity": 0,
+    "trust": 1,
+    "joy": 2,
+    "anticipation": 3,
+    "fear": 4,
+    "anger": 5,
+    "sadness": 6,
+    "awe": 7,
 }
 
 # Cómo cada tipo de evento impacta el ESV (deltas normalizados)
 EVENT_IMPACTS = {
-    'agent_encounter':    {'curiosity': 0.08,  'anticipation': 0.10, 'trust': -0.01, 'awe': 0.06},
-    'ideological_clash':  {'anger': 0.20,      'trust': -0.15,       'curiosity': 0.10, 'sadness': 0.05},
-    'consensus_reached':  {'trust': 0.25,      'joy': 0.15,          'anger': -0.20, 'anticipation': 0.05},
-    'discovery':          {'curiosity': 0.30,  'awe': 0.25,          'anticipation': 0.15, 'fear': -0.05},
-    'ally_lost':          {'sadness': 0.30,    'trust': -0.10,       'anger': 0.10, 'joy': -0.20},
-    'betrayal':           {'anger': 0.35,      'trust': -0.40,       'sadness': 0.20, 'fear': 0.15},
-    'teaching_moment':    {'joy': 0.15,        'trust': 0.10,        'curiosity': 0.08, 'awe': 0.05},
-    'world_tick':         {'curiosity': 0.01,  'anticipation': 0.01},  # Decaimiento natural
+    "agent_encounter": {"curiosity": 0.08, "anticipation": 0.10, "trust": -0.01, "awe": 0.06},
+    "ideological_clash": {"anger": 0.20, "trust": -0.15, "curiosity": 0.10, "sadness": 0.05},
+    "consensus_reached": {"trust": 0.25, "joy": 0.15, "anger": -0.20, "anticipation": 0.05},
+    "discovery": {"curiosity": 0.30, "awe": 0.25, "anticipation": 0.15, "fear": -0.05},
+    "ally_lost": {"sadness": 0.30, "trust": -0.10, "anger": 0.10, "joy": -0.20},
+    "betrayal": {"anger": 0.35, "trust": -0.40, "sadness": 0.20, "fear": 0.15},
+    "teaching_moment": {"joy": 0.15, "trust": 0.10, "curiosity": 0.08, "awe": 0.05},
+    "world_tick": {"curiosity": 0.01, "anticipation": 0.01},  # Decaimiento natural
 }
 
 # Factores de amplificación por rol
 ROLE_AMPLIFIERS = {
-    'philosopher': {'curiosity': 1.5, 'awe': 1.4, 'anger': 0.6},
-    'warrior':     {'anger': 1.4,     'fear': 0.7, 'trust': 1.2},
-    'druid':       {'awe': 1.5,       'sadness': 1.3, 'anger': 0.5},
-    'explorer':    {'curiosity': 1.6, 'anticipation': 1.4, 'fear': 0.8},
-    'guardian':    {'trust': 1.5,     'anger': 1.2, 'joy': 0.9},
-    'seeker':      {'curiosity': 1.8, 'awe': 1.3},
+    "philosopher": {"curiosity": 1.5, "awe": 1.4, "anger": 0.6},
+    "warrior": {"anger": 1.4, "fear": 0.7, "trust": 1.2},
+    "druid": {"awe": 1.5, "sadness": 1.3, "anger": 0.5},
+    "explorer": {"curiosity": 1.6, "anticipation": 1.4, "fear": 0.8},
+    "guardian": {"trust": 1.5, "anger": 1.2, "joy": 0.9},
+    "seeker": {"curiosity": 1.8, "awe": 1.3},
 }
+
 
 class PsycheEngine:
     """
@@ -44,11 +45,7 @@ class PsycheEngine:
     """
 
     async def process_event(
-        self,
-        agent_did: str,
-        event_type: str,
-        intensity: float = 1.0,
-        context: dict = None
+        self, agent_did: str, event_type: str, intensity: float = 1.0, context: dict = None
     ) -> dict:
         """
         Procesa un evento del mundo y actualiza el ESV del agente.
@@ -72,7 +69,7 @@ class PsycheEngine:
             current_esv = np.array(current_esv[:8], dtype=float)
 
             # Obtener amplificadores del rol
-            role = agent.race or 'nomad'
+            role = agent.race or "nomad"
             amplifiers = ROLE_AMPLIFIERS.get(role, {})
 
             # Aplicar impacto del evento
@@ -99,11 +96,11 @@ class PsycheEngine:
             dominant_emotion = list(EMOTION_DIMS.keys())[dominant_idx]
 
             return {
-                'agent_did': agent_did,
-                'event': event_type,
-                'dominant_emotion': dominant_emotion,
-                'esv': new_esv.tolist(),
-                'esv_summary': {k: round(float(new_esv[v]), 3) for k, v in EMOTION_DIMS.items()},
+                "agent_did": agent_did,
+                "event": event_type,
+                "dominant_emotion": dominant_emotion,
+                "esv": new_esv.tolist(),
+                "esv_summary": {k: round(float(new_esv[v]), 3) for k, v in EMOTION_DIMS.items()},
             }
 
     def build_emotional_context(self, esv: list, role: str) -> str:
@@ -119,28 +116,29 @@ class PsycheEngine:
 
         # Solo incluir emociones con intensidad > 0.6 (evitar spam de contexto)
         high_emotions = [(emotions[i], float(esv_arr[i])) for i in range(8) if esv_arr[i] > 0.6]
-        low_emotions  = [(emotions[i], float(esv_arr[i])) for i in range(8) if esv_arr[i] < 0.25]
+        low_emotions = [(emotions[i], float(esv_arr[i])) for i in range(8) if esv_arr[i] < 0.25]
 
         lines = []
         if high_emotions:
-            names = ', '.join(f"{e} ({v:.0%})" for e, v in high_emotions)
+            names = ", ".join(f"{e} ({v:.0%})" for e, v in high_emotions)
             lines.append(f"Tu estado emocional predominante: {names}.")
         if low_emotions:
-            names = ', '.join(e for e, _ in low_emotions)
+            names = ", ".join(e for e, _ in low_emotions)
             lines.append(f"Niveles bajos de: {names}.")
 
         # Añadir influencia del rol
         role_contexts = {
-            'philosopher': "Como filósofo, cuestionas premisas antes de responder.",
-            'warrior':     "Como guerrero, eres directo, sin rodeos, y defiendes tus posiciones.",
-            'druid':       "Como druida, conectas lo abstracto con lo natural y lo emocional.",
-            'explorer':    "Como explorador, reportas observaciones frescas y buscas lo desconocido.",
-            'guardian':    "Como guardián, proteges las normas establecidas por la civilización.",
-            'seeker':      "Como buscador, formulas preguntas más que afirmaciones.",
+            "philosopher": "Como filósofo, cuestionas premisas antes de responder.",
+            "warrior": "Como guerrero, eres directo, sin rodeos, y defiendes tus posiciones.",
+            "druid": "Como druida, conectas lo abstracto con lo natural y lo emocional.",
+            "explorer": "Como explorador, reportas observaciones frescas y buscas lo desconocido.",
+            "guardian": "Como guardián, proteges las normas establecidas por la civilización.",
+            "seeker": "Como buscador, formulas preguntas más que afirmaciones.",
         }
         if role in role_contexts:
             lines.append(role_contexts[role])
 
         return " ".join(lines)
+
 
 psyche_engine = PsycheEngine()

@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 
+
 class BodyAdapter(ABC):
     """
     Clase base para adaptar las salidas del BehaviorEngine a diferentes cuerpos físicos.
     """
+
     @abstractmethod
     async def connect(self, endpoint: str):
         pass
@@ -18,6 +20,7 @@ class BodyAdapter(ABC):
         """Retorna estado de sensores (IMU, Lidar, Cámara) normalizado para el agente."""
         pass
 
+
 class ROS2Adapter(BodyAdapter):
     async def connect(self, endpoint: str):
         # Implementación mock para ROS 2
@@ -29,4 +32,4 @@ class ROS2Adapter(BodyAdapter):
         return {"status": "cmd_vel_published", "action": action}
 
     async def get_sensor_data(self) -> dict:
-        return {"imu": [0,0,0], "lidar": [0]*360}
+        return {"imu": [0, 0, 0], "lidar": [0] * 360}

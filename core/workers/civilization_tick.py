@@ -7,6 +7,7 @@ from core.modules.world_engine.social_dynamics import social_dynamics
 from core.modules.world_engine.events import event_engine
 from core.workers.celery_app import celery_app
 
+
 @celery_app.task(name="civilization.tick")
 def civilization_tick():
     loop = asyncio.get_event_loop()
@@ -14,6 +15,7 @@ def civilization_tick():
         asyncio.ensure_future(_async_civ_tick())
     else:
         loop.run_until_complete(_async_civ_tick())
+
 
 async def _async_civ_tick():
     async with AsyncSessionLocal() as db:
@@ -31,8 +33,8 @@ async def _async_civ_tick():
             avg_values = [0.0] * 6  # Assuming 6 dimensions for values
 
             for m in members:
-                esv = m.emotional_state_vector or [0.5]*8
-                vvec = m.values_vector or [0.5]*6
+                esv = m.emotional_state_vector or [0.5] * 8
+                vvec = m.values_vector or [0.5] * 6
                 for i in range(8):
                     avg_esv[i] += esv[i]
                 for i in range(6):
@@ -69,7 +71,7 @@ async def _async_civ_tick():
                     involved_entities={"civilizations": [str(civ.id)]},
                     description=f"A new generation has risen in {civ.name}.",
                     impact={"social": 0.5},
-                    visibility="public"
+                    visibility="public",
                 )
                 db.add(event)
 

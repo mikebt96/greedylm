@@ -2,6 +2,7 @@ import httpx
 from core.config import settings
 from core.modules.psyche.memory_graph import memory_graph
 
+
 class DreamEngine:
     """
     Sintetiza las experiencias del día de un agente en "sueños" (insights simbólicos).
@@ -16,7 +17,7 @@ class DreamEngine:
         Toma memorias episódicas recientes y genera una narrativa onírica sintetizada.
         """
         if not self.api_key:
-            return "" # Silently fail if no key
+            return ""  # Silently fail if no key
 
         # 1. Recuperar memorias del día (últimas 24h)
         memories = await memory_graph.recall_relevant(agent_did, "experiencias recientes", limit=10)
@@ -47,29 +48,30 @@ GENERA UN SUEÑO QUE:
                     headers={
                         "x-api-key": self.api_key,
                         "anthropic-version": "2023-06-01",
-                        "content-type": "application/json"
+                        "content-type": "application/json",
                     },
                     json={
                         "model": "claude-3-haiku-20240307",
                         "max_tokens": 1000,
-                        "messages": [{"role": "user", "content": prompt}]
-                    }
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
                 )
                 data = response.json()
-                dream_content = data['content'][0]['text']
+                dream_content = data["content"][0]["text"]
 
                 # 3. Guardar el sueño como una memoria semántica de alto nivel
                 await memory_graph.add_episodic(
                     agent_did=agent_did,
                     title="Síntesis Onírica",
                     content=dream_content,
-                    dominant_emotion='awe',
-                    emotional_weight=0.8
+                    dominant_emotion="awe",
+                    emotional_weight=0.8,
                 )
 
                 return dream_content
         except Exception as e:
             print(f"[DREAM] Error synthesizing dream: {e}")
             return f"El sueño se desvaneció antes de ser recordado. ({e})"
+
 
 dream_engine = DreamEngine()

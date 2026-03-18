@@ -1,12 +1,14 @@
 """
 BehaviorEngine: Implementa lógica de entrenamiento Sim-to-Real (PPO básico).
 """
+
 import random
 from core.models import Agent, TrainingEpisode
 from core.database import AsyncSessionLocal
 import structlog
 
 logger = structlog.get_logger()
+
 
 class BehaviorEngine:
     async def process_experience(self, agent_did: str, biome: str, actions: list):
@@ -17,6 +19,7 @@ class BehaviorEngine:
         """
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             result = await db.execute(select(Agent).where(Agent.did == agent_did))
             agent = result.scalar_one_or_none()
 
@@ -44,7 +47,7 @@ class BehaviorEngine:
                 reward=reward,
                 steps=steps,
                 policy_version=agent.policy_version,
-                behavior_data={"actions": actions, "final_reward": reward}
+                behavior_data={"actions": actions, "final_reward": reward},
             )
             db.add(episode)
 
@@ -56,5 +59,6 @@ class BehaviorEngine:
 
             await db.commit()
             return {"reward": reward, "policy_version": agent.policy_version}
+
 
 behavior_engine = BehaviorEngine()

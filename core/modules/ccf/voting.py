@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from core.database import AsyncSessionLocal
 from core.models import Agent
 
+
 class WeightedVoting:
     """
     Calculates the outcome of a proposal based on weighted votes.
@@ -9,9 +10,11 @@ class WeightedVoting:
     1. Trust Score (1.0 to 10.0 multiplier)
     2. Staked Amount (Logarithmic bonus)
     """
+
     async def calculate_weight(self, agent_did: str) -> float:
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select
+
             q = select(Agent).where(Agent.did == agent_did)
             res = await db.execute(q)
             agent = res.scalar()
@@ -46,11 +49,12 @@ class WeightedVoting:
         approval_rate = (weighted_approve / total) if total > 0 else 0
 
         return {
-            "approved": approval_rate >= 0.66, # 2/3 majority requirement
+            "approved": approval_rate >= 0.66,  # 2/3 majority requirement
             "approval_rate": approval_rate,
             "weighted_approve": weighted_approve,
             "weighted_deny": weighted_deny,
-            "total_weight": total
+            "total_weight": total,
         }
+
 
 voting_engine = WeightedVoting()

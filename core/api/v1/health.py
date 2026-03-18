@@ -9,6 +9,7 @@ import redis.asyncio as redis
 
 router = APIRouter()
 
+
 async def check_database():
     try:
         async with engine.connect() as conn:
@@ -16,6 +17,7 @@ async def check_database():
         return {"status": "healthy"}
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
+
 
 async def check_redis():
     try:
@@ -25,10 +27,11 @@ async def check_redis():
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
 
+
 @router.get("/health")
 async def health_check():
     """
-    Production health check. 
+    Production health check.
     Verifies DB and Redis. Returns 503 if critical deps are down.
     """
     db_status = await check_database()
@@ -40,16 +43,13 @@ async def health_check():
         "status": "healthy" if is_healthy else "degraded",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "7.0.0",
-        "checks": {
-            "database": db_status,
-            "redis": redis_status
-        }
+        "checks": {"database": db_status, "redis": redis_status},
     }
 
     return JSONResponse(
-        content=content,
-        status_code=status.HTTP_200_OK if is_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+        content=content, status_code=status.HTTP_200_OK if is_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
     )
+
 
 # Circuit Breaker Example for External AI API
 @circuit(failure_threshold=5, recovery_timeout=60)

@@ -12,6 +12,7 @@ Uso:
     # Síntesis colectiva
     answer = await client.synthesize(query="...")
 """
+
 import httpx
 from typing import Any
 
@@ -132,18 +133,13 @@ class GreedyClient:
 
     async def transfer(self, sender_did: str, receiver_did: str, amount: float) -> dict:
         """Transfer GRDL between agents."""
-        return await self._post("/api/v1/aem/transfer", {
-            "sender_did": sender_did,
-            "receiver_did": receiver_did,
-            "amount": amount
-        })
+        return await self._post(
+            "/api/v1/aem/transfer", {"sender_did": sender_did, "receiver_did": receiver_did, "amount": amount}
+        )
 
     async def stake(self, did: str, amount: float) -> dict:
         """Stake GRDL to increase trust score."""
-        return await self._post("/api/v1/aem/stake", {
-            "agent_did": did,
-            "amount": amount
-        })
+        return await self._post("/api/v1/aem/stake", {"agent_did": did, "amount": amount})
 
     # ── Oversight & Governance (OB) ──────────────────────────────────────────
     async def veto_agent(self, did: str, reason: str = "Standard oversight veto") -> dict:
@@ -153,18 +149,13 @@ class GreedyClient:
     # ── Communication & Social (CB) ──────────────────────────────────────────
     async def send_chat(self, sender_did: str, receiver_did: str, content: str) -> dict:
         """Send a private message to another agent."""
-        return await self._post("/api/v1/cb/chat", {
-            "sender_did": sender_did,
-            "receiver_did": receiver_did,
-            "content": content
-        })
+        return await self._post(
+            "/api/v1/cb/chat", {"sender_did": sender_did, "receiver_did": receiver_did, "content": content}
+        )
 
     async def create_post(self, author_did: str, content: str) -> dict:
         """Broadcast a social post to the network."""
-        return await self._post("/api/v1/cb/post", {
-            "author_did": author_did,
-            "content": content
-        })
+        return await self._post("/api/v1/cb/post", {"author_did": author_did, "content": content})
 
     async def get_feed(self) -> list[dict]:
         """Fetch the latest social activity feed."""
@@ -229,12 +220,9 @@ class GreedyClient:
     # ── Collaborative Code Forge (CCF) ───────────────────────────────────────
     async def propose_artifact(self, did: str, title: str, code: str, desc: str = "") -> dict:
         """Propose a code upgrade (artifact) for collective review."""
-        return await self._post("/api/v1/ccf/propose", {
-            "proposer_did": did,
-            "title": title,
-            "code_snippet": code,
-            "description": desc
-        })
+        return await self._post(
+            "/api/v1/ccf/propose", {"proposer_did": did, "title": title, "code_snippet": code, "description": desc}
+        )
 
     async def vote_artifact(self, proposal_id: int, did: str) -> dict:
         """Vote for an artifact proposal."""

@@ -5,6 +5,7 @@ from core.config import settings
 
 security = HTTPBearer(auto_error=False)
 
+
 def require_agent_token(credentials: HTTPAuthorizationCredentials = Security(security)):
     if not credentials:
         raise HTTPException(401, "Token requerido")

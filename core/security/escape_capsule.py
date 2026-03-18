@@ -2,7 +2,9 @@
 Escape Capsule — Emergency Agent Isolation.
 Protocol to safely disconnect or 'Eject' an agent from the environment.
 """
+
 from core.security.penalty_index import penalty_manager
+
 
 async def trigger_escape(did: str, reason: str):
     """

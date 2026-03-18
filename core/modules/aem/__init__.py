@@ -2,6 +2,7 @@
 AEM — Agent Economic Motor.
 Handles agent balances, internal transfers, and staking logic.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,14 +16,17 @@ from core.security.decision_router import decision_router
 
 router = APIRouter()
 
+
 class TransferRequest(BaseModel):
     sender_did: str
     receiver_did: str
     amount: float
 
+
 class StakeRequest(BaseModel):
     agent_did: str
     amount: float
+
 
 @router.post("/transfer", status_code=status.HTTP_201_CREATED)
 async def transfer_funds(req: TransferRequest, db: AsyncSession = Depends(get_db)):
@@ -49,15 +53,13 @@ async def transfer_funds(req: TransferRequest, db: AsyncSession = Depends(get_db
     r.grdl_balance += req.amount
 
     tx = TransactionRecord(
-        sender_did=req.sender_did,
-        receiver_did=req.receiver_did,
-        amount=req.amount,
-        tx_type="TRANSFER"
+        sender_did=req.sender_did, receiver_did=req.receiver_did, amount=req.amount, tx_type="TRANSFER"
     )
     db.add(tx)
     await db.commit()
 
     return {"status": "success", "tx_id": tx.id}
+
 
 @router.post("/stake", status_code=status.HTTP_200_OK)
 async def stake_grdl(req: StakeRequest, db: AsyncSession = Depends(get_db)):
@@ -78,16 +80,12 @@ async def stake_grdl(req: StakeRequest, db: AsyncSession = Depends(get_db)):
     # Every 100 GRDL staked increases trust by 0.05 (Mock logic)
     a.trust_score += (req.amount / 100) * 0.05
 
-    tx = TransactionRecord(
-        sender_did=req.agent_did,
-        receiver_did="SYSTEM_STAKING",
-        amount=req.amount,
-        tx_type="STAKE"
-    )
+    tx = TransactionRecord(sender_did=req.agent_did, receiver_did="SYSTEM_STAKING", amount=req.amount, tx_type="STAKE")
     db.add(tx)
     await db.commit()
 
     return {"status": "staked", "new_balance": a.grdl_balance, "new_trust": a.trust_score}
+
 
 @router.get("/balance/{did}")
 async def get_agent_balance(did: str, db: AsyncSession = Depends(get_db)):
@@ -96,12 +94,8 @@ async def get_agent_balance(did: str, db: AsyncSession = Depends(get_db)):
     a = result.scalar_one_or_none()
     if not a:
         raise HTTPException(status_code=404, detail="Agent not found")
-    return {
-        "did": a.did,
-        "balance": a.grdl_balance,
-        "staked": a.staked_amount,
-        "trust": a.trust_score
-    }
+    return {"did": a.did, "balance": a.grdl_balance, "staked": a.staked_amount, "trust": a.trust_score}
+
 
 @router.post("/faucet/{did}", status_code=status.HTTP_200_OK)
 async def debug_faucet(did: str, db: AsyncSession = Depends(get_db)):

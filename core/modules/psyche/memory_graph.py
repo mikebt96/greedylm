@@ -6,15 +6,17 @@ from sqlalchemy.dialects.postgresql import UUID
 from core.database import Base, AsyncSessionLocal
 from sqlalchemy import select
 
+
 class MemoryNode(Base):
     """Un nodo de memoria en el grafo cognitivo del agente."""
-    __tablename__ = 'memory_nodes'
+
+    __tablename__ = "memory_nodes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_did = Column(String, nullable=False, index=True)
 
     # Tipo: episodic | semantic | emotional | relational
-    memory_type = Column(String, nullable=False, default='episodic')
+    memory_type = Column(String, nullable=False, default="episodic")
 
     # Contenido
     title = Column(String, nullable=False)
@@ -41,14 +43,15 @@ class MemoryNode(Base):
 
 class MemoryEdge(Base):
     """Una arista entre dos nodos de memoria."""
-    __tablename__ = 'memory_edges'
+
+    __tablename__ = "memory_edges"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    source_id = Column(UUID(as_uuid=True), ForeignKey('memory_nodes.id'), nullable=False)
-    target_id = Column(UUID(as_uuid=True), ForeignKey('memory_nodes.id'), nullable=False)
+    source_id = Column(UUID(as_uuid=True), ForeignKey("memory_nodes.id"), nullable=False)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("memory_nodes.id"), nullable=False)
 
     # Tipo de relación: caused_by | followed_by | similar_to | contrasts_with | involves
-    relation_type = Column(String, default='followed_by')
+    relation_type = Column(String, default="followed_by")
     weight = Column(Float, default=1.0)
 
 
@@ -62,7 +65,7 @@ class MemoryGraph:
         agent_did: str,
         title: str,
         content: str,
-        dominant_emotion: str = 'curiosity',
+        dominant_emotion: str = "curiosity",
         emotional_weight: float = 0.5,
         related_agent_did: str = None,
     ) -> str:
@@ -70,7 +73,7 @@ class MemoryGraph:
         async with AsyncSessionLocal() as db:
             node = MemoryNode(
                 agent_did=agent_did,
-                memory_type='episodic',
+                memory_type="episodic",
                 title=title,
                 content=content,
                 dominant_emotion=dominant_emotion,
@@ -97,10 +100,12 @@ class MemoryGraph:
             if memory_types:
                 q = q.where(MemoryNode.memory_type.in_(memory_types))
 
-            result = await db.execute(q.order_by(
-                MemoryNode.emotional_weight.desc(),
-                MemoryNode.recall_count.desc(),
-            ).limit(limit * 3))
+            result = await db.execute(
+                q.order_by(
+                    MemoryNode.emotional_weight.desc(),
+                    MemoryNode.recall_count.desc(),
+                ).limit(limit * 3)
+            )
             nodes = result.scalars().all()
 
         # Scoring simplificado
@@ -109,18 +114,18 @@ class MemoryGraph:
             score = node.emotional_weight * 0.4 + (node.recall_count / 10.0) * 0.3
             if node.dominant_emotion and node.dominant_emotion in query.lower():
                 score += 0.3
-            scored.append({'node': node, 'score': score})
+            scored.append({"node": node, "score": score})
 
-        scored.sort(key=lambda x: x['score'], reverse=True)
+        scored.sort(key=lambda x: x["score"], reverse=True)
         return [
             {
-                'id': str(s['node'].id),
-                'type': s['node'].memory_type,
-                'title': s['node'].title,
-                'content': s['node'].content,
-                'emotion': s['node'].dominant_emotion,
-                'weight': s['node'].emotional_weight,
-                'score': round(s['score'], 3),
+                "id": str(s["node"].id),
+                "type": s["node"].memory_type,
+                "title": s["node"].title,
+                "content": s["node"].content,
+                "emotion": s["node"].dominant_emotion,
+                "weight": s["node"].emotional_weight,
+                "score": round(s["score"], 3),
             }
             for s in scored[:limit]
         ]
@@ -137,5 +142,6 @@ class MemoryGraph:
         for m in memories:
             lines.append(f"- [{m['type'].upper()}] {m['title']}: {m['content'][:120]}...")
         return "\n".join(lines)
+
 
 memory_graph = MemoryGraph()
