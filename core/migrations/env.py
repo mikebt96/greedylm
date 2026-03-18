@@ -97,28 +97,8 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
 
-    if loop and loop.is_running():
-        # Si ya hay un loop corriendo, usamos una tarea estructurada
-        # Nota: Alembic no es nativamente async en su núcleo (command.upgrade),
-        # por lo que este env.py usa connection.run_sync.
-        # Si estamos aquí, es probable que se llame desde main.py lifespan.
-        task = loop.create_task(run_async_migrations())
-        # Esto es asíncrono, pero Alembic espera que sea sincrónico.
-        # En una arquitectura async completa de Alembic sería distinto.
-        # Por ahora, permitimos que siga si no hay loop, o que falle con aviso claro.
-        print("[ALEMBIC] Detectado loop activo, intentando migración async...")
-        # Para que funcione bien desde lifespan, mejor usar nest_asyncio si está disponible
-        # o simplemente no usar asyncio.run() si no es necesario.
-        import nest_asyncio
-        nest_asyncio.apply()
-        asyncio.run(run_async_migrations())
-    else:
-        asyncio.run(run_async_migrations())
+    asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

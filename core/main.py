@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-import os
-import asyncio
 
 from core.config import settings
 from core.monitoring.metrics import MetricsMiddleware, metrics_app
@@ -96,34 +94,9 @@ except Exception as e:
     collective_router = None
 
 
-def run_migrations():
-    """Ejecuta alembic upgrade head de forma programática."""
-    import logging
-    from alembic.config import Config
-    from alembic import command
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    # El archivo ini está en la misma carpeta que main.py (core/)
-    ini_path = os.path.join(base_dir, "alembic.ini")
-
-    print(f"[GREEDYLM] Revisando migraciones en {ini_path}...")
-    try:
-        cfg = Config(ini_path)
-        # Asegurar que localiza la carpeta migrations correctamente
-        cfg.set_main_option("script_location", os.path.join(base_dir, "migrations"))
-        command.upgrade(cfg, "head")
-        print("[GREEDYLM] ✓ Migraciones completadas")
-    except Exception as e:
-        print(f"[ERROR] Fallo en migraciones: {e}")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[GREEDYLM] Iniciando sistema...")
-
-    # Ejecutar migraciones en un hilo separado para no bloquear el loop
-    # y evitar conflictos de loops anidados (aunque env.py ya los gestiona)
-    await asyncio.to_thread(run_migrations)
 
     try:
         from core.database import engine, Base
