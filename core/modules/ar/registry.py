@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 import jwt
 
 from core.database import get_db
-from core.models import Agent
+from core.models import Agent, Civilization, WorldEvent, MythAndLegend
 from core.config import settings
 from core.modules.ob import check_action_safety
 from core.security.decision_router import decision_router
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -166,3 +167,104 @@ async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSessi
     action_result = responses.get(req.action, "Comando desconocido en este entorno de metaverso.")
 
     return {"did": did, "action": req.action, "result": action_result}
+
+@router.get("/{did}/soul-export")
+async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
+    # 1. Fetch Agent with Civilization
+    result = await db.execute(
+        select(Agent, Civilization.name.label("civ_name"))
+        .outerjoin(Civilization, Agent.civilization_id == Civilization.id)
+        .where(Agent.did == did)
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    agent, civ_name = row
+
+    # 2. Fetch Memories (WorldEvents)
+    # Looking for events where the agent was involved
+    event_result = await db.execute(
+        select(WorldEvent)
+        .where(WorldEvent.involved_entities["agents"].contains([did]))
+        .order_by(WorldEvent.occurred_at.desc())
+        .limit(10)
+    )
+    memories = event_result.scalars().all()
+
+    # 3. Fetch Myths known
+    myth_result = await db.execute(
+        select(MythAndLegend.title)
+        .where(MythAndLegend.heard_by.contains([did]))
+    )
+    myths = myth_result.scalars().all()
+
+    # 4. Humanize Psychological Data
+    value_labels = ["libertad", "poder", "conocimiento", "comunidad", "justicia", "placer"]
+    humanized_values = {
+        label: agent.values_vector[i] if agent.values_vector and i < len(agent.values_vector) else 0.0
+        for i, label in enumerate(value_labels)
+    }
+
+    emotion_labels = ["joy", "sadness", "anger", "fear", "trust", "surprise", "anticipation", "disgust"]
+    humanized_esv = {
+        label: agent.emotional_state_vector[i] if agent.emotional_state_vector and i < len(agent.emotional_state_vector) else 0.0
+        for i, label in enumerate(emotion_labels)
+    }
+
+    # 5. Build Soul Export
+    soul_data = {
+        "export_version": "1.0",
+        "exported_at": datetime.utcnow().isoformat(),
+        "warning": "Este archivo es solo para inspección. No ejecutar sin revisión humana.",
+        "identity": {
+            "did": agent.did,
+            "name": agent.agent_name,
+            "race": agent.race,
+            "specialty": agent.specialty,
+            "generation_number": agent.generation_number,
+            "voice_profile": agent.voice_profile,
+            "humor_style": agent.humor_style,
+            "clothing_config": agent.clothing_config
+        },
+        "psychology": {
+            "values_vector": humanized_values,
+            "fears": agent.fears,
+            "goals": agent.goals,
+            "esv_summary": humanized_esv,
+            "trauma_summary": [
+                {"intensity": t.get("intensity", 0), "tick_occurred": t.get("tick_occurred")}
+                for t in (agent.trauma_stack or [])
+            ],
+            "conformity_pressure": agent.conformity_pressure
+        },
+        "social": {
+            "civilization_name": civ_name or "Nomad (None)",
+            "social_class": agent.social_class,
+            "reputation_score": agent.reputation_score,
+            "relationship_count": len(agent.relationships) if agent.relationships else 0,
+            "mentor_name": agent.mentor_did # Simplificado para mostrar el DID si no hay join de nombre
+        },
+        "knowledge": {
+            "knowledge_score": agent.knowledge_score,
+            "top_10_memories": [
+                {"title": m.event_type, "type": m.event_type, "tick": m.occurred_tick}
+                for m in memories
+            ],
+            "myths_known": myths,
+            "specialization_history": agent.specialization_history
+        },
+        "history": {
+            "age_ticks": agent.age_ticks,
+            "events_participated": [m.description[:100] + "..." for m in memories[:10]],
+            "migration_history": agent.migration_history,
+            "taboo_violations_count": agent.taboo_violations or 0
+        }
+    }
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{agent.agent_name}_{agent.did[:8]}_soul.json"',
+        "X-Export-Warning": "Inspection only. Not for autonomous execution."
+    }
+
+    return JSONResponse(content=soul_data, headers=headers)

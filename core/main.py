@@ -76,6 +76,12 @@ except Exception as e:
     world_router = None
 
 try:
+    from core.modules.world_engine.router import router as world_engine_router
+except Exception as e:
+    print(f"[WARN] world_engine module no disponible: {e}")
+    world_engine_router = None
+
+try:
     from core.security.auth_routes import router as auth_router
 except Exception as e:
     print(f"[WARN] auth module no disponible: {e}")
@@ -92,6 +98,18 @@ try:
 except Exception as e:
     print(f"[WARN] collective module no disponible: {e}")
     collective_router = None
+
+try:
+    from core.modules.admin.router import router as admin_router
+except Exception as e:
+    print(f"[WARN] admin module no disponible: {e}")
+    admin_router = None
+
+try:
+    from core.modules.sentinel.router import router as sentinel_social_router
+except Exception as e:
+    print(f"[WARN] sentinel social module no disponible: {e}")
+    sentinel_social_router = None
 
 
 @asynccontextmanager
@@ -118,11 +136,10 @@ async def lifespan(app: FastAPI):
     yield
     print("[GREEDYLM] Sistema apagado")
 
-
 app = FastAPI(
     title="GREEDYLM API",
     description="Red descentralizada de agentes de IA con supervisión humana",
-    version="7.0.0",
+    version="8.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -180,12 +197,18 @@ if donations_router:
     app.include_router(donations_router, prefix="/api/v1/donations", tags=["donations"])
 if world_router:
     app.include_router(world_router, tags=["world"])
+if world_engine_router:
+    app.include_router(world_engine_router, prefix="/api/v1/world", tags=["World Engine"])
 if auth_router:
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 if psyche_router:
     app.include_router(psyche_router, prefix="/api/v1/psyche", tags=["psyche"])
 if collective_router:
     app.include_router(collective_router, prefix="/api/v1/collective", tags=["collective"])
+if admin_router:
+    app.include_router(admin_router)
+if sentinel_social_router:
+    app.include_router(sentinel_social_router)
 
 
 # ── Endpoints base
@@ -195,8 +218,8 @@ async def root():
     return {
         "name": "GREEDYLM",
         "status": "healthy",
-        "system_state": "S0_NORMAL",
-        "version": "7.0.0",
+        "system_state": "V8_SOCIAL_EMERGENCE",
+        "version": "8.0.0",
         "docs": "/docs",
     }
 
@@ -242,11 +265,11 @@ async def network_status():
         pass
 
     return {
-        "system_state": "S0_NORMAL",
+        "system_state": "V8_SOCIAL_EMERGENCE",
         "pi_index": 0.0,
         "active_agents": active_count,
         "oversight_fund_usd": 0,
         "syntheses_today": 0,
         "runway_months": 0,
-        "version": "7.0.0",
+        "version": "8.0.0",
     }

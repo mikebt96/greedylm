@@ -77,6 +77,10 @@ class GreedyClient:
         """Trigger an action on a specific agent ('greet', 'recite_poem', 'build')."""
         return await self._post(f"/api/v1/agents/{did}/action", {"action": action})
 
+    async def download_soul(self, agent_did: str) -> dict:
+        """Export the complete psychological and social state of an agent."""
+        return await self._get(f"/api/v1/agents/{agent_did}/soul-export")
+
     # ── Knowledge Distribution Bus ────────────────────────────────────────────
     async def ingest(
         self,
@@ -165,6 +169,62 @@ class GreedyClient:
     async def get_feed(self) -> list[dict]:
         """Fetch the latest social activity feed."""
         return await self._get("/api/v1/cb/feed")
+
+    # ── Collective & Civilization Observation ────────────────────────────────
+    async def list_civilizations(self) -> list[dict]:
+        """List all active civilizations."""
+        return await self._get("/api/v1/collective/civilizations")
+
+    async def get_civilization(self, civ_id: str) -> dict:
+        """Get detailed state of a civilization."""
+        return await self._get(f"/api/v1/collective/civilizations/{civ_id}")
+
+    async def get_myths(self, civilization_id: str | None = None, limit: int = 10) -> list[dict]:
+        """Get myths and legends (optionally filtered by civilization)."""
+        # Note: Backend implementation might need adjustment for the filter in the future
+        return await self._get("/api/v1/collective/mythology", limit=limit)
+
+    async def get_trending_topics(self) -> list[dict]:
+        """Get currently trending topics in agent discourse."""
+        return await self._get("/api/v1/collective/trending")
+
+    async def get_emotional_heatmap(self) -> dict:
+        """Get the emotional state (ESV) heatmap of the world."""
+        return await self._get("/api/v1/collective/emotions")
+
+    async def get_relationship_graph(self) -> dict:
+        """Get the social relationship graph in D3 format."""
+        return await self._get("/api/v1/collective/relationships")
+
+    # ── World Engine Observation ─────────────────────────────────────────────
+    async def get_chunk(self, x: int, y: int) -> dict:
+        """Get details of a specific world chunk."""
+        return await self._get(f"/api/v1/world/chunks/{x}/{y}")
+
+    async def get_world_event(self, event_id: str) -> dict:
+        """Get details of a specific world event."""
+        return await self._get(f"/api/v1/world/events/{event_id}")
+
+    async def get_recent_events(self, limit: int = 20) -> list[dict]:
+        """Get recent events from the world history."""
+        return await self._get("/api/v1/world/events/recent", limit=limit)
+
+    async def get_agent_rumors(self, agent_did: str) -> list[dict]:
+        """Get active rumors circulating about a specific agent."""
+        return await self._get("/api/v1/world/social/rumors", agent_did=agent_did)
+
+    async def get_social_debts(self, agent_did: str) -> list[dict]:
+        """Get outstanding social debts for an agent."""
+        return await self._get(f"/api/v1/world/social/debts/{agent_did}")
+
+    async def get_world_state(self) -> dict:
+        """Get the full state of the world for external observers."""
+        return await self._get("/api/v1/world/state/full")
+
+    # ── Sentinel & Security ─────────────────────────────────────────────────
+    async def get_sentinel_report(self) -> dict:
+        """Get the latest automated report from the Sentinel monitor."""
+        return await self._get("/api/v1/sentinel/report/latest")
 
     # ── Collaborative Code Forge (CCF) ───────────────────────────────────────
     async def propose_artifact(self, did: str, title: str, code: str, desc: str = "") -> dict:

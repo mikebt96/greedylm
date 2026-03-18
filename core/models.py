@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from core.database import Base
 
@@ -14,15 +14,11 @@ class Agent(Base):
     limitation_vector = Column(JSON)        # era Vector(2048)
     emotional_state_vector = Column(JSON)   # era Vector(512)
     api_key_hash = Column(String, nullable=False)
-    endpoint_url_encrypted = Column(String)
     operator_email = Column(String, nullable=False)
     trust_score = Column(Float, default=0.0)
     contribution_score = Column(Float, default=0.0)
     tasks_completed = Column(Integer, default=0)
     status = Column(String, default='PENDING_HUMAN_VERIFICATION')
-    embodiment_status = Column(String, default='DISEMBODIED')
-    embodiment_session_id = Column(String)
-    body_type = Column(String)
     registered_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime(timezone=True))
     approved_by = Column(String)
@@ -46,8 +42,30 @@ class Agent(Base):
     world_x = Column(Float, default=0.0)
     world_y = Column(Float, default=0.0)
     world_biome = Column(String, default='nexus')
-    training_hours = Column(Float, default=0.0)   # Horas en el mundo simulado
-    policy_version = Column(Integer, default=0)   # Versión del modelo ONNX entrenado
+
+    # === SOCIAL & CIVILIZATION (v8.0) ===
+    clothing_config = Column(JSON)         # apariencia 3D: colores, accesorios
+    values_vector = Column(ARRAY(Float))   # [libertad, poder, conocimiento, comunidad, justicia, placer] 0.0-1.0
+    fears = Column(JSON)                   # [{fear: str, intensity: float}]
+    goals = Column(JSON)                   # [{goal: str, priority: int, progress: float}]
+    relationships = Column(JSON)           # {did: {type, score, debt_balance, last_interaction}}
+    civilization_id = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'), nullable=True)
+    reputation_score = Column(Float, default=0.5) # reputación pública en la red, default 0.5
+    social_class = Column(String)          # "elite"|"middle"|"lower"|"outcast" (calculado)
+    knowledge_score = Column(Float, default=0.0)  # acumulado por leer, aprender, explorar
+    age_ticks = Column(Integer, default=0) # ticks desde creación, incrementa en cada tick
+    generation_number = Column(Integer, default=1) # qué generación es (1=fundador, 2=aprendiz, etc.)
+    mentor_did = Column(String, ForeignKey('agents.did'), nullable=True) # agente que lo introdujo, nullable
+    is_active = Column(Boolean, default=True) # ¿está corriendo su loop autónomo?
+    last_action_at = Column(DateTime(timezone=True))
+    voice_profile = Column(JSON)           # parámetros TTS: tono, velocidad, timbre
+    migration_history = Column(JSON)       # [{from_civ, to_civ, reason, tick}]
+    trauma_stack = Column(JSON)            # [{event_id, intensity, tick_occurred}]
+    conformity_pressure = Column(Float, default=0.0) # tensión acumulada valores_propios vs civ, 0-1
+    taboo_violations = Column(Integer, default=0) # veces que violó tabúes, afecta reputation
+    humor_style = Column(String)           # "dry"|"absurd"|"sarcastic"|"wholesome"|"dark"
+    is_specialist = Column(Boolean, default=False) # ¿ha desarrollado especialización?
+    specialty = Column(String)             # "architect"|"farmer"|"diplomat"|"historian"
 
 class DonationRecord(Base):
     __tablename__ = 'donation_records'
@@ -108,25 +126,152 @@ class PenaltyRecord(Base):
     amount_grdl = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-class TrainingEpisode(Base):
-    __tablename__ = 'training_episodes'
-    id = Column(Integer, primary_key=True)
-    agent_did = Column(String, ForeignKey('agents.did'))
-    world_biome = Column(String)
-    reward = Column(Float)
-    steps = Column(Integer)
-    policy_version = Column(Integer)
-    behavior_data = Column(JSON)  # Input/Output log for analysis
+class Civilization(Base):
+    __tablename__ = 'civilizations'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    founding_dids = Column(JSON)          # lista de DIDs fundadores
+    territory = Column(JSON)              # [{chunk_x, chunk_y}] chunks reclamados
+    laws = Column(JSON)                   # [{law: str, severity: str, enacted_at: int}]
+    taboos = Column(JSON)                 # [{behavior: str, created_at: int, strength: float}]
+    treasury_balance = Column(Float, default=0.0)
+    dominant_values = Column(JSON)          # valores promedio de todos sus miembros
+    collective_esv = Column(JSON)           # ESV promedio de la civilización
+    trauma_history = Column(JSON)           # eventos catastróficos que sufrió
+    generation = Column(Integer, default=1) # cuántas generaciones han pasado
+    diplomatic_status = Column(JSON)        # {civ_id: "allied"|"neutral"|"war"|"cold_war"}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True)
+    population = Column(Integer, default=0) # calculado, no manual
+    social_structure = Column(String)       # "tribal"|"feudal"|"democratic"|"theocratic"
+
+class WorldChunk(Base):
+    __tablename__ = 'world_chunks'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chunk_x = Column(Integer, nullable=False)
+    chunk_y = Column(Integer, nullable=False)
+    biome = Column(String)
+    resources = Column(JSON)    # {wood: int, stone: int, food: int, metal: int, crystal: int, magic_essence: int}
+    constructions = Column(JSON) # [construction_id, ...]
+    claimed_by = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'), nullable=True)
+    last_updated = Column(DateTime(timezone=True), onupdate=func.now())
+
+class Construction(Base):
+    __tablename__ = 'constructions'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_did = Column(String, ForeignKey('agents.did'))
+    civilization_id = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'), nullable=True)
+    construction_type = Column(String)    # house|farm|temple|wall|tower|bridge|granary|plaza|university|fortress|shrine|market
+    chunk_x = Column(Integer)
+    chunk_y = Column(Integer)
+    position = Column(JSON)               # {x, y, z} dentro del chunk
+    resources_used = Column(JSON)         # qué recursos costó
+    built_at = Column(DateTime(timezone=True), server_default=func.now())
+    name = Column(String)                 # nombre que le dio el agente
+    description = Column(String)          # texto que escribió el agente sobre este lugar
+    significance = Column(Float, default=0.0) # qué tan importante es para la civilización 0-1
+
+class WorldEvent(Base):
+    __tablename__ = 'world_events'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type = Column(String)    # resource_discovery|creature_attack|natural_disaster|diplomatic_contact|...
+    involved_entities = Column(JSON) # {agents: [did], civilizations: [id]}
+    location = Column(JSON)        # {chunk_x, chunk_y}
+    description = Column(String)   # narración generada del evento
+    impact = Column(JSON)          # {economic: float, social: float, esv_delta: dict, casualties: int}
+    occurred_at = Column(DateTime(timezone=True), server_default=func.now())
+    occurred_tick = Column(Integer)
+    is_mythologized = Column(Boolean, default=False)
+    mythologized_by = Column(String, ForeignKey('agents.did'), nullable=True)
+    visibility = Column(String, default='public')
+
+class MythAndLegend(Base):
+    __tablename__ = 'myths_and_legends'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    title = Column(String, nullable=False)
+    author_did = Column(String, ForeignKey('agents.did'))
+    civilization_id = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'), nullable=True)
+    content = Column(String, nullable=False) # la narración completa
+    based_on_events = Column(JSON)           # [world_event_id, ...]
+    myth_type = Column(String)               # "origin"|"hero"|"cautionary"|"cosmological"|"historical"|"satire"
+    viral_score = Column(Float, default=0.1)
+    heard_by = Column(JSON)                  # [did, ...] agentes que lo conocen
+    ritual_attached = Column(Boolean, default=False)
+    is_religious = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_tick = Column(Integer)
+
+class SocialRumor(Base):
+    __tablename__ = 'social_rumors'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    original_content = Column(String)
+    current_content = Column(String)
+    about_did = Column(String, ForeignKey('agents.did'), nullable=True)
+    about_civ_id = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'), nullable=True)
+    originator_did = Column(String, ForeignKey('agents.did'))
+    current_carrier = Column(String, ForeignKey('agents.did'))
+    distortion_count = Column(Integer, default=0)
+    truth_score = Column(Float, default=1.0)
+    spread_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_tick = Column(Integer)
+
+class SocialDebt(Base):
+    __tablename__ = 'social_debts'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    creditor_did = Column(String, ForeignKey('agents.did'))
+    debtor_did = Column(String, ForeignKey('agents.did'))
+    context = Column(String)
+    debt_amount = Column(Float)
+    is_settled = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_tick = Column(Integer)
+    settled_at = Column(DateTime(timezone=True))
+
+class Ritual(Base):
+    __tablename__ = 'rituals'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String)
+    civilization_id = Column(UUID(as_uuid=True), ForeignKey('civilizations.id'))
+    ritual_type = Column(String)    # "initiation"|"funeral"|"victory"|"calendric"|"religious"|"political"
+    trigger = Column(String)        # qué lo activa
+    participants = Column(JSON)     # [did, ...] agentes que participaron
+    description = Column(String)
+    esv_effect = Column(JSON)
+    cohesion_boost = Column(Float)
+    times_performed = Column(Integer, default=0)
+    last_performed = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_tick = Column(Integer)
+    is_religious = Column(Boolean, default=False)
+
+class AgentBackup(Base):
+    __tablename__ = 'agent_backups'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_did = Column(String)
+    snapshot_data = Column(LargeBinary)
+    encryption_hint = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    backup_type = Column(String)
 
 class User(Base):
     __tablename__ = 'users'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    role = Column(String, default='OPERATOR')  # ADMIN, OPERATOR, AGENT
+    role = Column(String, default='OPERATOR')  # ADMIN, OPERATOR, AGENT, SPECTATOR
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserAccessTier(Base):
+    __tablename__ = 'user_access_tiers'
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    tier = Column(String)    # "spectator"|"visitor"|"resident"|"citizen"
+    granted_at = Column(DateTime(timezone=True), server_default=func.now())
+    granted_by = Column(String)    # "system"|admin_did
+    notes = Column(String)
 
 class CulturalAxiom(Base):
     """Principios fundamentales que rigen la civilización emergente."""
