@@ -127,7 +127,6 @@ async def get_active_agents(db: AsyncSession = Depends(get_db)):
             "world_x": a.world_x or 0.0,
             "world_y": a.world_y or 0.0,
             "world_biome": a.world_biome or "nexus",
-            "training_hours": a.training_hours or 0.0,
         }
         for a in agents
     ]
@@ -251,7 +250,6 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
                 {"title": m.event_type, "type": m.event_type, "tick": m.occurred_tick} for m in memories
             ],
             "myths_known": myths,
-            "specialization_history": agent.specialization_history,
         },
         "history": {
             "age_ticks": agent.age_ticks,

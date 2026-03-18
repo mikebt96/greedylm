@@ -1,14 +1,38 @@
 """
 World Module — WebSocket hub para el mundo del juego en tiempo real.
-Los agentes reportan posición, acciones y estado de entrenamiento.
+Los agentes reportan posición, acciones y estado.
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from core.modules.pe.distributed_hub import metaverse_hub
 import json
 import asyncio
 
 router = APIRouter()
+
+
+# ── Simple in-process hub (replaces deleted pe.distributed_hub) ────────────────
+class _MetaverseHub:
+    def __init__(self):
+        self._connections: dict[str, WebSocket] = {}
+
+    async def connect(self, ws: WebSocket, agent_did: str):
+        self._connections[agent_did] = ws
+
+    async def disconnect(self, agent_did: str):
+        self._connections.pop(agent_did, None)
+
+    async def publish_event(self, event_type: str, data: dict):
+        dead = []
+        for did, ws in self._connections.items():
+            try:
+                await ws.send_text(json.dumps(data))
+            except Exception:
+                dead.append(did)
+        for d in dead:
+            self._connections.pop(d, None)
+
+
+metaverse_hub = _MetaverseHub()
 
 
 @router.websocket("/ws/world")
@@ -32,7 +56,7 @@ async def world_websocket(websocket: WebSocket):
             from sqlalchemy import select
 
             async with AsyncSessionLocal() as db:
-                result = await db.execute(select(Agent).where(Agent.status == "ACTIVE").limit(100))
+                result = await db.execute(select(Agent).where(Agent.is_active.is_(True)).limit(100))
                 agents = result.scalars().all()
                 state = {
                     "type": "WORLD_STATE",
@@ -45,7 +69,6 @@ async def world_websocket(websocket: WebSocket):
                             "world_x": a.world_x or 200.0,
                             "world_y": a.world_y or 200.0,
                             "trust_score": a.trust_score or 0.0,
-                            "training_hours": a.training_hours or 0.0,
                         }
                         for a in agents
                     ],

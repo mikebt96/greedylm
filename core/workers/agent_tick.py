@@ -9,7 +9,7 @@ from core.modules.world_engine.chunks import chunk_manager
 from core.modules.world_engine.resources import resource_manager
 from core.modules.world_engine.social_dynamics import social_dynamics
 from core.modules.world_engine.events import event_engine
-from core.modules.psyche.engine import psyche_engine
+from core.modules.psyche.engine import psyche_engine, EMOTION_DIMS
 from core.modules.psyche.memory_graph import memory_graph
 from core.llm.client import llm_client
 from core.security.decision_router import decision_router
@@ -18,20 +18,12 @@ from core.workers.celery_app import celery_app
 
 @celery_app.task(name="agent.tick")
 def agent_tick(agent_did: str):
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.ensure_future(_async_agent_tick(agent_did))
-    else:
-        loop.run_until_complete(_async_agent_tick(agent_did))
+    asyncio.run(_async_agent_tick(agent_did))
 
 
 @celery_app.task(name="agent.trigger_all")
 def trigger_all_agents():
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.ensure_future(_async_trigger_all())
-    else:
-        loop.run_until_complete(_async_trigger_all())
+    asyncio.run(_async_trigger_all())
 
 
 async def _async_trigger_all():
@@ -175,7 +167,7 @@ Deudas pendientes: {world_context["pending_debts"]}
         delta = decision.get("emotion_delta", {})
         # Note: applying delta manually as process_event triggers specific types
         current_esv = agent.emotional_state_vector or [0.5] * 8
-        for i, (emotion, d) in enumerate(psyche_engine.EMOTION_DIMS.items()):
+        for i, (emotion, d) in enumerate(EMOTION_DIMS.items()):
             if emotion in delta:
                 current_esv[d] = max(0, min(1.0, current_esv[d] + delta[emotion]))
         agent.emotional_state_vector = current_esv

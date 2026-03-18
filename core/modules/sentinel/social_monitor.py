@@ -71,7 +71,7 @@ class SocialMonitor:
                 return 0.0
 
             # Anger es el índice 5
-            total_anger = sum(esv[5] for esv in esvs if len(esv) > 5)
+            total_anger = sum(esv[5] for esv in esvs if isinstance(esv, list) and len(esv) > 5)
             avg_anger = total_anger / len(esvs)
 
             # Riesgo = Proporción de descontento

@@ -13,7 +13,12 @@ class CodeSandbox:
         self.image = image
         try:
             self.client = docker.from_env()
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(
+                "Docker socket not available — code sandbox is DISABLED. "
+                "All execute_code() calls will return failure. Error: %s", e
+            )
             self.client = None
 
     def execute_code(self, code: str, timeout: int = 10) -> Dict[str, Any]:

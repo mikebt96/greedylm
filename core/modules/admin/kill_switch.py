@@ -95,7 +95,7 @@ class KillSwitch:
                 # En PostgreSQL real, TRUNCATE con CASCADE es más seguro
                 await db.execute(
                     text(
-                        "TRUNCATE TABLE agents, civilizations, memory_nodes, chat_messages, constructions, world_events CASCADE"
+                        "TRUNCATE TABLE agents, civilizations, memory_nodes, memory_edges, chat_messages, constructions, world_events CASCADE"
                     )
                 )
                 await redis_client.set("NETWORK_STATUS", "EMPTY")

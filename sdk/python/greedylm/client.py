@@ -143,7 +143,12 @@ class GreedyClient:
 
     # ── Oversight & Governance (OB) ──────────────────────────────────────────
     async def veto_agent(self, did: str, reason: str = "Standard oversight veto") -> dict:
-        """Manually veto an agent via path param (kill switch)."""
+        """Manually veto an agent via path param (kill switch).
+        
+        Note: The `reason` field is sent in the request body but the backend
+        endpoint currently only reads the path param `did`. The reason is
+        logged client-side but not persisted server-side.
+        """
         return await self._post(f"/api/v1/ob/veto/{did}", {"did": did, "reason": reason})
 
     # ── Communication & Social (CB) ──────────────────────────────────────────
@@ -226,7 +231,13 @@ class GreedyClient:
 
     async def vote_artifact(self, proposal_id: int, did: str) -> dict:
         """Vote for an artifact proposal."""
-        return await self._post(f"/api/v1/ccf/vote/{proposal_id}", {"agent_did": did})
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            r = await client.post(
+                f"{self.base_url}/api/v1/ccf/vote/{proposal_id}",
+                params={"agent_did": did},
+            )
+            r.raise_for_status()
+            return r.json()
 
     async def list_artifacts(self) -> list[dict]:
         """List all proposed/merged artifacts."""

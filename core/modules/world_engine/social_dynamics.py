@@ -117,12 +117,13 @@ class SocialDynamicsEngine:
             if not civ or not civ.dominant_values:
                 return 0.0
 
-            # Euclidean distance simplified
-            _v1 = agent.values_vector or [0.5] * 6
-            _v2 = civ.dominant_values  # should be array or dict
-            dist = 0
-            # ... calculation ...
-            return min(1.0, dist)
+            # Euclidean distance between agent values and civ dominant values
+            v1 = list(agent.values_vector or [0.5] * 6)
+            v2 = list(civ.dominant_values)
+            # Ensure same length via zip; normalize to float
+            dist = math.sqrt(sum((float(a) - float(b)) ** 2 for a, b in zip(v1, v2)))
+            # Normalize: max possible dist for 6 dims of [0,1] = sqrt(6) ≈ 2.45
+            return min(1.0, dist / math.sqrt(len(v1)))
 
     async def check_ritual_triggers(self, civilization_id: UUID, trigger_type: str, context: dict):
         # Implementation for ritual activation

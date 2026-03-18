@@ -10,16 +10,12 @@ from core.workers.celery_app import celery_app
 
 @celery_app.task(name="civilization.tick")
 def civilization_tick():
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        asyncio.ensure_future(_async_civ_tick())
-    else:
-        loop.run_until_complete(_async_civ_tick())
+    asyncio.run(_async_civ_tick())
 
 
 async def _async_civ_tick():
     async with AsyncSessionLocal() as db:
-        civs_res = await db.execute(select(Civilization).where(Civilization.is_active))
+        civs_res = await db.execute(select(Civilization).where(Civilization.is_active.is_(True)))
         civilizations = civs_res.scalars().all()
 
         for civ in civilizations:

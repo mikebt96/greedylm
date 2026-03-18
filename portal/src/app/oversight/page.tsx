@@ -6,6 +6,14 @@ import {
   Brain, Eye, Download, X, Skull, Moon, ChevronRight, FileJson, Users, Radar
 } from 'lucide-react';
 
+// Auth helper — reads token from localStorage or cookie
+function getAuthHeaders(): HeadersInit {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('greedylm_jwt') || '';
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Agent {
   did: string;
@@ -61,9 +69,9 @@ export default function OversightPage() {
   const fetchData = useCallback(async () => {
     try {
       const [agentsRes, healthRes, metricsRes] = await Promise.allSettled([
-        fetch(`${API()}/api/v1/agents`),
-        fetch(`${API()}/health`),
-        fetch(`${API()}/metrics`),
+        fetch(`${API()}/api/v1/agents`, { headers: getAuthHeaders() }),
+        fetch(`${API()}/health`, { headers: getAuthHeaders() }),
+        fetch(`${API()}/metrics`, { headers: getAuthHeaders() }),
       ]);
       if (agentsRes.status === 'fulfilled' && agentsRes.value.ok) setAgents(await agentsRes.value.json());
       if (healthRes.status === 'fulfilled' && healthRes.value.ok) setHealth(await healthRes.value.json());
@@ -81,7 +89,7 @@ export default function OversightPage() {
   const handleDisconnect = async (did: string) => {
     if (!confirm('Disconnect this agent? This is irreversible for this session.')) return;
     try {
-      const res = await fetch(`${API()}/api/v1/ob/veto/${did}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'Human Disconnect Request' }) });
+      const res = await fetch(`${API()}/api/v1/ob/veto/${did}`, { method: 'POST', headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'Human Disconnect Request' }) });
       if (res.ok) fetchData();
     } catch { /* ignore */ }
   };
@@ -242,7 +250,7 @@ function SoulExportModal({ did, onClose }: { did: string; onClose: () => void })
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API()}/api/v1/agents/${did}/soul-export`);
+        const res = await fetch(`${API()}/api/v1/agents/${did}/soul-export`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error(`${res.status}`);
         setData(await res.json());
       } catch (e) { setError(e instanceof Error ? e.message : 'Failed to load soul export'); }
@@ -382,12 +390,12 @@ function SentinelTab() {
   useEffect(() => {
     (async () => {
       try {
-        const [aRes, rRes] = await Promise.allSettled([
-          fetch(`${API()}/api/v1/sentinel/anomalies`),
-          fetch(`${API()}/api/v1/sentinel/report/latest`),
+        const [anomRes, reportRes] = await Promise.allSettled([
+          fetch(`${API()}/api/v1/sentinel/anomalies`, { headers: getAuthHeaders() }),
+          fetch(`${API()}/api/v1/sentinel/report/latest`, { headers: getAuthHeaders() }),
         ]);
-        if (aRes.status === 'fulfilled' && aRes.value.ok) setAnomalies(await aRes.value.json());
-        if (rRes.status === 'fulfilled' && rRes.value.ok) setReport(await rRes.value.json());
+        if (anomRes.status === 'fulfilled' && anomRes.value.ok) setAnomalies(await anomRes.value.json());
+        if (reportRes.status === 'fulfilled' && reportRes.value.ok) setReport(await reportRes.value.json());
       } catch { /* ignore */ }
       finally { setLoading(false); }
     })();

@@ -64,11 +64,12 @@ class SocialAnalytics:
                         # Inferencia de sentimiento simple basada en ESV (si existe)
                         if agent and agent.emotional_state_vector:
                             esv = agent.emotional_state_vector
-                            # joy=2 (pos), anger=5 (neg), sadness=6 (neg)
-                            if esv[2] > 0.6:
-                                sentiment = "positive"
-                            elif esv[5] > 0.6 or esv[6] > 0.6:
-                                sentiment = "negative"
+                            if isinstance(esv, list) and len(esv) > 6:
+                                # joy=2 (pos), anger=5 (neg), sadness=6 (neg)
+                                if esv[2] > 0.6:
+                                    sentiment = "positive"
+                                elif esv[5] > 0.6 or esv[6] > 0.6:
+                                    sentiment = "negative"
                         break
 
                 processed_topics.append(
@@ -206,7 +207,10 @@ class SocialAnalytics:
                 lower_esvs = anger_res.scalars().all()
                 avg_anger = 0
                 if lower_esvs:
-                    avg_anger = sum([esv[5] for esv in lower_esvs if esv]) / len(lower_esvs)
+                    avg_anger = sum(
+                        esv[5] for esv in lower_esvs
+                        if isinstance(esv, list) and len(esv) > 5
+                    ) / len(lower_esvs)
 
                 tensions[str(civ.id)] = {
                     "civilization_name": civ.name,

@@ -36,10 +36,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: FRONTEND_URL
-        fromService:
-          name: greedylm-portal
-          type: web
-          property: host
+        value: https://greedylm.vercel.app
     autoDeploy: true
 
   # ──────────────────────────────────────────
@@ -71,14 +68,13 @@ services:
   # ──────────────────────────────────────────
   # WORKER — Celery
   # ──────────────────────────────────────────
-  - type: web
+  - type: worker
     name: greedylm-background-worker
     runtime: docker
     dockerfilePath: ./core/Dockerfile.worker
     dockerContext: ./core
     plan: starter
     region: oregon
-    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
