@@ -10,7 +10,8 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from sqlalchemy import select, delete
 from core.database import AsyncSessionLocal
-from core.models import Agent, AgentBackup, MemoryNode, SocialDebt, SocialPost
+from core.models import Agent, AgentBackup, SocialDebt, SocialPost
+from core.modules.psyche.memory_graph import MemoryNode
 from core.config import settings
 
 

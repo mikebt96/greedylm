@@ -59,7 +59,6 @@ export class TerrainGenerator {
         return scales[biome] || 1.0;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public generateVegetation(_biome: string): THREE.Group {
         const group = new THREE.Group();
         // Placeholder for procedural vegetation

@@ -8,7 +8,6 @@ import { WorldEngine } from '@/lib/three/WorldEngine';
 import { TerrainGenerator } from '@/lib/three/TerrainGenerator';
 import { AgentMesh } from '@/lib/three/AgentMesh';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SceneContent = ({ onAgentSelect }: { onAgentSelect: (did: string) => void }) => {
     const { scene } = useThree();
     const engineRef = useRef<WorldEngine>(new WorldEngine());
@@ -17,6 +16,7 @@ const SceneContent = ({ onAgentSelect }: { onAgentSelect: (did: string) => void 
 
     useEffect(() => {
         // Initial setup
+        // eslint-disable-next-line react-hooks/immutability
         scene.background = new THREE.Color(0x87ceeb);
         
         // Mock: Load initial chunks

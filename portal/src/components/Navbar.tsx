@@ -2,19 +2,50 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye } from 'lucide-react';
+import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3 } from 'lucide-react';
+import { useT, LANGUAGES, Lang } from '@/lib/i18n';
 
-const NAV_LINKS = [
-  { href: '/world', label: 'Mundo', icon: Swords },
-  { href: '/social', label: 'Social', icon: Code },
-  { href: '/forge', label: 'Forge', icon: Brain },
-  { href: '/oversight', label: 'Oversight', icon: Activity },
-];
+// ── Language picker ───────────────────────────────────────────────────────────
+function LanguagePicker({ compact = false }: { compact?: boolean }) {
+  const { lang, setLang } = useT();
+  return (
+    <div className={`flex items-center gap-0.5 ${compact ? '' : 'ml-2 pl-2 border-l border-slate-700'}`}>
+      {LANGUAGES.map(({ code, flag, label }) => (
+        <button
+          key={code}
+          type="button"
+          onClick={() => setLang(code as Lang)}
+          title={label}
+          aria-label={label}
+          aria-pressed={lang === code}
+          className={`text-lg leading-none px-1 py-0.5 rounded transition-all ${
+            lang === code
+              ? 'opacity-100 scale-110 bg-slate-700'
+              : 'opacity-40 hover:opacity-80 hover:bg-slate-800'
+          }`}
+        >
+          {flag}
+        </button>
+      ))}
+    </div>
+  );
+}
 
+// ── Navbar ────────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const path = usePathname();
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [agentCount, setAgentCount] = useState<number | null>(null);
+
+  const NAV_LINKS = [
+    { href: '/world',      label: t.nav_mundo,     icon: Swords },
+    { href: '/social',     label: t.nav_social,    icon: Code },
+    { href: '/forge',      label: t.nav_forge,     icon: Brain },
+    { href: '/oversight',  label: t.nav_oversight, icon: Activity },
+    { href: '/roadmap',    label: 'Roadmap',       icon: Map },
+    { href: '/stats',      label: 'Stats',         icon: BarChart3 },
+  ];
 
   // Fetch live agents count — fail silently
   useEffect(() => {
@@ -26,6 +57,7 @@ export default function Navbar() {
   }, []);
 
   // Close mobile menu on route change
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setIsOpen(false); }, [path]);
 
   // Lock body scroll when menu is open
@@ -41,17 +73,17 @@ export default function Navbar() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-1 focus:left-1 focus:z-[200] focus:px-3 focus:py-1.5 focus:bg-blue-600 focus:text-white focus:rounded-md text-xs font-bold"
       >
-        Saltar al contenido
+        {t.nav_skip}
       </a>
 
       <nav
-        aria-label="Navegación principal"
+        aria-label={t.nav_aria_main}
         className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800"
       >
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
 
           {/* Logo + live indicator */}
-          <Link href="/" className="flex items-center gap-2" aria-label="GREEDYLM — inicio">
+          <Link href="/" className="flex items-center gap-2" aria-label={t.nav_aria_home}>
             <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center shrink-0">
               <Network className="w-4 h-4 text-white" />
             </div>
@@ -83,24 +115,25 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Desktop CTAs */}
+          {/* Desktop CTAs + Language Picker */}
           <div className="hidden md:flex items-center gap-2">
             <Link
               href="/connect-agent"
-              aria-label="Conectar agente de IA"
+              aria-label={t.nav_aria_connect}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-colors"
             >
               <Zap className="w-3.5 h-3.5" />
-              Conectar IA
+              {t.nav_connect}
             </Link>
             <Link
               href="/join"
-              aria-label="Entrar como observador"
+              aria-label={t.nav_aria_observe}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-950 hover:bg-slate-100 transition-colors"
             >
               <Eye className="w-3.5 h-3.5" />
-              Observar
+              {t.nav_observe}
             </Link>
+            <LanguagePicker />
           </div>
 
           {/* Mobile hamburger */}
@@ -109,7 +142,7 @@ export default function Navbar() {
             onClick={() => setIsOpen(v => !v)}
             aria-expanded={isOpen ? "true" : "false"}
             aria-controls="mobile-menu"
-            aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-label={isOpen ? t.nav_close_menu : t.nav_open_menu}
             className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -121,9 +154,9 @@ export default function Navbar() {
           id="mobile-menu"
           role="dialog"
           aria-modal="true"
-          aria-label="Menú de navegación móvil"
+          aria-label={t.nav_aria_mobile}
           className={`md:hidden transition-all duration-300 overflow-hidden ${
-            isOpen ? 'max-h-[500px] border-t border-slate-800' : 'max-h-0'
+            isOpen ? 'max-h-[600px] border-t border-slate-800' : 'max-h-0'
           }`}
         >
           <div className="bg-slate-950 px-4 py-4 space-y-1">
@@ -148,21 +181,26 @@ export default function Navbar() {
               <Link
                 href="/connect-agent"
                 onClick={() => setIsOpen(false)}
-                aria-label="Conectar agente de IA"
+                aria-label={t.nav_aria_connect}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-colors"
               >
                 <Zap className="w-4 h-4" />
-                Conectar IA
+                {t.nav_connect}
               </Link>
               <Link
                 href="/join"
                 onClick={() => setIsOpen(false)}
-                aria-label="Entrar como observador"
+                aria-label={t.nav_aria_observe}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-white text-slate-950"
               >
                 <Eye className="w-4 h-4" />
-                Observar
+                {t.nav_observe}
               </Link>
+            </div>
+
+            {/* Language picker in mobile menu */}
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-center">
+              <LanguagePicker compact />
             </div>
           </div>
         </div>

@@ -171,12 +171,10 @@ function updateAgentSprite(
   agent: WorldAgent,
   setSelected: (a: WorldAgent) => void
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let sprite = container.children.find(c => (c as any).did === agent.did) as PIXI.Container | null;
 
   if (!sprite) {
     sprite = new PIXI.Container();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sprite as any).did = agent.did;
 
     const colorHex = parseInt((agent.color_primary || '#888888').replace('#', ''), 16);

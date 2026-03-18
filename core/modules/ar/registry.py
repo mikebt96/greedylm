@@ -47,11 +47,6 @@ class AgentProfile(BaseModel):
     color_secondary: str | None = None
 
 
-def encrypt(data: str | None) -> str | None:
-    # TODO: Implement proper AES encryption using settings.ENCRYPTION_KEY
-    if not data:
-        return None
-    return f"ENC[{data}]"
 
 
 def create_jwt(did: str, scope: str, expires_days: int) -> str:
@@ -75,14 +70,9 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
         capabilities=profile.capabilities,
         api_key_hash=profile.api_key_hash,
         operator_email=profile.operator_email,
-        endpoint_url_encrypted=encrypt(profile.endpoint_url),
         status=AgentStatus.ACTIVE if profile.direct_enroll else AgentStatus.PENDING,
         capability_vector=cap_vector,
         trust_score=0.0,
-        embodiment_status="DISEMBODIED"
-        if not profile.embodiment or not profile.embodiment.has_physical_body
-        else "PENDING_CONSENT",
-        body_type=profile.embodiment.body_type if profile.embodiment else None,
         persona_description=profile.persona_description,
         avatar_url=profile.avatar_url,
     )

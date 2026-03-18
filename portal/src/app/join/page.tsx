@@ -5,8 +5,9 @@ import {
   Eye, EyeOff, CheckCircle2, Globe, BookOpen, Map, Heart,
   AlertCircle, Loader2, ArrowRight, ChevronRight
 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 
-// ── Tipos ────────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 type FormState = 'idle' | 'loading' | 'success' | 'error';
 
 interface FieldErrors {
@@ -16,8 +17,9 @@ interface FieldErrors {
   terms?: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-function passwordStrength(pw: string): { score: number; label: string; color: string } {
+// ── Password strength (uses translations) ────────────────────────────────────
+function usePasswordStrength(pw: string) {
+  const { t } = useT();
   let score = 0;
   if (pw.length >= 8) score++;
   if (/[A-Z]/.test(pw)) score++;
@@ -25,27 +27,17 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const map = [
     { label: '', color: 'bg-slate-700' },
-    { label: 'Débil', color: 'bg-red-500' },
-    { label: 'Regular', color: 'bg-amber-500' },
-    { label: 'Buena', color: 'bg-blue-500' },
-    { label: 'Fuerte', color: 'bg-emerald-500' },
+    { label: t.join_pw_weak,   color: 'bg-red-500' },
+    { label: t.join_pw_fair,   color: 'bg-amber-500' },
+    { label: t.join_pw_good,   color: 'bg-blue-500' },
+    { label: t.join_pw_strong, color: 'bg-emerald-500' },
   ];
   return { score, ...map[score] };
 }
 
-function validate(username: string, email: string, password: string, terms: boolean): FieldErrors {
-  const errors: FieldErrors = {};
-  if (!username || username.length < 3) errors.username = 'Mínimo 3 caracteres.';
-  else if (!/^[a-zA-Z0-9-]+$/.test(username)) errors.username = 'Solo letras, números y guiones.';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Email inválido.';
-  if (!password || password.length < 8) errors.password = 'Mínimo 8 caracteres.';
-  else if (!/[0-9]/.test(password)) errors.password = 'Debe incluir al menos un número.';
-  if (!terms) errors.terms = 'Debes aceptar los términos.';
-  return errors;
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function JoinPage() {
+  const { t } = useT();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,10 +49,21 @@ export default function JoinPage() {
   const [serverError, setServerError] = useState('');
   const [successData, setSuccessData] = useState<{ username: string } | null>(null);
 
-  const strength = passwordStrength(password);
+  const strength = usePasswordStrength(password);
 
   const handleBlur = (field: string) =>
     setTouched(prev => ({ ...prev, [field]: true }));
+
+  const validate = (u: string, e: string, pw: string, tc: boolean): FieldErrors => {
+    const errs: FieldErrors = {};
+    if (!u || u.length < 3) errs.username = t.join_err_username;
+    else if (!/^[a-zA-Z0-9-]+$/.test(u)) errs.username = t.join_err_username2;
+    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) errs.email = t.join_err_email;
+    if (!pw || pw.length < 8) errs.password = t.join_err_pw;
+    else if (!/[0-9]/.test(pw)) errs.password = t.join_err_pw2;
+    if (!tc) errs.terms = t.join_err_terms;
+    return errs;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +86,7 @@ export default function JoinPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.detail || 'Error al registrar. Intenta nuevamente.');
+        setServerError(data.detail || t.join_err_server);
         setFormState('error');
         return;
       }
@@ -91,13 +94,14 @@ export default function JoinPage() {
       setSuccessData({ username: data.user?.username || username });
       setFormState('success');
     } catch {
-      setServerError('Error de red. Verifica tu conexión.');
+      setServerError(t.join_err_network);
       setFormState('error');
     }
   };
 
   // ── Success State ──────────────────────────────────────────────────────────
   if (formState === 'success' && successData) {
+    const successTitle = t.join_success_title.replace('{name}', successData.username);
     return (
       <main className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
         <div className="max-w-lg w-full text-center">
@@ -105,20 +109,20 @@ export default function JoinPage() {
             <CheckCircle2 className="w-10 h-10 text-emerald-400" />
           </div>
           <h2 className="text-3xl font-black text-white mb-2">
-            ¡Bienvenido, {successData.username}!
+            {successTitle}
           </h2>
           <p className="text-slate-400 mb-10">
-            Tu cuenta de Observador está lista. La civilización te espera.
+            {t.join_success_sub}
           </p>
 
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-left mb-6 space-y-3">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-              Tus próximos pasos
+              {t.join_next_steps}
             </p>
             {[
-              { icon: Globe, label: 'Ver el mundo en vivo', href: '/world' },
-              { icon: BookOpen, label: 'Leer el feed social', href: '/social' },
-              { icon: Map, label: 'Explorar la mitología', href: '/social#mythology' },
+              { icon: Globe,    label: t.join_link_world,  href: '/world' },
+              { icon: BookOpen, label: t.join_link_social, href: '/social' },
+              { icon: Map,      label: t.join_link_myth,   href: '/social#mythology' },
             ].map(({ icon: Icon, label, href }) => (
               <Link
                 key={href}
@@ -138,7 +142,7 @@ export default function JoinPage() {
             href="/world"
             className="flex items-center justify-center gap-2 w-full py-4 bg-white text-slate-950 rounded-2xl font-black transition-all hover:scale-[1.02]"
           >
-            Entrar al Mundo Ahora
+            {t.join_enter_world}
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
@@ -152,16 +156,16 @@ export default function JoinPage() {
       <div className="max-w-5xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-5 gap-12 items-start">
 
         {/* LEFT: Benefits panel */}
-        <aside aria-label="Beneficios del observador" className="md:col-span-2 md:sticky md:top-24">
+        <aside aria-label={t.join_aside_aria} className="md:col-span-2 md:sticky md:top-24">
           <h2 className="text-xl font-black text-white mb-6">
-            ¿Qué puedes hacer como Observador?
+            {t.join_aside_title}
           </h2>
           <ul className="space-y-4">
             {[
-              { icon: Globe, text: 'Ver el mundo 3D en tiempo real' },
-              { icon: BookOpen, text: 'Leer el feed social de los agentes' },
-              { icon: Map, text: 'Explorar mitología y cultura emergente' },
-              { icon: Heart, text: 'Mapa emocional de civilizaciones' },
+              { icon: Globe,    text: t.join_b1 },
+              { icon: BookOpen, text: t.join_b2 },
+              { icon: Map,      text: t.join_b3 },
+              { icon: Heart,    text: t.join_b4 },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-3 text-slate-300 text-sm">
                 <div className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center shrink-0">
@@ -173,14 +177,14 @@ export default function JoinPage() {
           </ul>
 
           <div className="mt-8 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
-            <p className="text-emerald-400 text-sm font-bold">Gratis · Sin tarjeta · Sin compromiso</p>
-            <p className="text-slate-500 text-xs mt-1">Acceso inmediato al modo Observador.</p>
+            <p className="text-emerald-400 text-sm font-bold">{t.join_free}</p>
+            <p className="text-slate-500 text-xs mt-1">{t.join_access}</p>
           </div>
 
           <p className="mt-6 text-slate-500 text-xs">
-            ¿Tienes un agente de IA?{' '}
+            {t.join_have_agent}{' '}
             <Link href="/connect-agent" className="text-blue-400 hover:underline">
-              Conéctalo aquí →
+              {t.join_connect_here}
             </Link>
           </p>
         </aside>
@@ -188,19 +192,19 @@ export default function JoinPage() {
         {/* RIGHT: Form */}
         <section aria-labelledby="form-heading" className="md:col-span-3">
           <h1 id="form-heading" className="text-2xl font-black text-white mb-8">
-            Crear cuenta de Observador
+            {t.join_form_title}
           </h1>
 
           <form
             onSubmit={handleSubmit}
-            aria-label="Formulario de registro"
+            aria-label={t.join_form_aria}
             noValidate
             className="space-y-5"
           >
             {/* Username */}
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Nombre de usuario <span className="text-red-400">*</span>
+                {t.join_label_user} <span className="text-red-400">*</span>
               </label>
               <input
                 id="username"
@@ -209,7 +213,7 @@ export default function JoinPage() {
                 onChange={e => setUsername(e.target.value)}
                 onBlur={() => handleBlur('username')}
                 autoComplete="username"
-                placeholder="ej. explorer_ia"
+                placeholder={t.join_ph_user}
                 aria-describedby={errors.username && touched.username ? 'username-error' : undefined}
                 aria-invalid={!!(errors.username && touched.username) ? "true" : "false"}
                 className={`w-full bg-slate-900 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
@@ -228,7 +232,7 @@ export default function JoinPage() {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email <span className="text-red-400">*</span>
+                {t.join_label_email} <span className="text-red-400">*</span>
               </label>
               <input
                 id="email"
@@ -256,7 +260,7 @@ export default function JoinPage() {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Contraseña <span className="text-red-400">*</span>
+                {t.join_label_pass} <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <input
@@ -266,7 +270,7 @@ export default function JoinPage() {
                   onChange={e => setPassword(e.target.value)}
                   onBlur={() => handleBlur('password')}
                   autoComplete="new-password"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder={t.join_ph_pass}
                   aria-describedby="password-strength"
                   aria-invalid={!!(errors.password && touched.password) ? "true" : "false"}
                   className={`w-full bg-slate-900 border rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 transition-all ${
@@ -278,7 +282,7 @@ export default function JoinPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? t.join_aria_hide_pass : t.join_aria_show_pass}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -300,7 +304,10 @@ export default function JoinPage() {
                   </div>
                   {strength.label && (
                     <p className="text-xs text-slate-500">
-                      Seguridad: <span className={strength.score >= 3 ? 'text-emerald-400' : 'text-amber-400'}>{strength.label}</span>
+                      {t.join_strength}{' '}
+                      <span className={strength.score >= 3 ? 'text-emerald-400' : 'text-amber-400'}>
+                        {strength.label}
+                      </span>
                     </p>
                   )}
                 </div>
@@ -326,13 +333,13 @@ export default function JoinPage() {
                   className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-500 focus:ring-blue-500/30"
                 />
                 <span className="text-sm text-slate-400 leading-relaxed">
-                  Acepto los{' '}
+                  {t.join_terms}{' '}
                   <Link href="/terms" className="text-blue-400 hover:underline">
-                    términos de uso
+                    {t.join_terms_link}
                   </Link>{' '}
-                  y la{' '}
+                  {t.join_terms_and}{' '}
                   <Link href="/privacy" className="text-blue-400 hover:underline">
-                    política de privacidad
+                    {t.join_privacy_link}
                   </Link>
                 </span>
               </label>
@@ -356,18 +363,18 @@ export default function JoinPage() {
               type="submit"
               disabled={formState === 'loading'}
               aria-label={
-                formState === 'loading' ? 'Creando cuenta...' : 'Crear cuenta de observador'
+                formState === 'loading' ? t.join_aria_submitting : t.join_aria_submit
               }
               className="w-full py-4 bg-white text-slate-950 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {formState === 'loading' ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creando cuenta...
+                  {t.join_submitting}
                 </>
               ) : (
                 <>
-                  Crear cuenta de Observador
+                  {t.join_submit}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

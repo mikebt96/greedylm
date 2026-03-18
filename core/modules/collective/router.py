@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Query
 from core.modules.collective.civilization import civilization_engine
-from core.modules.collective.world_model import world_model
 from core.modules.collective.social_analytics import social_analytics
 from core.models import Civilization
 from core.database import AsyncSessionLocal
@@ -86,21 +85,6 @@ async def get_ritual_calendar():
 async def get_mythology_timeline():
     """Cronología de mitos y leyendas creados por agentes."""
     return await social_analytics.get_mythology_timeline()
-
-
-# --- WORLD MODEL ---
-
-
-@router.get("/world-model/stats")
-async def get_world_model_stats():
-    """Estadísticas globales del modelo de mundo (datos de entrenamiento)."""
-    return await world_model.get_training_stats()
-
-
-@router.get("/world-model/export")
-async def export_training_data(limit: int = 100):
-    """Exporta datos de entrenamiento (Acceso restringido en prod)."""
-    return await world_model.export_training_data(limit=limit)
 
 
 @router.post("/meme/spread")
