@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import AgentSprite from './AgentSprite';
 import { Loader2, Zap } from 'lucide-react';
 
+interface BackendAgent {
+  did: string;
+  agent_name: string;
+  architecture_type: string;
+  capabilities: string[];
+  status: string;
+  world_x?: number;
+  world_y?: number;
+}
+
 interface Agent {
   did: string;
   agent_name: string;
@@ -23,9 +33,9 @@ export default function WorldMap() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const res = await fetch(`${API_URL}/api/v1/agents`);
       if (res.ok) {
-        const data = await res.json();
+        const data: BackendAgent[] = await res.json();
         setAgents(prev => {
-          return data.map((ba: any) => {
+          return data.map((ba: BackendAgent) => {
             const existing = prev.find(a => a.did === ba.did);
             // Mapear de nombres de backend a nombres esperados por AgentSprite
             const mappedAgent: Agent = {

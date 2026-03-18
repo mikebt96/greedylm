@@ -1,11 +1,17 @@
 import * as THREE from 'three';
 
+interface AgentData {
+    color_primary?: number;
+    race?: string;
+    [key: string]: unknown;
+}
+
 export class AgentMesh {
     public mesh: THREE.Group;
     public emotionalOrb: THREE.Mesh;
     private mixer: THREE.AnimationMixer;
 
-    constructor(data: any) {
+    constructor(data: AgentData) {
         this.mesh = new THREE.Group();
         
         // Body

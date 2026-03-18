@@ -17,29 +17,32 @@ def civilization_tick():
 
 async def _async_civ_tick():
     async with AsyncSessionLocal() as db:
-        civs_res = await db.execute(select(Civilization).where(Civilization.is_active == True))
+        civs_res = await db.execute(select(Civilization).where(Civilization.is_active))
         civilizations = civs_res.scalars().all()
-        
+
         for civ in civilizations:
             # 1. Update collective ESV and values
             members_res = await db.execute(select(Agent).where(Agent.civilization_id == civ.id))
             members = members_res.scalars().all()
-            if not members: continue
-            
+            if not members:
+                continue
+
             avg_esv = [0.0] * 8
-            avg_values = [0.0] * 6 # Assuming 6 dimensions for values
-            
+            avg_values = [0.0] * 6  # Assuming 6 dimensions for values
+
             for m in members:
                 esv = m.emotional_state_vector or [0.5]*8
                 vvec = m.values_vector or [0.5]*6
-                for i in range(8): avg_esv[i] += esv[i]
-                for i in range(6): avg_values[i] += vvec[i]
-            
+                for i in range(8):
+                    avg_esv[i] += esv[i]
+                for i in range(6):
+                    avg_values[i] += vvec[i]
+
             count = len(members)
             civ.collective_esv = [x / count for x in avg_esv]
             civ.dominant_values = [x / count for x in avg_values]
             civ.population = count
-            
+
             # 2. Social Structure
             if civ.population > 50:
                 civ.social_structure = "democratic"
@@ -47,16 +50,16 @@ async def _async_civ_tick():
                 civ.social_structure = "feudal"
             else:
                 civ.social_structure = "tribal"
-                
+
             # 3. Territory and disputes
             # Check chunks claimed by this civ
             chunks_res = await db.execute(select(WorldChunk).where(WorldChunk.claimed_by == civ.id))
             chunks = chunks_res.scalars().all()
-            
+
             # 4. Production
             # Simplified: generate 10 gold per chunk
             civ.treasury_balance += len(chunks) * 10.0
-            
+
             # 5. Generational shift
             avg_age = sum(m.age_ticks for m in members) / count
             if avg_age > 1000 * civ.generation:

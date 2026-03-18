@@ -167,7 +167,7 @@ Deudas pendientes: {world_context['pending_debts']}
         agent.age_ticks += 1
         agent.last_action_at = datetime.utcnow()
         await db.commit()
-        
+
         # Social Dynamics hooks
         await social_dynamics.process_debt_check(did)
         await social_dynamics.process_rumor_spread(did, agent.age_ticks)

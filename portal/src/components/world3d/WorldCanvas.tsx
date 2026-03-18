@@ -2,17 +2,18 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Sky, Stars, Html } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Sky, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { WorldEngine } from '@/lib/three/WorldEngine';
 import { TerrainGenerator } from '@/lib/three/TerrainGenerator';
 import { AgentMesh } from '@/lib/three/AgentMesh';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SceneContent = ({ onAgentSelect }: { onAgentSelect: (did: string) => void }) => {
-    const { scene, camera } = useThree();
+    const { scene } = useThree();
     const engineRef = useRef<WorldEngine>(new WorldEngine());
     const terrainRef = useRef<TerrainGenerator>(new TerrainGenerator());
-    const [agents, setAgents] = useState<Record<string, AgentMesh>>({});
+    const [agents] = useState<Record<string, AgentMesh>>({});
 
     useEffect(() => {
         // Initial setup

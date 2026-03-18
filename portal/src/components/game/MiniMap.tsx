@@ -1,11 +1,17 @@
 'use client';
-import { useEffect, useRef } from 'react';
-import { ISO_CONSTANTS, BIOME_COLORS } from '@/lib/isometric/IsoConstants';
+import { useEffect, useRef, useMemo } from 'react';
 
-export default function MiniMap({ agents }: { agents: any[] }) {
+interface Agent {
+  world_x?: number;
+  world_y?: number;
+  color_primary?: string;
+  [key: string]: unknown;
+}
+
+export default function MiniMap({ agents }: { agents: Agent[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const MAP_SIZE = 150;
-  const SCALE = MAP_SIZE / 20000; // El mundo es ~20k units
+  const SCALE = useMemo(() => MAP_SIZE / 20000, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,7 +34,7 @@ export default function MiniMap({ agents }: { agents: any[] }) {
       ctx.fill();
     });
 
-  }, [agents]);
+  }, [agents, SCALE]);
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-1 shadow-2xl">

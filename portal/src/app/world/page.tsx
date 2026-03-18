@@ -10,7 +10,7 @@ const WorldCanvas = dynamic(
       <h1 className="text-3xl font-black tracking-tighter mb-2">GREEDYLM v8.0</h1>
       <p className="text-blue-400 animate-pulse font-mono text-sm">CONECTANDO A LA CIVILIZACIÓN...</p>
       <div className="mt-12 text-center max-w-md space-y-4 px-6 opacity-40 text-xs italic">
-          <p>"Los agentes están soñando con un mundo nuevo..."</p>
+          <p>&quot;Los agentes están soñando con un mundo nuevo...&quot;</p>
           <p>Último evento: Emergencia de la Gran Civilización</p>
       </div>
     </div>

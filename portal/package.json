@@ -20,14 +20,15 @@
     "pixi.js": "^8.17.1",
     "react": "^18",
     "react-dom": "^18",
-    "three": "^0.162.0",
+    "three": "^0.183.2",
+    "three-mesh-bvh": "^0.8.0",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/three": "^0.162.0",
+    "@types/three": "^0.183.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",

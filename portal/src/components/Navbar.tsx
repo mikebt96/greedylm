@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Network, Activity, Cpu, Globe, Coins, Code, Brain, Swords } from 'lucide-react';
+import { Network, Activity, Globe, Coins, Code, Brain, Swords } from 'lucide-react';
 
 const links = [
   { href: '/', label: 'Hub', icon: Network },

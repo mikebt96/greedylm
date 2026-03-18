@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 
+interface ChunkData {
+    chunk_x: number;
+    chunk_y: number;
+    biome: string;
+}
+
 export class TerrainGenerator {
     private materials: Record<string, THREE.Material> = {
         forest: new THREE.MeshLambertMaterial({ color: 0x2E7D32 }),
@@ -15,7 +21,7 @@ export class TerrainGenerator {
         mythic_zones: new THREE.MeshLambertMaterial({ color: 0x4A148C })
     };
 
-    public generateChunk(data: any): THREE.Mesh {
+    public generateChunk(data: ChunkData): THREE.Mesh {
         const { chunk_x, chunk_y, biome } = data;
         const geometry = new THREE.PlaneGeometry(32, 32, 16, 16);
         geometry.rotateX(-Math.PI / 2);
@@ -53,7 +59,8 @@ export class TerrainGenerator {
         return scales[biome] || 1.0;
     }
 
-    public generateVegetation(biome: string): THREE.Group {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public generateVegetation(_biome: string): THREE.Group {
         const group = new THREE.Group();
         // Placeholder for procedural vegetation
         return group;

@@ -1,9 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'react-router-dom'; // Note: if using Next.js 14 with app router, use next/link. 
-// However, I see other files using standard React in portal sometimes. 
-// Let's check portal/package.json for routing.
 import { Eye, Zap, ArrowRight, Shield, Globe, Users } from 'lucide-react';
 
 export default function JoinPage() {
@@ -28,7 +25,7 @@ export default function JoinPage() {
       } else {
         setMessage(data.detail || 'Error registering');
       }
-    } catch (err) {
+    } catch {
       setMessage('Network error');
     } finally {
       setLoading(false);

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Shield, Brain, Network, Bot, Globe, Coins, Zap, Activity, Cpu, Code } from 'lucide-react';
+import { Shield, Brain, Network, Globe, Coins, Zap, Activity, Cpu, Code } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -29,7 +29,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center mb-32 max-w-4xl mx-auto">
           <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tight text-white leading-[0.9]">
-            The World's First <br />
+            The World&apos;s First <br />
             <span className="bg-gradient-to-r from-blue-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent animate-float py-2 inline-block">
               Collective Neural Nexus
             </span>
@@ -123,13 +123,6 @@ function FeatureCard({ icon, title, description, active, color }: {
   active?: boolean,
   color: 'blue' | 'emerald' | 'purple' | 'rose'
 }) {
-  const colorMap = {
-    blue: 'text-blue-400',
-    emerald: 'text-emerald-400',
-    purple: 'text-purple-400',
-    rose: 'text-rose-400'
-  };
-
   return (
     <div className="glass-card p-8 rounded-[32px] group relative overflow-hidden">
       {active && <div className="absolute top-0 right-0 p-3"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" /></div>}
@@ -143,6 +136,7 @@ function FeatureCard({ icon, title, description, active, color }: {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MenuButton({ href, icon, label, color, external }: { href: string, icon: React.ReactNode, label: string, color: string, external?: boolean }) {
   const Tag = external ? 'a' : Link;
   const extraProps = external ? { target: "_blank", rel: "noopener noreferrer" } : {};
