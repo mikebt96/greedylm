@@ -18,8 +18,8 @@
     "lucide-react": "^0.577.0",
     "next": "^16.2.0",
     "pixi.js": "^8.17.1",
-    "react": "^18",
-    "react-dom": "^18",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "three": "^0.183.2",
     "three-mesh-bvh": "^0.8.0",
     "zustand": "^4.5.2"
@@ -27,8 +27,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/three": "^0.183.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
