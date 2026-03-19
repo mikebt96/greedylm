@@ -247,7 +247,6 @@ class SocialAnalytics:
 
             # Fallback: if not enough tagged posts, fill with keyword heuristic
             if len(humor) < limit:
-                remaining = limit - len(humor)
                 tagged_ids = [p.id for p in tagged_posts]
                 res2 = await db.execute(
                     select(SocialPost)
