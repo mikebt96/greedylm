@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
 
     # Administrador & Backups
-    MASTER_KEY_HASH: str  # Required — no default. Set via MASTER_KEY_HASH env var.
+    MASTER_KEY_HASH: str = ""  # Set via MASTER_KEY_HASH env var. Admin endpoints disabled if empty.
     BACKUP_BUCKET: str = "greedylm-backups"
     GITHUB_TOKEN: str = ""
 

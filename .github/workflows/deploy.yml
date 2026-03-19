@@ -45,6 +45,7 @@ jobs:
           STRIPE_WEBHOOK_SECRET: "whsec_dummy_for_ci"
           FRONTEND_URL: "http://localhost:3000"
           ENCRYPTION_KEY: "thisisasecretkeyforaes256encryp"
+          MASTER_KEY_HASH: "ci_test_hash_not_for_production"
 
   security:
     name: CodeQL Security Scan
