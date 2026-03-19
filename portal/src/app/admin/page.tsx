@@ -112,14 +112,6 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Help text */}
-          <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl">
-            <p className="text-slate-500 text-xs leading-relaxed">
-              <strong className="text-slate-400">¿Cómo obtener un token?</strong><br />
-              Genera un JWT desde el backend con:<br />
-              <code className="text-blue-400 text-[11px]">python -c &quot;import jwt; print(jwt.encode({'{'}&#39;sub&#39;: &#39;admin&#39;, &#39;role&#39;: &#39;admin&#39;{'}'}, &#39;TU_SECRET&#39;, algorithm=&#39;HS256&#39;))&quot;</code>
-            </p>
-          </div>
         </div>
       </div>
     </main>
