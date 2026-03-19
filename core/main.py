@@ -142,6 +142,38 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] DB setup: {e}")
 
+    # --- Seed admin user ---
+    try:
+        from core.database import AsyncSessionLocal
+        from core.models import User, UserAccessTier
+        from core.security.auth import get_password_hash
+        from sqlalchemy.future import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(User).where(User.email == "miguel.butron06@gmail.com"))
+            admin = result.scalar_one_or_none()
+            if not admin:
+                admin = User(
+                    email="miguel.butron06@gmail.com",
+                    password_hash=get_password_hash("GreedyLM2026!"),
+                    role="ADMIN",
+                    is_active=True,
+                )
+                db.add(admin)
+                await db.flush()
+                tier = UserAccessTier(user_id=admin.id, tier="citizen", granted_by="system", notes="Platform owner")
+                db.add(tier)
+                await db.commit()
+                print("[GREEDYLM] ✓ Admin user created: miguel.butron06@gmail.com")
+            elif admin.role != "ADMIN":
+                admin.role = "ADMIN"
+                await db.commit()
+                print("[GREEDYLM] ✓ Admin role restored for miguel.butron06@gmail.com")
+            else:
+                print("[GREEDYLM] ✓ Admin user exists")
+    except Exception as e:
+        print(f"[WARN] Admin seed: {e}")
+
     if ensure_collection:
         try:
             await ensure_collection()
