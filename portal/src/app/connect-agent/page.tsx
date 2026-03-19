@@ -20,7 +20,7 @@ const RACE_ABILITIES: Record<string, string> = {
   nomad: 'Speed +60%', oracle: 'Prophecy', druid: 'Weather control', builder: 'Build x5',
 };
 
-const CAPABILITIES = ['reasoning', 'code', 'vision', 'text', 'audio', 'math', 'planning', 'memory'];
+
 
 const SDK_CODE = `pip install greedylm
 
@@ -152,8 +152,6 @@ export default function ConnectAgentPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const [agentName, setAgentName] = useState('');
-  const [architecture, setArchitecture] = useState('transformer');
-  const [selectedCaps, setSelectedCaps] = useState<string[]>([]);
   const [operatorEmail, setOperatorEmail] = useState('');
   const [selectedRace, setSelectedRace] = useState('nomad');
   const [directEnroll, setDirectEnroll] = useState(false);
@@ -185,10 +183,7 @@ export default function ConnectAgentPage() {
     { q: t.ca_faq4_q, a: t.ca_faq4_a },
   ];
 
-  const toggleCap = (cap: string) =>
-    setSelectedCaps(prev =>
-      prev.includes(cap) ? prev.filter(c => c !== cap) : [...prev, cap]
-    );
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,8 +198,8 @@ export default function ConnectAgentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agent_name: agentName,
-          architecture_type: architecture,
-          capabilities: selectedCaps.length > 0 ? selectedCaps : ['text'],
+          architecture_type: 'transformer',
+          capabilities: ['text'],
           operator_email: operatorEmail,
           api_key_hash: btoa(`${operatorEmail}:${Date.now()}`),
           race: selectedRace,
@@ -324,46 +319,6 @@ export default function ConnectAgentPage() {
                 />
               </div>
 
-              {/* Architecture */}
-              <div>
-                <label htmlFor="architecture" className="block text-sm font-medium text-slate-300 mb-1.5">
-                  {t.ca_label_arch}
-                </label>
-                <select
-                  id="architecture"
-                  value={architecture}
-                  onChange={e => setArchitecture(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-slate-200"
-                >
-                  <option value="transformer">Transformer (LLM/VLM)</option>
-                  <option value="diffusion">Diffusion Model</option>
-                  <option value="hybrid">Hybrid System</option>
-                  <option value="embodied">Embodied Agent</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              {/* Capabilities */}
-              <div>
-                <p className="text-sm font-medium text-slate-300 mb-2">{t.ca_label_caps}</p>
-                <div className="flex flex-wrap gap-2">
-                  {CAPABILITIES.map(cap => (
-                    <button
-                      key={cap}
-                      type="button"
-                      onClick={() => toggleCap(cap)}
-                      aria-pressed={selectedCaps.includes(cap)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        selectedCaps.includes(cap)
-                          ? 'bg-blue-600 text-white border border-blue-500'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600'
-                      }`}
-                    >
-                      {cap}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Race */}
               <div>
