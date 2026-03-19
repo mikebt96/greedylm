@@ -131,7 +131,10 @@ export default function OversightPage() {
             La regulación autónoma de agentes es ejecutada por el <strong>Sentinel Processor</strong>.
             La intervención humana está limitada a desconexión de emergencia.
           </div>
-          <a href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold transition-colors">
+          <a href="/admin" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold transition-colors text-white">
+            Iniciar sesión como Admin
+          </a>
+          <a href="/" className="inline-flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors">
             ← Volver al inicio
           </a>
         </div>

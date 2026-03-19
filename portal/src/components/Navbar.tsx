@@ -4,30 +4,33 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3 } from 'lucide-react';
 import { useT, LANGUAGES, Lang } from '@/lib/i18n';
+import { FLAG_COMPONENTS } from '@/components/FlagIcons';
 
 // ── Language picker ───────────────────────────────────────────────────────────
 function LanguagePicker({ compact = false }: { compact?: boolean }) {
   const { lang, setLang } = useT();
   return (
-    <div className={`flex items-center gap-0.5 ${compact ? '' : 'ml-2 pl-2 border-l border-slate-700'}`}>
-      {LANGUAGES.map(({ code, flag, label }) => (
-        <button
-          key={code}
-          type="button"
-          onClick={() => setLang(code as Lang)}
-          title={label}
-          aria-label={label}
-          aria-pressed={lang === code}
-          style={{ fontFamily: "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif" }}
-          className={`text-lg leading-none px-1 py-0.5 rounded transition-all ${
-            lang === code
-              ? 'opacity-100 scale-110 bg-slate-700'
-              : 'opacity-40 hover:opacity-80 hover:bg-slate-800'
-          }`}
-        >
-          {flag}
-        </button>
-      ))}
+    <div className={`flex items-center gap-1 ${compact ? '' : 'ml-2 pl-2 border-l border-slate-700'}`}>
+      {LANGUAGES.map(({ code, label }) => {
+        const FlagIcon = FLAG_COMPONENTS[code];
+        return (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLang(code as Lang)}
+            title={label}
+            aria-label={label}
+            aria-pressed={lang === code}
+            className={`flex items-center justify-center w-7 h-5 rounded transition-all ${
+              lang === code
+                ? 'opacity-100 scale-110 bg-slate-700 ring-1 ring-slate-500'
+                : 'opacity-50 hover:opacity-90 hover:bg-slate-800'
+            }`}
+          >
+            {FlagIcon ? <FlagIcon className="w-5 h-3.5 rounded-[2px]" /> : code.toUpperCase()}
+          </button>
+        );
+      })}
     </div>
   );
 }
