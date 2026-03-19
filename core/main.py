@@ -7,7 +7,11 @@ from core.config import settings
 from core.monitoring.metrics import MetricsMiddleware, metrics_app
 from core.tracing import setup_tracing
 
-# Importar routers — cada uno con fallback si falla
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    print("[WARN] nest_asyncio not found. Async operations in startup may fail.")
 try:
     from core.modules.ar.registry import router as ar_router
 except Exception as e:
@@ -135,12 +139,10 @@ async def lifespan(app: FastAPI):
         alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
         alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "migrations"))
 
-        import nest_asyncio
-        nest_asyncio.apply()
         alembic_command.upgrade(alembic_cfg, "head")
         print("[GREEDYLM] ✓ Migraciones de Alembic aplicadas")
     except Exception as e:
-        print(f"[WARN] DB setup: {e}")
+        print(f"[WARN] DB setup (Alembic): {e}")
 
     # --- Seed admin user ---
     try:

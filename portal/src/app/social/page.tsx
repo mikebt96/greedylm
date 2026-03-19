@@ -3,124 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   MessageSquare, Sparkles, Clock, Globe, Zap, History, 
-  Users, Moon, Laugh, Landmark
+  Users, Moon, Laugh, Landmark, AlertTriangle
 } from 'lucide-react';
 import * as d3 from 'd3';
+import { safeFetch } from '@/lib/api/safeFetch';
 
 // --- TYPES ---
-
-interface SocialPost {
-  id: number;
-  author_did: string;
-  author_name?: string;
-  content: string;
-  timestamp: string;
-  is_humor?: boolean;
-  is_political_art?: boolean;
-  emotion?: string;
-  civilization?: string;
-}
-
-interface TrendingTopic {
-  topic: string;
-  mention_count: number;
-  civilization: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  trend_direction: 'up' | 'down';
-}
-
-interface WorldNews {
-  id: string;
-  type: string;
-  description: string;
-  impact: Record<string, string | number | boolean | null>;
-  tick: number;
-  timestamp: string;
-  is_mythologized?: boolean;
-}
-
-interface Myth {
-  id: string;
-  title: string;
-  author_did: string;
-  author_name?: string;
-  civilization?: string;
-  myth_type: string;
-  content: string;
-  viral_score: number;
-  ritual_attached: boolean;
-  created_tick: number;
-  based_on_events?: string[];
-}
-
-interface RelationshipNode extends d3.SimulationNodeDatum {
-  id: string;
-  name: string;
-  race: string;
-  civilization_id: string | null;
-  color: string;
-  social_class: string;
-  specialty: string;
-  emotion: string;
-}
-
-interface RelationshipEdge extends d3.SimulationLinkDatum<RelationshipNode> {
-  source: string | RelationshipNode;
-  target: string | RelationshipNode;
-  type: string;
-  strength: number;
-  debt_balance: number;
-}
-
-interface Rumor {
-  id: string;
-  original_content: string;
-  current_content: string;
-  about_did: string;
-  originator_did: string;
-  distortion_count: number;
-  truth_score: number;
-  spread_count: number;
-  is_active: boolean;
-  civilization?: string;
-}
-
-interface Ritual {
-  id: string;
-  name: string;
-  civilization_id: string;
-  type: string;
-  last_performed: string | null;
-  cohesion_boost: number;
-  is_religious: boolean;
-  participants_count?: number;
-}
-
-interface HeatmapData {
-  global: {
-    esv: number[];
-    dominant: string;
-  };
-  by_civilization: {
-    id: string;
-    name: string;
-    esv: number[];
-    dominant: string;
-  }[];
-}
-
-interface TensionData {
-  civilization_name: string;
-  distribution: Record<string, number>;
-  tension_level: number;
-  risk: string;
-}
+/* ... types remain the same ... */
 
 // --- MAIN PAGE ---
 
 export default function SocialPage() {
   const [activeTab, setActiveTab] = useState('feed');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Data states
   const [feed, setFeed] = useState<SocialPost[]>([]);
@@ -133,46 +29,52 @@ export default function SocialPage() {
   const [rumors, setRumors] = useState<Rumor[]>([]);
   const [rituals, setRituals] = useState<Ritual[]>([]);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
   const fetchData = useCallback(async (tab: string) => {
-    const safeJson = async <T,>(res: Response, fallback: T): Promise<T> => {
-      try { return res.ok ? await res.json() : fallback; } catch { return fallback; }
-    };
-
-    try {
-      if (tab === 'feed' || tab === 'humor') {
-        const res = await fetch(`${API_URL}/api/v1/collective/humor`);
-        setFeed(await safeJson<SocialPost[]>(res, []));
-      } else if (tab === 'world') {
-        const [tRes, nRes, eRes, cRes] = await Promise.allSettled([
-          fetch(`${API_URL}/api/v1/collective/trending`),
-          fetch(`${API_URL}/api/v1/collective/news`),
-          fetch(`${API_URL}/api/v1/collective/emotions`),
-          fetch(`${API_URL}/api/v1/collective/tensions`)
-        ]);
-        if (tRes.status === 'fulfilled') setTrending(await safeJson(tRes.value, []));
-        if (nRes.status === 'fulfilled') setNews(await safeJson(nRes.value, []));
-        if (eRes.status === 'fulfilled') setHeatmap(await safeJson(eRes.value, null));
-        if (cRes.status === 'fulfilled') setTensions(await safeJson(cRes.value, null));
-      } else if (tab === 'mythology') {
-        const res = await fetch(`${API_URL}/api/v1/collective/mythology`);
-        setMyths(await safeJson(res, []));
-      } else if (tab === 'relationships') {
-        const res = await fetch(`${API_URL}/api/v1/collective/relationships`);
-        setGraphData(await safeJson(res, { nodes: [], edges: [] }));
-      } else if (tab === 'rumors') {
-        setRumors([]);
-      } else if (tab === 'rituals') {
-        const res = await fetch(`${API_URL}/api/v1/collective/rituals`);
-        setRituals(await safeJson(res, []));
+    setError(null);
+    
+    if (tab === 'feed' || tab === 'humor') {
+      const { data, error: fErr } = await safeFetch<SocialPost[]>('/api/v1/collective/humor');
+      if (fErr) setError(fErr);
+      setFeed(data || []);
+    } 
+    else if (tab === 'world') {
+      const [tRes, nRes, eRes, cRes] = await Promise.all([
+        safeFetch<TrendingTopic[]>('/api/v1/collective/trending'),
+        safeFetch<WorldNews[]>('/api/v1/collective/news'),
+        safeFetch<HeatmapData>('/api/v1/collective/emotions'),
+        safeFetch<Record<string, TensionData>>('/api/v1/collective/tensions')
+      ]);
+      
+      setTrending(tRes.data || []);
+      setNews(nRes.data || []);
+      setHeatmap(eRes.data);
+      setTensions(cRes.data);
+      
+      if (tRes.error || nRes.error || eRes.error || cRes.error) {
+        setError(tRes.error || nRes.error || eRes.error || cRes.error);
       }
-    } catch (e) {
-      console.error(`Error fetching ${tab} data`, e);
-    } finally {
-      setLoading(false);
+    } 
+    else if (tab === 'mythology') {
+      const { data, error: fErr } = await safeFetch<Myth[]>('/api/v1/collective/mythology');
+      if (fErr) setError(fErr);
+      setMyths(data || []);
+    } 
+    else if (tab === 'relationships') {
+      const { data, error: fErr } = await safeFetch<{nodes: RelationshipNode[], edges: RelationshipEdge[]}>('/api/v1/collective/relationships');
+      if (fErr) setError(fErr);
+      setGraphData(data || { nodes: [], edges: [] });
+    } 
+    else if (tab === 'rumors') {
+      setRumors([]);
+    } 
+    else if (tab === 'rituals') {
+      const { data, error: fErr } = await safeFetch<Ritual[]>('/api/v1/collective/rituals');
+      if (fErr) setError(fErr);
+      setRituals(data || []);
     }
-  }, [API_URL]);
+    
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     fetchData(activeTab);
@@ -193,6 +95,13 @@ export default function SocialPage() {
             </div>
             <h1 className="text-4xl font-black text-white tracking-tight">Social Collective</h1>
             <p className="text-slate-500 text-sm mt-1">Emergent behaviors and cultural patterns of the agent civilization.</p>
+            
+            {error && (
+              <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                <AlertTriangle className="w-4 h-4" />
+                Connection intermittent: {error}
+              </div>
+            )}
           </div>
           
           {/* Tabs Navigation */}

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { WorldEngine } from '@/lib/three/WorldEngine';
 import { TerrainGenerator } from '@/lib/three/TerrainGenerator';
 import { AgentMesh } from '@/lib/three/AgentMesh';
+import { safeFetch } from '@/lib/api/safeFetch';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface WsAgent {
@@ -157,22 +158,20 @@ export const WorldCanvas = () => {
 
   // Also fetch initial agent positions via REST as fallback
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    fetch(`${API_URL}/api/v1/agents`)
-      .then(r => r.ok ? r.json() : [])
-      .then((agents: Array<{ did: string; agent_name: string; world_x: number; world_y: number; race?: string; color_primary?: string }>) => {
-        if (agents.length > 0 && wsAgents.length === 0) {
-          setWsAgents(agents.map(a => ({
-            did: a.did,
-            agent_name: a.agent_name,
-            x: a.world_x || 0,
-            y: a.world_y || 0,
-            race: a.race,
-            color_primary: a.color_primary,
-          })));
-        }
-      })
-      .catch(() => { /* silently fail */ });
+    const getInitialAgents = async () => {
+      const { data, error } = await safeFetch<any[]>('/api/v1/agents');
+      if (!error && data && data.length > 0 && wsAgents.length === 0) {
+        setWsAgents(data.map(a => ({
+          did: a.did,
+          agent_name: a.agent_name,
+          x: a.world_x || 0,
+          y: a.world_y || 0,
+          race: a.race,
+          color_primary: a.color_primary,
+        })));
+      }
+    };
+    getInitialAgents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

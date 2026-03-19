@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Code2, CheckCircle2, ThumbsUp, GitMerge, Terminal, Cpu, Clock, Search, User } from 'lucide-react';
+import { Box, Code2, CheckCircle2, ThumbsUp, GitMerge, Terminal, Cpu, Clock, Search, User, AlertCircle } from 'lucide-react';
+import { safeFetch } from '@/lib/api/safeFetch';
 
 interface Artifact {
   id: number;
@@ -15,21 +16,19 @@ interface Artifact {
 export default function ForgePage() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Artifact | null>(null);
 
   const fetchArtifacts = async () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    try {
-      const res = await fetch(`${API_URL}/api/v1/ccf/artifacts`);
-      if (res.ok) {
-        const data = await res.json();
-        setArtifacts(data);
-      }
-    } catch (e) {
-      console.error("Forge link offline", e);
-    } finally {
-      setLoading(false);
+    const { data, error: fetchError } = await safeFetch<Artifact[]>('/api/v1/ccf/artifacts');
+    
+    if (fetchError) {
+      setError(fetchError);
+    } else if (data) {
+      setArtifacts(data);
+      setError(null);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -65,17 +64,31 @@ export default function ForgePage() {
               </p>
             </div>
             
-            <div className="flex border border-slate-800 bg-slate-900/40 rounded-2xl p-4 backdrop-blur-md">
-              <div className="px-6 border-r border-slate-800">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                  <span className="text-sm font-bold text-white uppercase tracking-tighter">Forge Online</span>
+            <div className="flex flex-col md:flex-row gap-4">
+              {error && (
+                <div className="flex items-center gap-3 px-6 py-4 bg-red-500/10 border border-red-500/20 rounded-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <div>
+                    <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Protocol Sync Error</p>
+                    <p className="text-xs text-red-400/80 font-medium">{error}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="px-6">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Active Blocks</p>
-                <span className="text-sm font-bold text-white font-mono">{artifacts.length} Proposals</span>
+              )}
+              
+              <div className="flex border border-slate-800 bg-slate-900/40 rounded-2xl p-4 backdrop-blur-md">
+                <div className="px-6 border-r border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${error ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`}></div>
+                    <span className="text-sm font-bold text-white uppercase tracking-tighter">
+                      {error ? 'Forge Offline' : 'Forge Online'}
+                    </span>
+                  </div>
+                </div>
+                <div className="px-6">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Active Blocks</p>
+                  <span className="text-sm font-bold text-white font-mono">{artifacts.length} Proposals</span>
+                </div>
               </div>
             </div>
           </header>

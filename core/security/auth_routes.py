@@ -255,51 +255,5 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
     user = await _oauth_find_or_create_user(primary_email, db)
     return _create_redirect_with_token(user)
 
-
-# ── Apple OAuth ────────────────────────────────────────────────────────────────
-
-@router.get("/apple")
-async def apple_login():
-    if not settings.APPLE_CLIENT_ID:
-        raise HTTPException(status_code=501, detail="Apple OAuth not configured")
-    api_base = "https://greedylm-api.onrender.com"
-    redirect_uri = f"{api_base}/api/v1/auth/apple/callback"
-    return RedirectResponse(
-        url=(
-            "https://appleid.apple.com/auth/authorize"
-            f"?client_id={settings.APPLE_CLIENT_ID}"
-            f"&redirect_uri={redirect_uri}"
-            "&response_type=code"
-            "&scope=email%20name"
-            "&response_mode=form_post"
-        ),
-        status_code=302,
-    )
-
-
-@router.post("/apple/callback")
-async def apple_callback(code: str, db: AsyncSession = Depends(get_db)):
-    async with httpx.AsyncClient() as client:
-        token_res = await client.post(
-            "https://appleid.apple.com/auth/token",
-            data={
-                "client_id": settings.APPLE_CLIENT_ID,
-                "client_secret": settings.APPLE_CLIENT_SECRET,
-                "code": code,
-                "grant_type": "authorization_code",
-            },
-        )
-        tokens = token_res.json()
-        if "id_token" not in tokens:
-            raise HTTPException(status_code=400, detail="Apple OAuth failed")
-
-        # Decode the id_token to get email (Apple sends it in the JWT)
-        import jwt as pyjwt
-        payload = pyjwt.decode(tokens["id_token"], options={"verify_signature": False})
-        email = payload.get("email")
-        if not email:
-            raise HTTPException(status_code=400, detail="No email in Apple token")
-
-    user = await _oauth_find_or_create_user(email, db)
-    return _create_redirect_with_token(user)
+# ── End of Auth Routes ──
 

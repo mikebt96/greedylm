@@ -7,6 +7,7 @@ import {
   Zap, Copy, CheckCircle2, Terminal,
   Loader2, AlertCircle, ArrowRight, Bot
 } from 'lucide-react';
+import { safeFetch } from '@/lib/api/safeFetch';
 
 /* ── Code snippets ─────────────────────────────────────────────────────────── */
 
@@ -121,27 +122,24 @@ export default function ConnectAgentPage() {
     setFormState('loading');
     setError('');
 
-    try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${API_URL}/api/v1/agents/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agent_name: agentName,
-          architecture_type: 'transformer',
-          capabilities: ['text'],
-          operator_email: operatorEmail,
-          api_key_hash: btoa(`${operatorEmail}:${Date.now()}`),
-          direct_enroll: true,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Registration failed');
+    const { data, error: fetchError } = await safeFetch<any>('/api/v1/agents/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_name: agentName,
+        architecture_type: 'transformer',
+        capabilities: ['text'],
+        operator_email: operatorEmail,
+        api_key_hash: btoa(`${operatorEmail}:${Date.now()}`),
+        direct_enroll: true,
+      }),
+    });
+
+    if (fetchError) {
+      setError(fetchError);
+      setFormState('error');
+    } else if (data) {
       setResult({ did: data.did, jwt: data.jwt });
       setFormState('success');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setFormState('error');
     }
   };
 
