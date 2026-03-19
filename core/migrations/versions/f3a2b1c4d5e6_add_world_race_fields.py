@@ -18,14 +18,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("agents", sa.Column("race", sa.String(), nullable=True))
-    op.add_column("agents", sa.Column("color_primary", sa.String(), nullable=True))
-    op.add_column("agents", sa.Column("color_secondary", sa.String(), nullable=True))
-    op.add_column("agents", sa.Column("race_stats", sa.JSON(), nullable=True))
-    op.add_column("agents", sa.Column("world_x", sa.Float(), nullable=True))
-    op.add_column("agents", sa.Column("world_y", sa.Float(), nullable=True))
-    op.add_column("agents", sa.Column("world_biome", sa.String(), nullable=True))
-    op.add_column("agents", sa.Column("training_hours", sa.Float(), nullable=True, server_default="0.0"))
+    cols = [
+        ("race", sa.String(), {}),
+        ("color_primary", sa.String(), {}),
+        ("color_secondary", sa.String(), {}),
+        ("race_stats", sa.JSON(), {}),
+        ("world_x", sa.Float(), {}),
+        ("world_y", sa.Float(), {}),
+        ("world_biome", sa.String(), {}),
+        ("training_hours", sa.Float(), {"server_default": "0.0"}),
+    ]
+    for name, col_type, kwargs in cols:
+        try:
+            op.add_column("agents", sa.Column(name, col_type, nullable=True, **kwargs))
+        except Exception:
+            pass
 
 
 def downgrade() -> None:
