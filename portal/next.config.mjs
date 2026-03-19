@@ -4,6 +4,9 @@ const nextConfig = {
     unoptimized: true,
   },
   
+  // TRANSPILE 3D LIBRARIES
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+  
   // Security Headers
   async headers() {
     return [
