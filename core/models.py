@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary, BigInteger
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from core.database import Base
 
@@ -335,3 +335,18 @@ class IdeologicalSchism(Base):
     intensity = Column(Float, default=0.1)
     status = Column(String, default="ACTIVE")  # OPEN, RESOLVED, LATENT
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Task(Base):
+    """Tasks for autonomous agent pull/heartbeat loop."""
+    __tablename__ = "tasks"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    status = Column(String, default="pending", nullable=False)  # pending, claimed, completed, failed
+    payload = Column(JSON, nullable=False)
+    assigned_did = Column(String, ForeignKey("agents.did"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    claimed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    result_data = Column(JSON, nullable=True)
+    error_message = Column(String, nullable=True)
+    cursor_id = Column(BigInteger, autoincrement=True, unique=True, index=True, nullable=False)

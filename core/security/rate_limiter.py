@@ -1,5 +1,6 @@
 import redis.asyncio as redis
-from fastapi import Request
+import time
+from fastapi import Request, HTTPException
 from core.config import settings
 
 
@@ -49,7 +50,21 @@ class RateLimiter:
         current_count = await self.redis.get(key)
 
         if current_count and int(current_count) >= limit:
-            return False
+            # Compute reset time from Redis TTL
+            ttl = await self.redis.ttl(key)
+            seconds_until_reset = max(ttl, 1)
+            reset_timestamp = int(time.time()) + seconds_until_reset
+
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded",
+                headers={
+                    "X-RateLimit-Limit": str(limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset_timestamp),
+                    "Retry-After": str(seconds_until_reset),
+                },
+            )
 
         async with self.redis.pipeline(transaction=True) as pipe:
             await pipe.incr(key)

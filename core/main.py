@@ -111,6 +111,12 @@ except Exception as e:
     print(f"[WARN] sentinel social module no disponible: {e}")
     sentinel_social_router = None
 
+try:
+    from core.modules.tasks import router as tasks_router
+except Exception as e:
+    print(f"[WARN] tasks module no disponible: {e}")
+    tasks_router = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -217,6 +223,8 @@ if admin_router:
     app.include_router(admin_router)
 if sentinel_social_router:
     app.include_router(sentinel_social_router)
+if tasks_router:
+    app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["tasks"])
 
 
 # ── Endpoints base
