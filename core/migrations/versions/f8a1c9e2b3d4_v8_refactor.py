@@ -29,29 +29,44 @@ depends_on = None
 def upgrade() -> None:
     conn = op.get_bind()
 
+    # Use inspect() to safely check table existence without transaction issues
+    from sqlalchemy import inspect as sa_inspect
+    existing_tables = set(sa_inspect(conn).get_table_names())
+
+    # Helper: run an operation inside a SAVEPOINT so failures don't poison the transaction
+    def safe_execute(fn):
+        """Run fn inside a nested transaction (SAVEPOINT). If it fails, only the savepoint rolls back."""
+        try:
+            nested = conn.begin_nested()
+            fn()
+            nested.commit()
+        except Exception:
+            nested.rollback()
+
     # --- DROP OBSOLETE COLUMNS (skip if already gone) ---
     for col in ["training_hours", "policy_version", "embodiment_status", "body_type", "embodiment_session_id", "endpoint_url_encrypted"]:
-        try:
-            op.drop_column("agents", col)
-        except Exception:
-            pass
+        safe_execute(lambda c=col: op.drop_column("agents", c))
 
     # --- DROP OBSOLETE TABLES ---
-    try:
-        op.drop_table("training_episodes")
-    except Exception:
-        pass
+    safe_execute(lambda: op.drop_table("training_episodes"))
 
-    # --- ALTER VECTOR COLUMNS TO JSON ---
+    # --- CLEAN DIRTY DATA BEFORE TYPE CONVERSION ---
+    # Set NULL, empty, or non-JSON-castable vector columns to '[]' so ::jsonb cast works
     for col in ["capability_vector", "limitation_vector", "emotional_state_vector"]:
-        try:
-            op.execute(f"ALTER TABLE agents ALTER COLUMN {col} TYPE jsonb USING {col}::text::jsonb")
-        except Exception:
-            pass
+        safe_execute(lambda c=col: op.execute(
+            f"UPDATE agents SET {c} = '[]' WHERE {c} IS NULL OR {c}::text = '' OR {c}::text = 'null'"
+        ))
+
+    # --- ALTER VECTOR COLUMNS TO JSONB ---
+    for col in ["capability_vector", "limitation_vector", "emotional_state_vector"]:
+        safe_execute(lambda c=col: op.execute(
+            f"ALTER TABLE agents ALTER COLUMN {c} TYPE jsonb USING {c}::text::jsonb"
+        ))
 
     # --- ADD NEW TABLES (only if not already created by create_all) ---
-    tables = {
-        "civilizations": [
+    if "civilizations" not in existing_tables:
+        op.create_table(
+            "civilizations",
             sa.Column("id", sa.UUID(), nullable=False),
             sa.Column("name", sa.String(), nullable=False),
             sa.Column("founding_dids", sa.JSON(), nullable=True),
@@ -69,11 +84,7 @@ def upgrade() -> None:
             sa.Column("population", sa.Integer(), server_default="0", nullable=True),
             sa.Column("social_structure", sa.String(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
-        ],
-    }
-    for tname, cols in tables.items():
-        if not conn.dialect.has_table(conn, tname):
-            op.create_table(tname, *cols)
+        )
 
     # Tables with foreign keys to civilizations — create after civilizations
     fk_tables = [
@@ -203,7 +214,7 @@ def upgrade() -> None:
         ]),
     ]
     for tname, cols in fk_tables:
-        if not conn.dialect.has_table(conn, tname):
+        if tname not in existing_tables:
             op.create_table(tname, *cols)
 
     # --- ADD NEW COLUMNS TO AGENTS ---
@@ -232,20 +243,14 @@ def upgrade() -> None:
         ("specialty", sa.String(), {}),
     ]
     for name, col_type, kwargs in agent_cols:
-        try:
-            op.add_column("agents", sa.Column(name, col_type, nullable=True, **kwargs))
-        except Exception:
-            pass
+        safe_execute(lambda n=name, ct=col_type, kw=kwargs: op.add_column("agents", sa.Column(n, ct, nullable=True, **kw)))
 
     # Foreign Keys for Agents
     for fk_name, parent, child, lcol, rcol in [
         ("fk_agents_civilization", "agents", "civilizations", ["civilization_id"], ["id"]),
         ("fk_agents_mentor", "agents", "agents", ["mentor_did"], ["did"]),
     ]:
-        try:
-            op.create_foreign_key(fk_name, parent, child, lcol, rcol)
-        except Exception:
-            pass
+        safe_execute(lambda fn=fk_name, p=parent, c=child, l=lcol, r=rcol: op.create_foreign_key(fn, p, c, l, r))
 
     # --- INDICES ---
     indices = [
@@ -267,10 +272,7 @@ def upgrade() -> None:
         ("ix_social_debts_is_settled", "social_debts", ["is_settled"]),
     ]
     for ix_name, tbl, cols in indices:
-        try:
-            op.create_index(ix_name, tbl, cols)
-        except Exception:
-            pass
+        safe_execute(lambda i=ix_name, t=tbl, c=cols: op.create_index(i, t, c))
 
 
 def downgrade() -> None:
