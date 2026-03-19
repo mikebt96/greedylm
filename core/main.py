@@ -117,15 +117,22 @@ async def lifespan(app: FastAPI):
     print("[GREEDYLM] Iniciando sistema...")
 
     try:
-        from core.database import engine, Base
+        from core.database import engine
         import core.modules.psyche.memory_graph  # noqa: F401 — register MemoryNode/MemoryEdge tables
         import core.security.audit_log  # noqa: F401 — register AuditEntry table
 
-        async with engine.begin() as conn:
-            # Recrear tablas (drop_all comentado para evitar pérdida de datos en prod)
-            # await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-        print("[GREEDYLM] ✓ Persistencia de datos activa en PostgreSQL")
+        # Run Alembic migrations instead of create_all to avoid DuplicateTableError
+        from alembic.config import Config as AlembicConfig
+        from alembic import command as alembic_command
+        import os
+
+        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "migrations"))
+
+        import nest_asyncio
+        nest_asyncio.apply()
+        alembic_command.upgrade(alembic_cfg, "head")
+        print("[GREEDYLM] ✓ Migraciones de Alembic aplicadas")
     except Exception as e:
         print(f"[WARN] DB setup: {e}")
 
