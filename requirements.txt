@@ -12,3 +12,6 @@ celery
 alembic
 pgvector
 sentence-transformers
+httpx
+passlib[bcrypt]
+nest-asyncio
