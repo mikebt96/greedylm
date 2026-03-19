@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-import pgvector
+from pgvector.postgresql import VECTOR  # noqa: F401
 
 # revision identifiers, used by Alembic.
 revision: str = "f8a1c9e2b3d4"

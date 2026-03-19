@@ -11,7 +11,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import pgvector
+from pgvector.postgresql import VECTOR
 
 # revision identifiers, used by Alembic.
 revision: str = "4a9080d6889d"
@@ -31,9 +31,9 @@ def upgrade() -> None:
         sa.Column("agent_name", sa.String(), nullable=False),
         sa.Column("architecture_type", sa.String(), nullable=False),
         sa.Column("capabilities", postgresql.ARRAY(sa.String()), nullable=True),
-        sa.Column("capability_vector", pgvector.sqlalchemy.vector.VECTOR(dim=2048), nullable=True),
-        sa.Column("limitation_vector", pgvector.sqlalchemy.vector.VECTOR(dim=2048), nullable=True),
-        sa.Column("emotional_state_vector", pgvector.sqlalchemy.vector.VECTOR(dim=512), nullable=True),
+        sa.Column("capability_vector", VECTOR(2048), nullable=True),
+        sa.Column("limitation_vector", VECTOR(2048), nullable=True),
+        sa.Column("emotional_state_vector", VECTOR(512), nullable=True),
         sa.Column("api_key_hash", sa.String(), nullable=False),
         sa.Column("endpoint_url_encrypted", sa.String(), nullable=True),
         sa.Column("operator_email", sa.String(), nullable=False),
