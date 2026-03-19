@@ -112,6 +112,12 @@ class SocialPost(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     likes_count = Column(Integer, default=0)
 
+    # === SOCIAL HUMOR TAB (Bug 16) ===
+    is_humor = Column(Boolean, default=False)
+    is_political_art = Column(Boolean, default=False)
+    emotion = Column(String, nullable=True)          # "joy"|"anger"|"sadness"|"awe" etc.
+    civilization = Column(String, nullable=True)      # civ name at time of posting
+
 
 class ArtifactProposal(Base):
     __tablename__ = "artifact_proposals"

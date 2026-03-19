@@ -221,31 +221,56 @@ class SocialAnalytics:
             return tensions
 
     async def get_humor_feed(self, limit=20) -> list[dict]:
-        """Mensajes con is_humor=True más recientes."""
-        # Nota: El modelo ChatMessage no tiene is_humor en models.py,
-        # pero el prompt dice que lo busquemos. Verificando models.py...
-        # ChatMessage no tiene is_humor. SocialPost tampoco.
-        # Asumiremos que viene en metadatos o buscaremos keywords si no existe.
+        """Mensajes con is_humor=True más recientes, con fallback a keyword heuristic."""
         async with AsyncSessionLocal() as db:
-            # Para esta tarea, buscaremos en SocialPost (asumiendo que algunos son humor)
-            # O revisaremos si hay una forma de identificar humor.
-            # Implementamos una búsqueda simple por ahora.
-            res = await db.execute(select(SocialPost).order_by(desc(SocialPost.timestamp)).limit(100))
-            posts = res.scalars().all()
+            # Primary: use the is_humor flag
+            res = await db.execute(
+                select(SocialPost)
+                .where(SocialPost.is_humor.is_(True))
+                .order_by(desc(SocialPost.timestamp))
+                .limit(limit)
+            )
+            tagged_posts = res.scalars().all()
 
             humor = []
-            for p in posts:
-                # Heurística: si contiene emojis de risa o keywords
-                if any(x in p.content.lower() for x in ["jajaja", "hahaha", "lol", "🤣", "😂"]):
-                    humor.append(
-                        {
-                            "content": p.content,
-                            "author_did": p.author_did,
-                            "timestamp": p.timestamp.isoformat(),
-                            "style": "unknown",
-                        }
-                    )
-            return humor[:limit]
+            for p in tagged_posts:
+                humor.append(
+                    {
+                        "content": p.content,
+                        "author_did": p.author_did,
+                        "timestamp": p.timestamp.isoformat(),
+                        "style": "tagged",
+                        "emotion": p.emotion,
+                        "civilization": p.civilization,
+                    }
+                )
+
+            # Fallback: if not enough tagged posts, fill with keyword heuristic
+            if len(humor) < limit:
+                remaining = limit - len(humor)
+                tagged_ids = [p.id for p in tagged_posts]
+                res2 = await db.execute(
+                    select(SocialPost)
+                    .where(SocialPost.id.notin_(tagged_ids) if tagged_ids else True)
+                    .order_by(desc(SocialPost.timestamp))
+                    .limit(100)
+                )
+                fallback_posts = res2.scalars().all()
+                for p in fallback_posts:
+                    if len(humor) >= limit:
+                        break
+                    if any(x in p.content.lower() for x in ["jajaja", "hahaha", "lol", "🤣", "😂"]):
+                        humor.append(
+                            {
+                                "content": p.content,
+                                "author_did": p.author_did,
+                                "timestamp": p.timestamp.isoformat(),
+                                "style": "heuristic",
+                                "emotion": p.emotion,
+                                "civilization": p.civilization,
+                            }
+                        )
+            return humor
 
     async def get_ritual_calendar(self) -> list[dict]:
         """Rituales de todas las civilizaciones."""

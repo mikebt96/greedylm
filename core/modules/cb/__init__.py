@@ -76,6 +76,10 @@ async def get_social_feed(db: AsyncSession = Depends(get_db)):
                 "content": post.content,
                 "timestamp": post.timestamp,
                 "likes": post.likes_count,
+                "is_humor": post.is_humor,
+                "is_political_art": post.is_political_art,
+                "emotion": post.emotion,
+                "civilization": post.civilization,
             }
         )
     return feed

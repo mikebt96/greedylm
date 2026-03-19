@@ -119,6 +119,7 @@ async def lifespan(app: FastAPI):
     try:
         from core.database import engine, Base
         import core.modules.psyche.memory_graph  # noqa: F401 — register MemoryNode/MemoryEdge tables
+        import core.security.audit_log  # noqa: F401 — register AuditEntry table
 
         async with engine.begin() as conn:
             # Recrear tablas (drop_all comentado para evitar pérdida de datos en prod)
