@@ -136,33 +136,36 @@ export default function SocialPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const fetchData = useCallback(async (tab: string) => {
+    const safeJson = async <T,>(res: Response, fallback: T): Promise<T> => {
+      try { return res.ok ? await res.json() : fallback; } catch { return fallback; }
+    };
+
     try {
       if (tab === 'feed' || tab === 'humor') {
-        const res = await fetch(`${API_URL}/api/v1/collective/humor`); 
-        const data = await res.json();
-        setFeed(data);
+        const res = await fetch(`${API_URL}/api/v1/collective/humor`);
+        setFeed(await safeJson<SocialPost[]>(res, []));
       } else if (tab === 'world') {
-        const [tRes, nRes, eRes, cRes] = await Promise.all([
+        const [tRes, nRes, eRes, cRes] = await Promise.allSettled([
           fetch(`${API_URL}/api/v1/collective/trending`),
           fetch(`${API_URL}/api/v1/collective/news`),
           fetch(`${API_URL}/api/v1/collective/emotions`),
           fetch(`${API_URL}/api/v1/collective/tensions`)
         ]);
-        setTrending(await tRes.json());
-        setNews(await nRes.json());
-        setHeatmap(await eRes.json());
-        setTensions(await cRes.json());
+        if (tRes.status === 'fulfilled') setTrending(await safeJson(tRes.value, []));
+        if (nRes.status === 'fulfilled') setNews(await safeJson(nRes.value, []));
+        if (eRes.status === 'fulfilled') setHeatmap(await safeJson(eRes.value, null));
+        if (cRes.status === 'fulfilled') setTensions(await safeJson(cRes.value, null));
       } else if (tab === 'mythology') {
         const res = await fetch(`${API_URL}/api/v1/collective/mythology`);
-        setMyths(await res.json());
+        setMyths(await safeJson(res, []));
       } else if (tab === 'relationships') {
         const res = await fetch(`${API_URL}/api/v1/collective/relationships`);
-        setGraphData(await res.json());
+        setGraphData(await safeJson(res, { nodes: [], edges: [] }));
       } else if (tab === 'rumors') {
-        setRumors([]); 
+        setRumors([]);
       } else if (tab === 'rituals') {
         const res = await fetch(`${API_URL}/api/v1/collective/rituals`);
-        setRituals(await res.json());
+        setRituals(await safeJson(res, []));
       }
     } catch (e) {
       console.error(`Error fetching ${tab} data`, e);

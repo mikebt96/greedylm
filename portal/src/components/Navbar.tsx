@@ -18,6 +18,7 @@ function LanguagePicker({ compact = false }: { compact?: boolean }) {
           title={label}
           aria-label={label}
           aria-pressed={lang === code}
+          style={{ fontFamily: "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif" }}
           className={`text-lg leading-none px-1 py-0.5 rounded transition-all ${
             lang === code
               ? 'opacity-100 scale-110 bg-slate-700'

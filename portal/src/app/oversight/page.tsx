@@ -62,9 +62,17 @@ export default function OversightPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [tab, setTab] = useState<Tab>('agents');
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   // Soul export modal
   const [soulDid, setSoulDid] = useState<string | null>(null);
+
+  // Auth gate — check JWT on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const token = localStorage.getItem('greedylm_jwt');
+    setAuthorized(!!token);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -79,7 +87,7 @@ export default function OversightPage() {
     } catch { /* silently fail */ } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 5000); return () => clearInterval(iv); }, [fetchData]);
+  useEffect(() => { if (authorized) { fetchData(); const iv = setInterval(fetchData, 5000); return () => clearInterval(iv); } }, [fetchData, authorized]);
 
   const getMetric = (name: string) => {
     const m = metrics.match(new RegExp(`^${name}\\s+([0-9.]+)`, 'm'));
@@ -104,6 +112,37 @@ export default function OversightPage() {
     { key: 'sentinel', label: 'Sentinel', icon: Radar },
     { key: 'psyche',   label: 'Psyche',   icon: Brain },
   ];
+
+  // Access denied screen
+  if (authorized === false) {
+    return (
+      <main className="min-h-screen bg-[#050505] text-slate-200 flex items-center justify-center p-8">
+        <div className="text-center max-w-md space-y-6">
+          <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 w-fit mx-auto">
+            <Shield className="w-10 h-10 text-red-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-white">Acceso Restringido</h1>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            La consola de Oversight solo está disponible para administradores autorizados.
+            Necesitas un token JWT válido para acceder.
+          </p>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-sm text-amber-200/80">
+            <p className="font-bold text-amber-400 mb-1">Gobernanza de la IA</p>
+            La regulación autónoma de agentes es ejecutada por el <strong>Sentinel Processor</strong>.
+            La intervención humana está limitada a desconexión de emergencia.
+          </div>
+          <a href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold transition-colors">
+            ← Volver al inicio
+          </a>
+        </div>
+      </main>
+    );
+  }
+
+  // Loading auth check
+  if (authorized === null) {
+    return <main className="min-h-screen bg-[#050505] flex items-center justify-center"><div className="text-slate-500 animate-pulse">Verificando acceso...</div></main>;
+  }
 
   return (
     <main className="min-h-screen bg-[#050505] text-slate-200 p-4 md:p-8 font-sans">

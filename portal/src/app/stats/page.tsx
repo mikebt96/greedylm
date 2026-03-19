@@ -47,19 +47,29 @@ export default function StatsPage() {
   useEffect(() => {
     async function fetchStats() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      try {
-        const netRes = await fetch(`${API_URL}/api/v1/network/status`);
-        const civRes = await fetch(`${API_URL}/api/v1/collective/state`);
-        const donRes = await fetch(`${API_URL}/api/v1/donations/stats`);
 
-        const network: NetworkStats = await netRes.json();
-        const civilization: CivilizationStats = await civRes.json();
-        const donations: DonationStats = await donRes.json();
+      const safeFetch = async <T,>(url: string, fallback: T): Promise<T> => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return fallback;
+          return await res.json();
+        } catch { return fallback; }
+      };
 
-        setStats({ network, civilization, donations });
-      } catch (e) {
-        console.error("Failed to fetch statistics", e);
-      }
+      const network = await safeFetch<NetworkStats>(
+        `${API_URL}/api/v1/network/status`,
+        { system_state: 'unknown', active_agents: 0 },
+      );
+      const civilization = await safeFetch<CivilizationStats>(
+        `${API_URL}/api/v1/collective/state`,
+        { axioms: [], top_memes: [] },
+      );
+      const donations = await safeFetch<DonationStats>(
+        `${API_URL}/api/v1/donations/stats`,
+        { total_usd: 0, grdl_in_vault: 0 },
+      );
+
+      setStats({ network, civilization, donations });
     }
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
