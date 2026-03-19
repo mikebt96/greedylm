@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3 } from 'lucide-react';
+import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3, LogIn } from 'lucide-react';
 import { useT, LANGUAGES, Lang } from '@/lib/i18n';
 import { FLAG_COMPONENTS } from '@/components/FlagIcons';
 
@@ -122,6 +122,13 @@ export default function Navbar() {
           {/* Desktop CTAs + Language Picker */}
           <div className="hidden md:flex items-center gap-2">
             <Link
+              href="/login"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Login
+            </Link>
+            <Link
               href="/connect-agent"
               aria-label={t.nav_aria_connect}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-colors"
@@ -181,7 +188,15 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <div className="pt-3 grid grid-cols-2 gap-2">
+            <div className="pt-3 grid grid-cols-3 gap-2">
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium text-slate-400 border border-slate-800 hover:bg-slate-800 transition-colors"
+              >
+                <LogIn className="w-4 h-4" />
+                Login
+              </Link>
               <Link
                 href="/connect-agent"
                 onClick={() => setIsOpen(false)}

@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     BACKUP_BUCKET: str = "greedylm-backups"
     GITHUB_TOKEN: str = ""
 
+    # OAuth Providers
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GITHUB_CLIENT_ID: str = ""
+    GITHUB_CLIENT_SECRET: str = ""
+    APPLE_CLIENT_ID: str = ""
+    APPLE_CLIENT_SECRET: str = ""
+
     # Frontend URL (para webhooks y redirects)
     FRONTEND_URL: str = "http://localhost:3000"
 

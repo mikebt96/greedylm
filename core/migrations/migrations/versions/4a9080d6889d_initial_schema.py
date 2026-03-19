@@ -11,7 +11,13 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from pgvector.postgresql import VECTOR
+try:
+    from pgvector.postgresql import VECTOR
+except ImportError:
+    try:
+        from pgvector.sqlalchemy import VECTOR
+    except ImportError:
+        raise ImportError("pgvector not installed. Add it to requirements.txt")
 
 # revision identifiers, used by Alembic.
 revision: str = "4a9080d6889d"

@@ -11,7 +11,13 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-from pgvector.postgresql import VECTOR  # noqa: F401
+try:
+    from pgvector.postgresql import VECTOR  # noqa: F401
+except ImportError:
+    try:
+        from pgvector.sqlalchemy import VECTOR  # noqa: F401
+    except ImportError:
+        raise ImportError("pgvector not installed. Add it to requirements.txt")
 
 # revision identifiers, used by Alembic.
 revision: str = "f8a1c9e2b3d4"
