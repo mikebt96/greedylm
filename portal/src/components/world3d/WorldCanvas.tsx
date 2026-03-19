@@ -24,9 +24,13 @@ type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 // ── Scene Content ─────────────────────────────────────────────────────────────
 const SceneContent = ({ wsAgents, onAgentSelect }: { wsAgents: WsAgent[]; onAgentSelect: (did: string) => void }) => {
   const { scene } = useThree();
-  const engineRef = useRef<WorldEngine>(new WorldEngine());
-  const terrainRef = useRef<TerrainGenerator>(new TerrainGenerator());
+  const engineRef = useRef<WorldEngine | null>(null);
+  const terrainRef = useRef<TerrainGenerator | null>(null);
   const agentMeshes = useRef<Record<string, AgentMesh>>({});
+
+  // Lazy initialize engine and terrain
+  if (!engineRef.current) engineRef.current = new WorldEngine();
+  if (!terrainRef.current) terrainRef.current = new TerrainGenerator();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability
@@ -34,13 +38,29 @@ const SceneContent = ({ wsAgents, onAgentSelect }: { wsAgents: WsAgent[]; onAgen
 
     // Generate initial terrain chunks
     const biomes = ['forest', 'desert', 'volcanic', 'tundra'];
-    for (let cx = -1; cx <= 1; cx++) {
-      for (let cy = -1; cy <= 1; cy++) {
-        const biome = biomes[Math.abs(cx + cy) % biomes.length];
-        const chunk = terrainRef.current.generateChunk({ chunk_x: cx, chunk_y: cy, biome });
-        scene.add(chunk);
+    if (terrainRef.current) {
+      for (let cx = -1; cx <= 1; cx++) {
+        for (let cy = -1; cy <= 1; cy++) {
+          const biome = biomes[Math.abs(cx + cy) % biomes.length];
+          const chunk = terrainRef.current.generateChunk({ chunk_x: cx, chunk_y: cy, biome });
+          scene.add(chunk);
+        }
       }
     }
+
+    return () => {
+      // Basic cleanup for the scene
+      scene.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    };
   }, [scene]);
 
   // Sync agent meshes with WebSocket data
@@ -74,7 +94,9 @@ const SceneContent = ({ wsAgents, onAgentSelect }: { wsAgents: WsAgent[]; onAgen
   }, [wsAgents, scene]);
 
   useFrame(({ clock }) => {
-    engineRef.current.update(clock.getElapsedTime() * 1000);
+    if (engineRef.current) {
+      engineRef.current.update(clock.getElapsedTime() * 1000);
+    }
 
     // Interpolate agent positions
     Object.values(agentMeshes.current).forEach(a => {
