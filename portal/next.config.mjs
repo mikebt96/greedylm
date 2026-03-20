@@ -1,7 +1,17 @@
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     unoptimized: true,
+  },
+  
+  turbopack: {
+    root: __dirname,
   },
   
   // TRANSPILE 3D LIBRARIES
@@ -22,10 +32,6 @@ const nextConfig = {
   // CRÍTICO: habilitar output standalone para Docker
   output: "standalone",
 
-  eslint: {
-    // Advertencia: esto permite que el build pase aunque haya errores de linting
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     // Advertencia: esto permite que el build pase aunque haya errores de TypeScript
     ignoreBuildErrors: true,
