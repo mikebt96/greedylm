@@ -1,6 +1,6 @@
 import { ThreeElements } from '@react-three/fiber'
 
-declare global {
+declare module 'react' {
   namespace JSX {
     interface IntrinsicElements extends ThreeElements {}
   }
