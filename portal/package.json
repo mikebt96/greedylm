@@ -11,7 +11,6 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@types/d3": "^7.4.3",
     "@vercel/analytics": "^2.0.1",
     "cannon-es": "^0.20.0",
     "d3": "^7.9.0",
@@ -26,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@types/d3": "^7.4.3",
     "@types/node": "^20",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

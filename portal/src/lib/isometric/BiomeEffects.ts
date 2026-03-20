@@ -20,17 +20,18 @@ export class BiomeEffects {
       p.fill({ color: 0xffffff, alpha: 0.5 });
       p.x = Math.random() * 800 - 400;
       p.y = Math.random() * 600 - 300;
-      (p as PixiParticle).vy = Math.random() * 1 + 0.5;
-      (p as PixiParticle).vx = Math.random() * 0.5 - 0.25;
-      this.container.addChild(p);
-      this.particles.push(p);
+      const particle = p as PixiParticle;
+      particle.vy = Math.random() * 1 + 0.5;
+      particle.vx = Math.random() * 0.5 - 0.25;
+      this.container.addChild(particle);
+      this.particles.push(particle);
     }
   }
 
   public update() {
     this.particles.forEach(p => {
-      p.y += (p as PixiParticle).vy;
-      p.x += (p as PixiParticle).vx;
+      p.y += p.vy;
+      p.x += p.vx;
       if (p.y > 400) p.y = -400;
       if (p.x > 500) p.x = -500;
       if (p.x < -500) p.x = 500;

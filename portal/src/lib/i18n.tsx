@@ -1057,7 +1057,7 @@ const translations = {
 } as const;
 
 export type TranslationKey = keyof typeof translations.es;
-export type Translations = Record<TranslationKey, string>;
+export type Translations = { [K in TranslationKey]: (typeof translations.es)[K] extends readonly string[] ? readonly string[] : string };
 
 // ── Context ───────────────────────────────────────────────────────────────────
 interface LanguageContextValue {

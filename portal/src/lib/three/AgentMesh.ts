@@ -45,7 +45,8 @@ export class AgentMesh {
         this.mixer = new THREE.AnimationMixer(this.mesh);
     }
 
-    private addRaceAccessories(race: string) {
+    private addRaceAccessories(race: string | undefined) {
+        if (!race) return;
         if (race === 'elf') {
             const ear1 = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2), new THREE.MeshLambertMaterial({ color: 0xe0c0a0 }));
             ear1.position.set(0.35, 1.5, 0);
