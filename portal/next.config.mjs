@@ -10,9 +10,7 @@ const nextConfig = {
     unoptimized: true,
   },
   
-  turbopack: {
-    root: __dirname,
-  },
+
   
   // TRANSPILE 3D LIBRARIES
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
