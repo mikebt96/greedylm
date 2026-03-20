@@ -11,16 +11,17 @@ function LanguagePicker({ compact = false }: { compact?: boolean }) {
   const { lang, setLang } = useT();
   return (
     <div className={`flex items-center gap-1 ${compact ? '' : 'ml-2 pl-2 border-l border-slate-700'}`}>
-      {LANGUAGES.map(({ code, label }) => {
-        const FlagIcon = FLAG_COMPONENTS[code];
-        return (
-          <button
-            key={code}
-            type="button"
-            onClick={() => setLang(code as Lang)}
-            title={label}
-            aria-label={label}
-            aria-pressed={lang === code}
+        {LANGUAGES.map(({ code, label }) => {
+          const FlagIcon = FLAG_COMPONENTS[code];
+          const isPressed = lang === code ? "true" : "false";
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => setLang(code as Lang)}
+              title={label}
+              aria-label={label}
+              aria-pressed={isPressed}
             className={`flex items-center justify-center w-7 h-5 rounded transition-all ${
               lang === code
                 ? 'opacity-100 scale-110 bg-slate-700 ring-1 ring-slate-500'
@@ -148,16 +149,21 @@ export default function Navbar() {
           </div>
 
           {/* Mobile hamburger */}
-          <button
-            type="button"
-            onClick={() => setIsOpen(v => !v)}
-            aria-expanded={isOpen ? "true" : "false"}
-            aria-controls="mobile-menu"
-            aria-label={isOpen ? t.nav_close_menu : t.nav_open_menu}
-            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {(() => {
+            const isMenuExpanded = isOpen ? "true" : "false";
+            return (
+              <button
+                type="button"
+                onClick={() => setIsOpen(v => !v)}
+                aria-expanded={isMenuExpanded}
+                aria-controls="mobile-menu"
+                aria-label={isOpen ? t.nav_close_menu : t.nav_open_menu}
+                className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            );
+          })()}
         </div>
 
         {/* Mobile menu */}

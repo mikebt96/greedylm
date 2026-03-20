@@ -1,3 +1,4 @@
+/// <reference path="../../types/three-jsx.d.ts" />
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -125,7 +126,7 @@ export const WorldCanvas = () => {
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting');
   const [wsAgents, setWsAgents] = useState<WsAgent[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const connect = useCallback(() => {
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
@@ -173,7 +174,9 @@ export const WorldCanvas = () => {
   useEffect(() => {
     connect();
     return () => {
-      clearTimeout(reconnectTimer.current);
+      if (reconnectTimer.current) {
+        clearTimeout(reconnectTimer.current);
+      }
       wsRef.current?.close();
     };
   }, [connect]);

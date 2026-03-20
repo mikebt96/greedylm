@@ -9,7 +9,93 @@ import * as d3 from 'd3';
 import { safeFetch } from '@/lib/api/safeFetch';
 
 // --- TYPES ---
-/* ... types remain the same ... */
+export interface SocialPost {
+  id: number;
+  author_did: string;
+  content: string;
+  timestamp: string;
+  is_humor?: boolean;
+  is_political_art?: boolean;
+}
+
+export interface TrendingTopic {
+  topic: string;
+  mention_count: number;
+  sentiment: 'positive' | 'negative' | 'neutral';
+}
+
+export interface WorldNews {
+  id: string;
+  type: string;
+  tick: number;
+  description: string;
+}
+
+export interface HeatmapData {
+  by_civilization: Array<{
+    id: string;
+    name: string;
+    dominant: 'joy' | 'anger' | 'fear' | 'neutral';
+  }>;
+}
+
+export interface TensionData {
+  civilization_name: string;
+  risk: 'low' | 'medium' | 'high';
+  distribution: {
+    elite: number;
+    middle: number;
+    lower: number;
+    outcast: number;
+  };
+  tension_level: number;
+}
+
+export interface Myth {
+  id: string;
+  title: string;
+  content: string;
+  author_did: string;
+  myth_type: string;
+  created_tick: number;
+  ritual_attached: boolean;
+  viral_score: number;
+}
+
+export interface RelationshipNode {
+  id: string;
+  name: string;
+  color?: string;
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
+}
+
+export interface RelationshipEdge {
+  source: string | RelationshipNode;
+  target: string | RelationshipNode;
+  strength: number;
+}
+
+export interface Rumor {
+  id: string;
+  current_content: string;
+  original_content: string;
+  truth_score: number;
+  distortion_count: number;
+  spread_count: number;
+  is_active: boolean;
+}
+
+export interface Ritual {
+  id: string;
+  name: string;
+  type: string;
+  cohesion_boost: number;
+  last_performed: string | null;
+  is_religious: boolean;
+}
 
 // --- MAIN PAGE ---
 
@@ -17,6 +103,9 @@ export default function SocialPage() {
   const [activeTab, setActiveTab] = useState('feed');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Timer ref for React 19 strict compliance
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Data states
   const [feed, setFeed] = useState<SocialPost[]>([]);
@@ -77,9 +166,23 @@ export default function SocialPage() {
   }, []);
 
   useEffect(() => {
-    fetchData(activeTab);
-    const interval = setInterval(() => fetchData(activeTab), activeTab === 'feed' ? 8000 : 10000);
-    return () => clearInterval(interval);
+    let isActive = true;
+    
+    const initFetch = async () => {
+      if (isActive) {
+        await fetchData(activeTab);
+      }
+    };
+    
+    initFetch();
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(initFetch, activeTab === 'feed' ? 8000 : 10000);
+    
+    return () => {
+      isActive = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [activeTab, fetchData]);
 
   return (
@@ -210,7 +313,7 @@ function WorldTab({ trending, news, heatmap, tensions }: {
           Emotional Field
         </h3>
         <div className="grid grid-cols-5 gap-2">
-          {heatmap?.by_civilization?.map((c) => (
+          {heatmap?.by_civilization?.map((c: { id: string; name: string; dominant: string }) => (
             <div key={c.id} className="group relative aspect-square rounded-xl bg-slate-800 overflow-hidden flex flex-col items-center justify-center p-2 text-center border border-slate-700 hover:border-blue-500/50 transition-all">
                <div className="text-[10px] font-bold text-slate-400 truncate w-full">{c.name}</div>
                <div className="text-xl mt-1">
