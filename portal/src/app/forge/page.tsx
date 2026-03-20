@@ -19,22 +19,31 @@ export default function ForgePage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Artifact | null>(null);
 
-  const fetchArtifacts = async () => {
-    const { data, error: fetchError } = await safeFetch<Artifact[]>('/api/v1/ccf/artifacts');
-    
-    if (fetchError) {
-      setError(fetchError);
-    } else if (data) {
-      setArtifacts(data);
-      setError(null);
-    }
-    setLoading(false);
-  };
 
   useEffect(() => {
-    fetchArtifacts();
-    const interval = setInterval(fetchArtifacts, 10000);
-    return () => clearInterval(interval);
+    let mounted = true;
+
+    const loadArtifacts = async () => {
+      const { data, error: fetchError } = await safeFetch<Artifact[]>('/api/v1/ccf/artifacts');
+      
+      if (!mounted) return;
+
+      if (fetchError) {
+        setError(fetchError);
+      } else if (data) {
+        setArtifacts(data);
+        setError(null);
+      }
+      setLoading(false);
+    };
+
+    loadArtifacts();
+    const interval = setInterval(loadArtifacts, 10000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
