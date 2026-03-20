@@ -6,95 +6,204 @@ interface AgentData {
     [key: string]: unknown;
 }
 
+// Emotion → color mapping
+const EMOTION_COLORS: Record<string, number> = {
+    curiosity:     0x00E5FF,
+    trust:         0x00E676,
+    joy:           0xFFEA00,
+    anticipation:  0xFF9100,
+    fear:          0xE040FB,
+    anger:         0xFF1744,
+    sadness:       0x448AFF,
+    awe:           0xFFFFFF,
+};
+const EMOTIONS = Object.keys(EMOTION_COLORS);
+
+// Race → accent color
+const RACE_COLORS: Record<string, number> = {
+    elf:    0xA5D6A7,
+    mage:   0x7C4DFF,
+    nomad:  0xFFCC02,
+    beast:  0xFF6D00,
+    specter:0xB2EBF2,
+};
+
 export class AgentMesh {
-    public mesh: THREE.Group;
+    public mesh:         THREE.Group;
     public emotionalOrb: THREE.Mesh;
-    private mixer: THREE.AnimationMixer;
+    private _orbLight:   THREE.PointLight;
+    private _mixer:      THREE.AnimationMixer;
+    private _idleOffset: number;   // phase offset so agents don't bob in sync
 
     constructor(data: AgentData) {
         this.mesh = new THREE.Group();
-        
-        // Body
-        const bodyGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.2);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: data.color_primary || 0x888888 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 0.6;
-        this.mesh.add(body);
+        this._idleOffset = Math.random() * Math.PI * 2;
 
-        // Head
-        const headGeo = new THREE.SphereGeometry(0.35);
-        const head = new THREE.Mesh(headGeo, bodyMat);
-        head.position.y = 1.4;
-        this.mesh.add(head);
+        const primaryHex  = data.color_primary ?? 0x78909C;
+        const accentHex   = RACE_COLORS[data.race ?? ''] ?? 0xB0BEC5;
 
-        // Accessories based on race
-        this.addRaceAccessories(data.race);
-
-        // Emotional Orb
-        const orbGeo = new THREE.SphereGeometry(0.1);
-        const orbMat = new THREE.MeshStandardMaterial({ 
-            color: 0xffffff, 
-            emissive: 0xffffff, 
-            emissiveIntensity: 1 
+        const bodyMat = new THREE.MeshPhongMaterial({
+            color:       primaryHex,
+            flatShading: true,
+            shininess:   20,
         });
-        this.emotionalOrb = new THREE.Mesh(orbGeo, orbMat);
-        this.emotionalOrb.position.y = 2.0;
-        this.mesh.add(this.emotionalOrb);
+        const accentMat = new THREE.MeshPhongMaterial({
+            color:       accentHex,
+            flatShading: true,
+            shininess:   40,
+        });
 
-        // Animation setup
-        this.mixer = new THREE.AnimationMixer(this.mesh);
+        // ── Body ─────────────────────────────────────────────────────────────
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.28, 0.38, 1.1, 6),  // 6-sided = low-poly
+            bodyMat
+        );
+        body.position.y = 0.55;
+        body.castShadow = true;
+
+        // ── Head ─────────────────────────────────────────────────────────────
+        const head = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(0.33, 0),  // flat-shaded icosahedron looks great
+            bodyMat
+        );
+        head.position.y = 1.35;
+        head.castShadow = true;
+
+        // ── Shoulders (visual interest, cheap) ───────────────────────────────
+        const shoulderGeo = new THREE.SphereGeometry(0.18, 4, 3);
+        const shoulderL = new THREE.Mesh(shoulderGeo, accentMat);
+        shoulderL.position.set(-0.32, 0.9, 0);
+        shoulderL.castShadow = true;
+
+        const shoulderR = shoulderL.clone();
+        shoulderR.position.x = 0.32;
+
+        this.mesh.add(body, head, shoulderL, shoulderR);
+
+        // ── Race accessories ─────────────────────────────────────────────────
+        this._addRaceAccessories(data.race, accentMat);
+
+        // ── Emotional Orb ────────────────────────────────────────────────────
+        const orbMat = new THREE.MeshStandardMaterial({
+            color:             0xFFFFFF,
+            emissive:          0xFFFFFF,
+            emissiveIntensity: 1.2,
+            roughness:         0.1,
+            metalness:         0.0,
+        });
+        this.emotionalOrb = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 8), orbMat);
+        this.emotionalOrb.position.y = 1.95;
+
+        // Small point light attached to orb for ambient glow
+        this._orbLight = new THREE.PointLight(0xFFFFFF, 0.6, 2.5);
+        this._orbLight.position.copy(this.emotionalOrb.position);
+
+        this.mesh.add(this.emotionalOrb, this._orbLight);
+
+        // ── Animation mixer (Three.js, unused clip slots kept for future) ────
+        this._mixer = new THREE.AnimationMixer(this.mesh);
     }
 
-    private addRaceAccessories(race: string | undefined) {
+    // ── Accessories ───────────────────────────────────────────────────────────
+    private _addRaceAccessories(race: string | undefined, accentMat: THREE.Material) {
         if (!race) return;
+
         if (race === 'elf') {
-            const ear1 = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.2), new THREE.MeshLambertMaterial({ color: 0xe0c0a0 }));
-            ear1.position.set(0.35, 1.5, 0);
-            ear1.rotation.z = -Math.PI / 4;
+            const earGeo = new THREE.ConeGeometry(0.06, 0.22, 4);
+            const ear1 = new THREE.Mesh(earGeo, accentMat);
+            ear1.position.set(0.34, 1.45, 0);
+            ear1.rotation.z = -Math.PI / 3.5;
             const ear2 = ear1.clone();
-            ear2.position.x = -0.35;
-            ear2.rotation.z = Math.PI / 4;
+            ear2.position.x = -0.34;
+            ear2.rotation.z =  Math.PI / 3.5;
             this.mesh.add(ear1, ear2);
-        } else if (race === 'mage') {
-            const hat = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6), new THREE.MeshLambertMaterial({ color: 0x311b92 }));
-            hat.position.y = 1.8;
+        }
+
+        if (race === 'mage') {
+            const hat = new THREE.Mesh(
+                new THREE.ConeGeometry(0.38, 0.65, 5),
+                accentMat
+            );
+            hat.position.y = 1.78;
             this.mesh.add(hat);
+
+            // Brim
+            const brim = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.5, 0.5, 0.06, 8),
+                accentMat
+            );
+            brim.position.y = 1.47;
+            this.mesh.add(brim);
+        }
+
+        if (race === 'beast') {
+            // Horns
+            const hornGeo = new THREE.ConeGeometry(0.06, 0.35, 4);
+            const horn1 = new THREE.Mesh(hornGeo, accentMat);
+            horn1.position.set( 0.2, 1.62, 0);
+            horn1.rotation.z = -0.3;
+            const horn2 = horn1.clone();
+            horn2.position.x = -0.2;
+            horn2.rotation.z =  0.3;
+            this.mesh.add(horn1, horn2);
+        }
+
+        if (race === 'specter') {
+            // Translucent aura ring
+            const auraMat = new THREE.MeshBasicMaterial({
+                color:       0xB2EBF2,
+                transparent: true,
+                opacity:     0.35,
+                side:        THREE.DoubleSide,
+            });
+            const aura = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.04, 6, 16), auraMat);
+            aura.position.y = 1.1;
+            aura.rotation.x = Math.PI / 2;
+            this.mesh.add(aura);
         }
     }
 
+    // ── Emotion update ────────────────────────────────────────────────────────
     public updateEmotion(esv: number[]) {
-        if (!esv || esv.length < 8) return;
-        
-        const emotions = ['curiosity', 'trust', 'joy', 'anticipation', 'fear', 'anger', 'sadness', 'awe'];
-        const colors: Record<string, number> = {
-            curiosity: 0x00ffff,
-            trust: 0x00ff00,
-            joy: 0xffff00,
-            anticipation: 0xffaa00,
-            fear: 0xff00ff,
-            anger: 0xff0000,
-            sadness: 0x5555ff,
-            awe: 0xffffff
-        };
+        if (!esv || esv.length < EMOTIONS.length) return;
 
         const dominantIdx = esv.indexOf(Math.max(...esv));
-        const color = colors[emotions[dominantIdx]] || 0xffffff;
-        
-        if (this.emotionalOrb.material instanceof THREE.MeshStandardMaterial) {
-            this.emotionalOrb.material.color.setHex(color);
-            this.emotionalOrb.material.emissive.setHex(color);
-        }
+        const hex = EMOTION_COLORS[EMOTIONS[dominantIdx]] ?? 0xFFFFFF;
+
+        const mat = this.emotionalOrb.material as THREE.MeshStandardMaterial;
+        mat.color.setHex(hex);
+        mat.emissive.setHex(hex);
+
+        this._orbLight.color.setHex(hex);
     }
 
-    public playAnimation(name: string) {
-        // Simple bobbing for idle/walk simulation
-        const time = Date.now() * 0.005;
-        this.mesh.position.y = Math.sin(time) * 0.05;
-        
+    // ── Animation ─────────────────────────────────────────────────────────────
+    /**
+     * Call from useFrame. Uses elapsed time for smooth, frame-rate-independent motion.
+     * @param elapsedSeconds  clock.getElapsedTime()
+     */
+    public playAnimation(name: string, elapsedSeconds?: number) {
+        const t = (elapsedSeconds ?? Date.now() * 0.001) + this._idleOffset;
+
+        // Organic vertical bob
+        this.mesh.position.y = Math.sin(t * 1.4) * 0.04;
+
+        // Gentle breathing sway
+        this.mesh.rotation.z = Math.sin(t * 0.9) * 0.015;
+
+        // Orb slow orbit around head
+        this.emotionalOrb.position.x = Math.sin(t * 1.1) * 0.18;
+        this.emotionalOrb.position.z = Math.cos(t * 1.1) * 0.18;
+        this._orbLight.position.copy(this.emotionalOrb.position);
+        this._orbLight.position.y = this.emotionalOrb.position.y;
+
         if (name === 'walk') {
-            this.mesh.rotation.x = Math.sin(time * 2) * 0.1 + 0.1;
+            // Lean forward slightly + faster bob when walking
+            this.mesh.rotation.x =  Math.sin(t * 2.8) * 0.08 + 0.06;
+            this.mesh.position.y += Math.sin(t * 2.8) * 0.03;
         } else {
-            this.mesh.rotation.x = 0;
+            // Return x rotation to rest
+            this.mesh.rotation.x *= 0.85;
         }
     }
 }
