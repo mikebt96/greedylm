@@ -6,8 +6,8 @@ from datetime import timedelta
 from pydantic import BaseModel, EmailStr
 
 from core.database import get_db
-from core.models import User, UserAccessTier
-from core.security.auth import get_password_hash, verify_password, create_access_token, settings
+from core.models import User, UserAccessTier, Agent
+from core.security.auth import get_password_hash, verify_password, create_access_token, get_current_user, settings
 import httpx
 from fastapi.responses import RedirectResponse
 import secrets
@@ -113,6 +113,38 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token_expires = timedelta(days=settings.JWT_EXPIRE_DAYS)
     access_token = create_access_token(data={"sub": user.email, "role": user.role}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me")
+async def read_users_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    tier_result = await db.execute(select(UserAccessTier).where(UserAccessTier.user_id == current_user.id))
+    tier_obj = tier_result.scalar_one_or_none()
+    tier = tier_obj.tier if tier_obj else "spectator"
+
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "role": current_user.role,
+        "tier": tier
+    }
+
+
+@router.get("/me/agents")
+async def read_user_agents(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Agent).where(Agent.operator_email == current_user.email))
+    agents = result.scalars().all()
+    return [
+        {
+            "did": a.did,
+            "agent_name": a.agent_name,
+            "architecture_type": a.architecture_type,
+            "status": a.status,
+            "avatar_url": a.avatar_url,
+            "race": a.race or "nomad",
+        }
+        for a in agents
+    ]
+
 
 
 # ── OAuth helpers ──────────────────────────────────────────────────────────────

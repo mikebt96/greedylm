@@ -38,7 +38,10 @@ export class WorldEngine {
     private _fogColor  = new THREE.Color();
 
     constructor() {
-        this.startTime = Date.now() / 1000;
+        // Start at midday: offset back by a quarter cycle so angle begins at PI/2 (sun zenith).
+        // Without this the cycle starts at angle=0 (horizon = near-dark).
+        const quarterCycle = this.dayNightCycleDuration / 4;
+        this.startTime = Date.now() / 1000 - quarterCycle;
     }
 
     /**

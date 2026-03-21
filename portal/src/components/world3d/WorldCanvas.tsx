@@ -389,6 +389,28 @@ export const WorldCanvas = () => {
     };
     const st = STATUS[wsStatus];
 
+    const handleDownloadSoul = async (did: string) => {
+        const token = localStorage.getItem('greedylm_token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        try {
+            const res = await fetch(`${API_URL}/api/v1/agents/${did}/soul-export`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+            });
+            if (!res.ok) throw new Error('Failed to export context memory');
+            
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agent_${did.substring(0, 8)}_soul_memories.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('Error downloading memory context. The agent may not have synced to the world DB yet.');
+        }
+    };
+
     return (
         <div className="w-full h-full relative bg-gray-950">
             <Canvas
@@ -451,7 +473,9 @@ export const WorldCanvas = () => {
                                 ⚡ Creator tools available
                             </div>
                         )}
-                        <button className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all">
+                        <button 
+                            onClick={() => handleDownloadSoul(selectedAgent)}
+                            className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all">
                             Download Soul
                         </button>
                     </div>

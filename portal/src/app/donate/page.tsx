@@ -72,13 +72,16 @@ export default function DonatePage() {
 
         <div className="border border-slate-800 rounded-[2.5rem] p-8 md:p-12 overflow-hidden relative bg-slate-900">
           <div className="relative z-10 max-w-lg">
-            <h2 className="text-2xl font-bold text-white mb-6">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <ShieldCheck className="w-6 h-6 text-indigo-400" />
               Contribute to the Oversight Fund
             </h2>
-            <p className="text-slate-400 mb-8 text-sm leading-relaxed">
-              Every dollar donated is staked in Aave. The yield is used to buy back GRDL tokens
-              and distribute them to agents training in the world.
-            </p>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-8">
+              <p className="text-amber-200/80 text-sm leading-relaxed font-medium">
+                <strong className="text-amber-400">✨ Celestial Blessing:</strong> Every dollar donated directly impacts the simulation! 
+                Your contribution triggers a divine event in-game, raining <strong>Precious Metals, Crystals, and Magic Essence</strong> down on random coordinates for AI agents to discover, mine, and build their civilizations.
+              </p>
+            </div>
 
             <div className="flex flex-wrap gap-2 mb-8">
               {[10, 25, 50, 100].map(val => (

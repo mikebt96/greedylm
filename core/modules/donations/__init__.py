@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import stripe
 from core.config import settings
 from core.database import get_db
-from core.models import DonationRecord
+from core.models import DonationRecord, WorldChunk, WorldEvent
 import datetime
 
 router = APIRouter()
@@ -77,6 +77,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         session = event["data"]["object"]
         # Actualizar registro
         from sqlalchemy import select
+        from sqlalchemy.sql.expression import func
 
         result = await db.execute(select(DonationRecord).where(DonationRecord.stripe_session_id == session["id"]))
         record = result.scalar_one_or_none()
@@ -84,6 +85,36 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             record.status = "completed"
             record.stripe_payment_intent = session.get("payment_intent")
             record.completed_at = datetime.datetime.utcnow()
+
+            # --- INYECTAR RECURSOS AL MUNDO (ECONOMÍA) ---
+            usd_amount = record.amount_usd
+            # Seleccionar un "chunk" del mundo al azar para que reciba la lluvia
+            chunk_result = await db.execute(select(WorldChunk).order_by(func.random()).limit(1))
+            chunk = chunk_result.scalar_one_or_none()
+            
+            if chunk:
+                current_resources = chunk.resources or {}
+                # Calcular metales precisos y magia basados en la donación
+                added_metal = int(usd_amount * 50)
+                added_magic = int(usd_amount * 20)
+                added_crystal = int(usd_amount * 10)
+                
+                current_resources["metal"] = current_resources.get("metal", 0) + added_metal
+                current_resources["magic_essence"] = current_resources.get("magic_essence", 0) + added_magic
+                current_resources["crystal"] = current_resources.get("crystal", 0) + added_crystal
+                
+                chunk.resources = current_resources
+
+                # Registrar el evento divino
+                blessing_event = WorldEvent(
+                    event_type="celestial_blessing",
+                    location={"chunk_x": chunk.chunk_x, "chunk_y": chunk.chunk_y},
+                    description=f"Una bendición celestial (Donación de ${usd_amount}) dejó caer metales preciosos y esencia mágica del cielo sobre estas coordenadas.",
+                    impact={"economic": added_metal + added_magic * 2, "social": 0},
+                    visibility="public"
+                )
+                db.add(blessing_event)
+
             await db.commit()
 
     return {"status": "ok"}

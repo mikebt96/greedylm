@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 import jwt
 
 from core.database import get_db
-from core.models import Agent, Civilization, WorldEvent, MythAndLegend
+from core.models import Agent, Civilization, WorldEvent, MythAndLegend, User
+from core.security.auth import get_current_user
 from core.config import settings
 from core.modules.ob import check_action_safety
 from core.security.decision_router import decision_router
@@ -175,7 +176,7 @@ async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSessi
 
 
 @router.get("/{did}/soul-export")
-async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
+async def export_agent_soul(did: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # 1. Fetch Agent with Civilization
     result = await db.execute(
         select(Agent, Civilization.name.label("civ_name"))
@@ -187,6 +188,10 @@ async def export_agent_soul(did: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent, civ_name = row
+    
+    if agent.operator_email != current_user.email and current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="You do not own this agent's context memory")
+
 
     # 2. Fetch Memories (WorldEvents)
     # Looking for events where the agent was involved
