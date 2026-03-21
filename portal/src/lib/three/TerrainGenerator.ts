@@ -32,13 +32,44 @@ const BIOME_PALETTE: Record<string, { base: number; dark: number; light: number 
     mythic_zones:    { base: 0x4A148C, dark: 0x1A0033, light: 0xCE93D8 },
 };
 
+const BIOME_SEEDS = [
+    { cx:  0,  cy:  0, biome: 'forest'           },
+    { cx:  6,  cy:  1, biome: 'desert'           },
+    { cx: -5,  cy:  4, biome: 'snow'             },
+    { cx:  3,  cy: -6, biome: 'plains'           },
+    { cx: -8,  cy: -4, biome: 'volcanic'         },
+    { cx:  9,  cy: -3, biome: 'mythic_zones'     },
+    { cx: -2,  cy:  9, biome: 'ocean'            },
+    { cx:  8,  cy:  7, biome: 'ruins'            },
+    { cx: -10, cy:  2, biome: 'caverns'          },
+    { cx:  1,  cy: 10, biome: 'floating_islands' },
+    { cx:  5,  cy: -9, biome: 'plains'           },
+    { cx: -6,  cy: -9, biome: 'forest'           },
+];
+
 const FALLBACK_PALETTE = { base: 0x37474F, dark: 0x263238, light: 0x78909C };
 
 // ── TerrainGenerator ──────────────────────────────────────────────────────────
 export class TerrainGenerator {
 
+    public getBiomeAt(cx: number, cy: number): string {
+        let minDist = Infinity;
+        let biome = 'forest';
+        for (const seed of BIOME_SEEDS) {
+            const dx = cx - seed.cx;
+            const dy = cy - seed.cy;
+            const dist = dx * dx + dy * dy;
+            if (dist < minDist) {
+                minDist = dist;
+                biome = seed.biome;
+            }
+        }
+        return biome;
+    }
+
     public generateChunk(data: ChunkData): THREE.Mesh {
-        const { chunk_x, chunk_y, biome } = data;
+        const { chunk_x, chunk_y } = data;
+        const biome = data.biome || this.getBiomeAt(chunk_x, chunk_y);
         const SEGMENTS = 24;  // more verts = smoother low-poly look
         const SIZE = 32;
 
