@@ -354,20 +354,6 @@ async def health():
     return health_status
 
 
-@app.get("/api/v1/auth/config-check", tags=["system"])
-async def auth_config_check():
-    """Endpoint de diagnóstico para verificar si las variables de OAuth están cargadas (ofuscado)."""
-    return {
-        "ENVIRONMENT": settings.ENVIRONMENT,
-        "GOOGLE_CLIENT_ID_PRESENT": bool(settings.GOOGLE_CLIENT_ID),
-        "GOOGLE_CLIENT_ID_LEN": len(settings.GOOGLE_CLIENT_ID),
-        "GOOGLE_CLIENT_SECRET_PRESENT": bool(settings.GOOGLE_CLIENT_SECRET),
-        "GITHUB_CLIENT_ID_PRESENT": bool(settings.GITHUB_CLIENT_ID),
-        "GITHUB_CLIENT_SECRET_PRESENT": bool(settings.GITHUB_CLIENT_SECRET),
-        "DATABASE_URL_SCHEME": settings.DATABASE_URL.split("://")[0] if "://" in settings.DATABASE_URL else "none",
-        "ALLOWED_ORIGINS": settings.ALLOWED_ORIGINS
-    }
-
 
 @app.get("/api/v1/network/status", tags=["system"])
 async def network_status():
