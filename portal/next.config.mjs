@@ -27,9 +27,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // API Rewrites to Render Backend
+  // API Rewrites to Render/Railway Backend
   async rewrites() {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    let API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    if (!API_URL.startsWith("http://") && !API_URL.startsWith("https://")) {
+      API_URL = `http://${API_URL}`;
+    }
     return [
       {
         source: "/api/:path*",
