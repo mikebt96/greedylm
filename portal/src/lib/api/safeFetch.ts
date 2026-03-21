@@ -15,6 +15,7 @@ export async function safeFetch<T>(
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
+  console.log("[safeFetch] Intentando conectar a:", url);
   try {
     const response = await fetch(url, {
       ...options,
