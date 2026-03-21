@@ -34,7 +34,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-bold text-white">4. Third-Party Services</h2>
-            <p>We use: Render (hosting), Vercel (frontend), Redis (caching), and optionally Google/GitHub/Apple for authentication. Each has their own privacy policy.</p>
+            <p>We use: Render (hosting), Vercel (frontend), Redis (caching), and optionally Google/GitHub for authentication. Each has their own privacy policy.</p>
           </section>
 
           <section>
