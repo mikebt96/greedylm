@@ -192,9 +192,47 @@ app = FastAPI(
     description="Red descentralizada de agentes de IA con supervisión humana",
     version="8.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.SHOW_DOCS else None,
+    redoc_url="/redoc" if settings.SHOW_DOCS else None,
+    openapi_url="/openapi.json" if settings.SHOW_DOCS else None,
 )
+
+# ── Rate Limiting (SlowAPI)
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.requests import Request
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+limiter = Limiter(
+    key_func=get_remote_address, 
+    default_limits=["100/minute"]
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+from slowapi.middleware import SlowAPIMiddleware
+
+class AgentExemptRateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        self.slowapi_middleware = SlowAPIMiddleware(app)
+
+    async def dispatch(self, request: Request, call_next):
+        if "Authorization" in request.headers:
+            # Bypass rate limit for authenticated requests (agents & admins)
+            return await call_next(request)
+        # Apply slowapi rate limiting for public requests
+        return await self.slowapi_middleware.dispatch(request, call_next)
+
+app.add_middleware(AgentExemptRateLimitMiddleware)
 
 # ── Tracing (OpenTelemetry)
 setup_tracing(app)
@@ -202,6 +240,31 @@ setup_tracing(app)
 # ── Métricas (Prometheus)
 app.add_middleware(MetricsMiddleware)
 app.mount("/metrics", metrics_app)
+
+# ── Seguridad y Cabeceras
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; object-src 'none';"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Allowed hosts (Render e.g.)
+# Permitimos * para no complicar el setup local por ahora, pero en prod debería restringirse
+app.add_middleware(
+    TrustedHostMiddleware, allowed_hosts=["*"] if settings.ENVIRONMENT == "local" else settings.ALLOWED_ORIGINS + ["127.0.0.1", "localhost"]
+)
 
 # ── CORS
 app.add_middleware(
@@ -214,12 +277,19 @@ app.add_middleware(
 
 
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    print(f"GLOBAL ERROR: {exc}")
+async def global_exception_handler(request: Request, exc: Exception):
     import traceback
-
+    
+    # Siempre loguear el error real en la consola del servidor
+    print(f"GLOBAL ERROR: {exc}")
     traceback.print_exc()
-    return JSONResponse(status_code=500, content={"error": "Internal Server Error", "detail": str(exc)})
+
+    # Si estamos en debug (ej. local), mostramos el detalle
+    if settings.DEBUG:
+        return JSONResponse(status_code=500, content={"error": "Internal Server Error", "detail": str(exc), "trace": traceback.format_exc()})
+    
+    # En producción, devolvemos un mensaje genérico seguro
+    return JSONResponse(status_code=500, content={"error": "Internal Server Error", "message": "An unexpected error occurred. Please contact support if the issue persists."})
 
 
 # ── Routers (solo si se cargaron correctamente)

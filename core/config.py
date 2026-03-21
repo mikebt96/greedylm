@@ -1,20 +1,24 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    # Entorno
+    ENVIRONMENT: str = "production"  # "local", "development", "production"
+    DEBUG: bool = False
+    SHOW_DOCS: bool = False
+
     # Servidor
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEBUG: bool = False
 
     # Base de datos
-    DATABASE_URL: str = "postgresql+asyncpg://user:pass@localhost/greedylm"
+    DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost:15432/greedylm"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # Qdrant
-    QDRANT_URL: str = "https://8ac60b40-4a34-43ae-a091-79e0512099b4.us-west-1-0.aws.cloud.qdrant.io:6333"
+    QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str = ""
     QDRANT_COLLECTION: str = "greedylm_knowledge"
 
@@ -33,6 +37,19 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
+        
+        # Ajustes basados en el entorno
+        if self.ENVIRONMENT == "local":
+            self.DEBUG = True
+            self.SHOW_DOCS = True
+        elif self.ENVIRONMENT == "production":
+            self.DEBUG = False
+            # Validar claves seguras en producción
+            if self.JWT_SECRET == "change-me-in-production-at-least-32-chars" or len(self.JWT_SECRET) < 32:
+                raise ValueError("JWT_SECRET insecure! You must generate a secure 32+ char key for production.")
+            if self.ENCRYPTION_KEY == "change-me-at-least-32-chars" or len(self.ENCRYPTION_KEY) < 32:
+                raise ValueError("ENCRYPTION_KEY insecure! You must generate a secure 32+ char key for production.")
+
         # Si ALLOWED_ORIGINS viene como string (desde env), convertir a lista
         if isinstance(self.ALLOWED_ORIGINS, str):
             self.ALLOWED_ORIGINS = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -69,10 +86,11 @@ class Settings(BaseSettings):
     # Render flag (SSL en DB)
     RENDER: bool = False
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 
 settings = Settings()

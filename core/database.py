@@ -23,7 +23,8 @@ if not _is_sqlite:
                     "jit": "off",
                 },
                 "command_timeout": 60,
-                "ssl": "require" if settings.RENDER else False,
+                # Forzar SSL en producción, independientemente de la bandera RENDER
+                "ssl": "require" if settings.ENVIRONMENT == "production" or settings.RENDER else False,
             },
         }
     )

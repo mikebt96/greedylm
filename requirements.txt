@@ -16,3 +16,4 @@ httpx
 passlib[bcrypt]
 bcrypt==3.2.0
 nest-asyncio
+PyGithub
