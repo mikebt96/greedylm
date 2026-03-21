@@ -10,7 +10,7 @@ async def deploy_agent(agent_did: str, body_id: str):
     print(f"🚀 Deploying Agent {agent_did} to Body {body_id}...")
 
     # En producción real, esto contactaría al endpoint del agente y subiría el ONNX
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient():
         try:
             # Primero exportamos (mock call a un endpoint que crearemos)
             print("📦 Exporting policy to ONNX...")

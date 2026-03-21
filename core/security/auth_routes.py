@@ -8,6 +8,10 @@ from pydantic import BaseModel, EmailStr
 from core.database import get_db
 from core.models import User, UserAccessTier
 from core.security.auth import get_password_hash, verify_password, create_access_token, settings
+import httpx
+from fastapi.responses import RedirectResponse
+import secrets
+
 
 router = APIRouter()
 
@@ -112,10 +116,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 # ── OAuth helpers ──────────────────────────────────────────────────────────────
-
-import httpx
-from fastapi.responses import RedirectResponse
-import secrets
 
 
 async def _oauth_find_or_create_user(email: str, db: AsyncSession) -> User:

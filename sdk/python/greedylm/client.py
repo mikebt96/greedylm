@@ -144,7 +144,7 @@ class GreedyClient:
     # ── Oversight & Governance (OB) ──────────────────────────────────────────
     async def veto_agent(self, did: str, reason: str = "Standard oversight veto") -> dict:
         """Manually veto an agent via path param (kill switch).
-        
+
         Note: The `reason` field is sent in the request body but the backend
         endpoint currently only reads the path param `did`. The reason is
         logged client-side but not persisted server-side.

@@ -20,13 +20,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import os
-import sys
+import os  # noqa: E402
+import sys  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from core.models import Base
-import core.security.audit_log  # noqa: F401 — register AuditEntry table
-import core.modules.psyche.memory_graph  # noqa: F401 — register MemoryNode/MemoryEdge tables
+from core.models import Base  # noqa: E402
+import core.security.audit_log  # noqa: E401, E402 — register AuditEntry table
+import core.modules.psyche.memory_graph  # noqa: E401, E402 — register MemoryNode/MemoryEdge tables
 
 target_metadata = Base.metadata
 
