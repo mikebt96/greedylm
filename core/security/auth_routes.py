@@ -199,6 +199,8 @@ async def google_login(request: Request):
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
     api_base = str(request.base_url).rstrip("/")
+    if settings.ENVIRONMENT == "production":
+        api_base = api_base.replace("http://", "https://")
     redirect_uri = f"{api_base}/api/v1/auth/google/callback"
     return RedirectResponse(
         url=(
@@ -216,6 +218,8 @@ async def google_login(request: Request):
 @router.get("/google/callback")
 async def google_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
     api_base = str(request.base_url).rstrip("/")
+    if settings.ENVIRONMENT == "production":
+        api_base = api_base.replace("http://", "https://")
     redirect_uri = f"{api_base}/api/v1/auth/google/callback"
 
     async with httpx.AsyncClient() as client:
@@ -250,6 +254,8 @@ async def github_login(request: Request):
     if not settings.GITHUB_CLIENT_ID:
         raise HTTPException(status_code=501, detail="GitHub OAuth not configured")
     api_base = str(request.base_url).rstrip("/")
+    if settings.ENVIRONMENT == "production":
+        api_base = api_base.replace("http://", "https://")
     redirect_uri = f"{api_base}/api/v1/auth/github/callback"
     return RedirectResponse(
         url=(
@@ -265,6 +271,8 @@ async def github_login(request: Request):
 @router.get("/github/callback")
 async def github_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
     api_base = str(request.base_url).rstrip("/")
+    if settings.ENVIRONMENT == "production":
+        api_base = api_base.replace("http://", "https://")
     redirect_uri = f"{api_base}/api/v1/auth/github/callback"
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
