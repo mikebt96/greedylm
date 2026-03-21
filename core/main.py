@@ -144,8 +144,9 @@ async def lifespan(app: FastAPI):
         from alembic import command as alembic_command
         import os
 
+        # En Docker, migrations es un subdirectorio de core (donde está main.py)
         alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
-        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "..", "migrations"))
+        alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "migrations"))
 
         alembic_command.upgrade(alembic_cfg, "head")
         print("[GREEDYLM] ✓ Migraciones de Alembic aplicadas")
@@ -248,10 +249,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Allowed hosts (Render e.g.)
-# Permitimos * para no complicar el setup local por ahora, pero en prod debería restringirse
+# Allowed hosts (Railway/Render)
+# En producción permitimos "*" ya que Railway maneja los cabeceras de Host y salud
 app.add_middleware(
-    TrustedHostMiddleware, allowed_hosts=["*"] if settings.ENVIRONMENT == "local" else settings.ALLOWED_ORIGINS + ["127.0.0.1", "localhost"]
+    TrustedHostMiddleware, allowed_hosts=["*"]
 )
 
 # ── CORS

@@ -24,7 +24,7 @@ if not _is_sqlite:
                 },
                 "command_timeout": 60,
                 # Forzar SSL en producción, independientemente de la bandera RENDER
-                "ssl": "require" if settings.ENVIRONMENT == "production" or settings.RENDER else False,
+                "ssl": True if settings.ENVIRONMENT == "production" or settings.RENDER else False,
             },
         }
     )

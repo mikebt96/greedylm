@@ -99,5 +99,11 @@ settings = Settings()
 
 # Fix para asyncpg en SQLAlchemy
 # DATABASE_URL viene como postgresql://, SQLAlchemy necesita postgresql+asyncpg://
+# Y quitamos sslmode si viene en la URL para manejarlo manualmente en database.py
 if settings.DATABASE_URL.startswith("postgresql://"):
     settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+if "sslmode=" in settings.DATABASE_URL:
+    import re
+    settings.DATABASE_URL = re.sub(r'(\?|&)sslmode=[^&]*', '', settings.DATABASE_URL)
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("?&", "?").rstrip("?")
