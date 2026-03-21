@@ -103,7 +103,18 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if user and getattr(user, "auth_provider", "local") == "google":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este correo está asociado a una cuenta de Google. Por favor, usa el botón de Iniciar sesión con Google.",
+        )
+    if user and getattr(user, "auth_provider", "local") == "github":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Este correo está asociado a una cuenta de GitHub. Por favor, usa el botón de Iniciar sesión con GitHub.",
+        )
+
+    if not user or not user.password_hash or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -150,7 +161,7 @@ async def read_user_agents(current_user: User = Depends(get_current_user), db: A
 # ── OAuth helpers ──────────────────────────────────────────────────────────────
 
 
-async def _oauth_find_or_create_user(email: str, db: AsyncSession) -> User:
+async def _oauth_find_or_create_user(email: str, provider: str, db: AsyncSession) -> User:
     """Find existing user by email or create a new SPECTATOR user."""
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -159,7 +170,8 @@ async def _oauth_find_or_create_user(email: str, db: AsyncSession) -> User:
 
     user = User(
         email=email,
-        password_hash=get_password_hash(secrets.token_urlsafe(32)),  # random password for OAuth users
+        password_hash=None,
+        auth_provider=provider,
         role="SPECTATOR",
     )
     db.add(user)
@@ -229,7 +241,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         )
         user_info = user_res.json()
 
-    user = await _oauth_find_or_create_user(user_info["email"], db)
+    user = await _oauth_find_or_create_user(user_info["email"], "google", db)
     return _create_redirect_with_token(user)
 
 
@@ -284,7 +296,7 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
         if not primary_email:
             raise HTTPException(status_code=400, detail="No verified email found on GitHub account")
 
-    user = await _oauth_find_or_create_user(primary_email, db)
+    user = await _oauth_find_or_create_user(primary_email, "github", db)
     return _create_redirect_with_token(user)
 
 # ── End of Auth Routes ──
