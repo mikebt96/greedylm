@@ -36,6 +36,7 @@ jobs:
           python -m pytest tests/ -v --timeout=30
         env:
           PYTHONPATH: .
+          ENVIRONMENT: local
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
           REDIS_URL: "redis://localhost:6379/0"
           JWT_SECRET: "test-secret-min-64-chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -44,7 +45,7 @@ jobs:
           STRIPE_SECRET_KEY: "sk_test_dummy_for_ci"
           STRIPE_WEBHOOK_SECRET: "whsec_dummy_for_ci"
           FRONTEND_URL: "http://localhost:3000"
-          ENCRYPTION_KEY: "thisisasecretkeyforaes256encryp"
+          ENCRYPTION_KEY: "thisisasecretkeyforaes256encryp_ci_test"
           MASTER_KEY_HASH: "ci_test_hash_not_for_production"
 
   security:
