@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = [
         "https://greedylm.vercel.app",
         "https://greedylm-portal.onrender.com",
+        "https://greedylm-mikebt96s-projects.vercel.app",
+        "https://greedylm-git-main-mikebt96s-projects.vercel.app",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
@@ -45,10 +47,10 @@ class Settings(BaseSettings):
         elif self.ENVIRONMENT == "production":
             self.DEBUG = False
             # Validar claves seguras en producción
-            if self.JWT_SECRET == "change-me-in-production-at-least-32-chars" or len(self.JWT_SECRET) < 32:
-                raise ValueError("JWT_SECRET insecure! You must generate a secure 32+ char key for production.")
-            if self.ENCRYPTION_KEY == "change-me-at-least-32-chars" or len(self.ENCRYPTION_KEY) < 32:
-                raise ValueError("ENCRYPTION_KEY insecure! You must generate a secure 32+ char key for production.")
+            if self.JWT_SECRET.startswith("change-me") or len(self.JWT_SECRET) < 32:
+                raise ValueError(f"JWT_SECRET insecure! Found {len(self.JWT_SECRET)} chars, need 32+. Generate a secure key for production.")
+            if self.ENCRYPTION_KEY.startswith("change-me") or len(self.ENCRYPTION_KEY) < 32:
+                raise ValueError(f"ENCRYPTION_KEY insecure! Found {len(self.ENCRYPTION_KEY)} chars, need 32+. Generate a secure key for production.")
 
         # Si ALLOWED_ORIGINS viene como string (desde env), convertir a lista
         if isinstance(self.ALLOWED_ORIGINS, str):
