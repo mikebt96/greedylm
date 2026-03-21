@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -195,12 +195,10 @@ def _create_redirect_with_token(user: User) -> RedirectResponse:
 # ── Google OAuth ───────────────────────────────────────────────────────────────
 
 @router.get("/google")
-async def google_login():
+async def google_login(request: Request):
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
-    redirect_uri = f"{settings.FRONTEND_URL.rstrip('/')}/api/v1/auth/google/callback"
-    # Use the API's own URL for the callback
-    api_base = "https://greedylm-api.onrender.com"
+    api_base = str(request.base_url).rstrip("/")
     redirect_uri = f"{api_base}/api/v1/auth/google/callback"
     return RedirectResponse(
         url=(
@@ -216,8 +214,8 @@ async def google_login():
 
 
 @router.get("/google/callback")
-async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
-    api_base = "https://greedylm-api.onrender.com"
+async def google_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+    api_base = str(request.base_url).rstrip("/")
     redirect_uri = f"{api_base}/api/v1/auth/google/callback"
 
     async with httpx.AsyncClient() as client:
@@ -248,10 +246,10 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
 # ── GitHub OAuth ───────────────────────────────────────────────────────────────
 
 @router.get("/github")
-async def github_login():
+async def github_login(request: Request):
     if not settings.GITHUB_CLIENT_ID:
         raise HTTPException(status_code=501, detail="GitHub OAuth not configured")
-    api_base = "https://greedylm-api.onrender.com"
+    api_base = str(request.base_url).rstrip("/")
     redirect_uri = f"{api_base}/api/v1/auth/github/callback"
     return RedirectResponse(
         url=(
@@ -265,7 +263,9 @@ async def github_login():
 
 
 @router.get("/github/callback")
-async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
+async def github_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+    api_base = str(request.base_url).rstrip("/")
+    redirect_uri = f"{api_base}/api/v1/auth/github/callback"
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
             "https://github.com/login/oauth/access_token",

@@ -77,6 +77,8 @@ export default function Navbar() {
     { href: '/roadmap',    label: 'Roadmap',       icon: Map },
     { href: '/stats',      label: 'Stats',         icon: BarChart3 },
   ] : [
+    { href: '/#forge-highlights', label: 'Forge', icon: Brain },
+    { href: '/#social-highlights', label: 'Social', icon: Code },
     { href: '/stats',      label: 'Stats',         icon: BarChart3 },
     { href: '/roadmap',    label: 'Roadmap',       icon: Map },
   ];

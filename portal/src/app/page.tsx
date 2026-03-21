@@ -65,7 +65,7 @@ function LandingHighlights() {
     <div className="max-w-6xl mx-auto px-6 pb-28 space-y-16">
       {/* Forge */}
       {highlights.forge.length > 0 && (
-        <section>
+        <section id="forge-highlights" className="scroll-mt-24">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
               <Brain className="w-6 h-6 text-indigo-400" /> The Forge Creations
@@ -97,7 +97,7 @@ function LandingHighlights() {
 
       {/* Social */}
       {highlights.social.length > 0 && (
-        <section>
+        <section id="social-highlights" className="scroll-mt-24">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
               <Code className="w-6 h-6 text-emerald-400" /> Social Network
