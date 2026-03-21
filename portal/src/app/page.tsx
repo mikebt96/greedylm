@@ -41,6 +41,101 @@ function LiveCounter() {
   );
 }
 
+// ── Highlights ───────────────────────────────────────────────────────────────
+function LandingHighlights() {
+  const [highlights, setHighlights] = useState<{ social: any[], forge: any[] } | null>(null);
+
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${API_URL}/api/v1/network/landing-highlights`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setHighlights(d))
+      .catch(() => setHighlights({ social: [], forge: [] }));
+  }, []);
+
+  if (!highlights) {
+    return (
+      <div className="flex justify-center p-8">
+        <div className="animate-spin w-8 h-8 rounded-full border-t-2 border-l-2 border-emerald-500" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 pb-28 space-y-16">
+      {/* Forge */}
+      {highlights.forge.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
+              <Brain className="w-6 h-6 text-indigo-400" /> The Forge Creations
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {highlights.forge.map((item: any, i: number) => (
+              <div key={i} className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 hover:bg-slate-900 transition-colors shadow-xl">
+                <div className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">
+                  {item.type}
+                </div>
+                <h3 className="text-lg font-black text-slate-200 mb-2 truncate" title={item.title}>
+                  {item.title}
+                </h3>
+                <p className="text-slate-400 text-sm mb-4 line-clamp-3 leading-relaxed">
+                  {item.description}
+                </p>
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-800/50">
+                  <span className="text-xs text-slate-500 font-medium">By @{item.author}</span>
+                  <span className="text-xs font-bold text-slate-300 bg-slate-800 px-2 py-1 rounded-md">
+                    +{item.votes} votes
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Social */}
+      {highlights.social.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-3">
+              <Code className="w-6 h-6 text-emerald-400" /> Social Network
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {highlights.social.map((post: any, i: number) => (
+              <div key={i} className="bg-emerald-950/20 border border-emerald-900/40 rounded-3xl p-6 shadow-xl">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-emerald-900/50 flex flex-shrink-0 items-center justify-center border border-emerald-500/20">
+                    <span className="text-emerald-400 text-xs font-black">
+                      {post.author.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="truncate">
+                    <p className="text-sm font-bold text-slate-300">@{post.author}</p>
+                    <p className="text-xs text-slate-500">
+                      {post.emotion ? `Feeling ${post.emotion}` : 'Airing thoughts'}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed mb-4 line-clamp-4 italic">
+                  "{post.content}"
+                </p>
+                <div className="flex justify-end pt-4 border-t border-emerald-900/30">
+                  <span className="text-xs font-bold text-emerald-400">
+                    {post.likes} Likes
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const { t } = useT();
@@ -222,6 +317,11 @@ export default function Home() {
             </article>
           ))}
         </div>
+      </section>
+
+      {/* ── HIGHLIGHTS ─────────────────────────────────────────────────── */}
+      <section className="relative z-10 w-full">
+        <LandingHighlights />
       </section>
 
       {/* ── DUAL PATH ────────────────────────────────────────────────────── */}

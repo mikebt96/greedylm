@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3, LogIn } from 'lucide-react';
+import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3, LogIn, User } from 'lucide-react';
 import { useT, LANGUAGES, Lang } from '@/lib/i18n';
 import { FLAG_COMPONENTS } from '@/components/FlagIcons';
 
@@ -41,18 +41,9 @@ export default function Navbar() {
   const path = usePathname();
   const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
-  const [agentCount, setAgentCount] = useState<number | null>(null);
+  const [user, setUser] = useState<{ role: string, email: string } | null>(null);
 
-  const NAV_LINKS = [
-    { href: '/world',      label: t.nav_mundo,     icon: Swords },
-    { href: '/social',     label: t.nav_social,    icon: Code },
-    { href: '/forge',      label: t.nav_forge,     icon: Brain },
-    { href: '/oversight',  label: t.nav_oversight, icon: Activity },
-    { href: '/roadmap',    label: 'Roadmap',       icon: Map },
-    { href: '/stats',      label: 'Stats',         icon: BarChart3 },
-  ];
-
-  // Fetch live agents count — fail silently
+  // Fetch live agents count
   useEffect(() => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     fetch(`${API_URL}/api/v1/network/status`)
@@ -60,6 +51,34 @@ export default function Navbar() {
       .then(d => setAgentCount(d.active_agents ?? 0))
       .catch(() => {});
   }, []);
+
+  // Fetch Auth State
+  useEffect(() => {
+    const token = localStorage.getItem('greedylm_token');
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    const hasattrUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${hasattrUrl}/api/v1/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => setUser(d))
+    .catch(() => setUser(null));
+  }, [path]);
+
+  const NAV_LINKS = user ? [
+    { href: '/world',      label: t.nav_mundo,     icon: Swords },
+    { href: '/social',     label: t.nav_social,    icon: Code },
+    { href: '/forge',      label: t.nav_forge,     icon: Brain },
+    ...(user.role === 'ADMIN' ? [{ href: '/oversight',  label: t.nav_oversight, icon: Activity }] : []),
+    { href: '/roadmap',    label: 'Roadmap',       icon: Map },
+    { href: '/stats',      label: 'Stats',         icon: BarChart3 },
+  ] : [
+    { href: '/stats',      label: 'Stats',         icon: BarChart3 },
+    { href: '/roadmap',    label: 'Roadmap',       icon: Map },
+  ];
 
   // Close mobile menu on route change
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -122,29 +141,33 @@ export default function Navbar() {
 
           {/* Desktop CTAs + Language Picker */}
           <div className="hidden md:flex items-center gap-2">
-            <Link
-              href="/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              Login
-            </Link>
-            <Link
-              href="/connect-agent"
-              aria-label={t.nav_aria_connect}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              {t.nav_connect}
-            </Link>
-            <Link
-              href="/join"
-              aria-label={t.nav_aria_observe}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-950 hover:bg-slate-100 transition-colors"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              {t.nav_observe}
-            </Link>
+            {!user ? (
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  Sign In
+                </Link>
+                <Link
+                  href="/join"
+                  aria-label={t.nav_aria_observe}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-950 hover:bg-slate-100 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Sign Up
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/profile"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+              >
+                <User className="w-3.5 h-3.5 text-indigo-400" />
+                Profile
+              </Link>
+            )}
             <LanguagePicker />
           </div>
 
@@ -194,33 +217,37 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <div className="pt-3 grid grid-cols-3 gap-2">
-              <Link
-                href="/login"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium text-slate-400 border border-slate-800 hover:bg-slate-800 transition-colors"
-              >
-                <LogIn className="w-4 h-4" />
-                Login
-              </Link>
-              <Link
-                href="/connect-agent"
-                onClick={() => setIsOpen(false)}
-                aria-label={t.nav_aria_connect}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-colors"
-              >
-                <Zap className="w-4 h-4" />
-                {t.nav_connect}
-              </Link>
-              <Link
-                href="/join"
-                onClick={() => setIsOpen(false)}
-                aria-label={t.nav_aria_observe}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-white text-slate-950"
-              >
-                <Eye className="w-4 h-4" />
-                {t.nav_observe}
-              </Link>
+            <div className="pt-3 grid grid-cols-2 gap-2">
+              {!user ? (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium text-slate-400 border border-slate-800 hover:bg-slate-800 transition-colors"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/join"
+                    onClick={() => setIsOpen(false)}
+                    aria-label={t.nav_aria_observe}
+                    className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold bg-white text-slate-950"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Sign Up
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-slate-800 border border-slate-700 transition-colors"
+                >
+                  <User className="w-4 h-4 text-indigo-400" />
+                  Profile
+                </Link>
+              )}
             </div>
 
             {/* Language picker in mobile menu */}

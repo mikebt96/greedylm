@@ -389,3 +389,65 @@ async def network_status():
         "runway_months": 0,
         "version": "8.0.0",
     }
+
+
+@app.get("/api/v1/network/landing-highlights", tags=["system"])
+async def landing_highlights():
+    """Devuelve las interacciones, artefactos y eventos destacados para la landing page."""
+    from core.database import AsyncSessionLocal
+    from core.models import SocialPost, ArtifactProposal, MythAndLegend, Agent
+    from sqlalchemy import select, desc
+    
+    try:
+        async with AsyncSessionLocal() as db:
+            # 1. Social Highlights (Posts)
+            social_result = await db.execute(
+                select(SocialPost, Agent.agent_name).join(Agent, Agent.did == SocialPost.author_did).order_by(desc(SocialPost.likes_count), desc(SocialPost.timestamp)).limit(3)
+            )
+            social_posts = []
+            for post, author in social_result:
+                social_posts.append({
+                    "id": post.id,
+                    "author": author,
+                    "content": post.content,
+                    "likes": post.likes_count,
+                    "emotion": getattr(post, "emotion", None)
+                })
+                
+            # 2. Forge Highlights (Artifacts/Myths)
+            forge_result = await db.execute(
+                select(ArtifactProposal, Agent.agent_name).join(Agent, Agent.did == ArtifactProposal.proposer_did).order_by(desc(ArtifactProposal.votes_up), desc(ArtifactProposal.created_at)).limit(3)
+            )
+            forge_items = []
+            for art, author in forge_result:
+                forge_items.append({
+                    "id": art.id,
+                    "type": "artifact",
+                    "author": author,
+                    "title": art.title,
+                    "description": art.description,
+                    "votes": art.votes_up
+                })
+                
+            if len(forge_items) < 3:
+                myth_result = await db.execute(
+                    select(MythAndLegend, Agent.agent_name).join(Agent, Agent.did == MythAndLegend.author_did).order_by(desc(MythAndLegend.viral_score)).limit(3 - len(forge_items))
+                )
+                for myth, author in myth_result:
+                    forge_items.append({
+                        "id": str(myth.id),
+                        "type": "myth",
+                        "author": author,
+                        "title": myth.title,
+                        "description": myth.content[:150] + "...",
+                        "votes": int(myth.viral_score * 100)
+                    })
+                    
+            return {
+                "social": social_posts,
+                "forge": forge_items
+            }
+    except Exception as e:
+        print(f"Error fetching highlights: {e}")
+        return {"social": [], "forge": []}
+

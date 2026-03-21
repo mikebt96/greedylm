@@ -26,7 +26,11 @@ type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 // ── World constants ────────────────────────────────────────────────────────────
 const CHUNK_SIZE    = 32;
-const RENDER_RADIUS = 3;   // (2r+1)^2 ≈ 37 circular chunks = ~240×240 unit world view
+
+// RENDER_RADIUS = 4 → circular footprint of ~49 chunks = ~256 unit radius visible.
+// Terrain always generates around where the camera is looking, not the avatar —
+// so the world feels infinite as you pan or fly.
+const RENDER_RADIUS = 4;
 
 /**
  * Biome regions defined as Voronoi seeds in chunk space.
@@ -103,14 +107,19 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
     // ── Init ──────────────────────────────────────────────────────────────────
     useEffect(() => {
         gl.shadowMap.enabled = true;
-        gl.shadowMap.type    = THREE.PCFShadowMap;
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.0035);
+        gl.shadowMap.type    = THREE.PCFSoftShadowMap;
+
+        // Soft fog — lets you see 3-4 chunks deep before it fades
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.0018);
 
         if (isCreator) {
             const god = new GodController(new THREE.Vector3(0, 3, 0));
             godRef.current = god;
             scene.add(god.mesh);
         }
+
+        // Load initial chunk ring immediately — don't wait for first useFrame tick
+        streamChunks(0, 0, true);
 
         return () => {
             if (godRef.current) {
@@ -143,8 +152,11 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
     }, [isCreator]);
 
     // ── Chunk streaming ───────────────────────────────────────────────────────
-    const streamChunks = (cx: number, cy: number) => {
-        if (cx === lastCx.current && cy === lastCy.current) return;
+    // Center = orbit target (what camera looks at), projected on ground.
+    // This makes terrain generate around where you're looking, not where avatar is.
+    // firstLoad = true → no throttle, fills entire radius immediately.
+    const streamChunks = (cx: number, cy: number, firstLoad = false) => {
+        if (!firstLoad && cx === lastCx.current && cy === lastCy.current) return;
         lastCx.current = cx;
         lastCy.current = cy;
 
@@ -158,6 +170,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             }
         }
 
+        // Unload chunks outside new footprint
         for (const [key, objs] of chunks.current) {
             if (!desired.has(key)) {
                 objs.forEach(o => { scene.remove(o); disposeObject(o); });
@@ -165,10 +178,11 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             }
         }
 
-        // Throttle: max 4 new chunks per frame to avoid stutter
+        // Load new chunks — unlimited on first load, max 4/frame after that
+        const maxPerFrame = firstLoad ? Infinity : 4;
         let loaded = 0;
         for (const key of desired) {
-            if (chunks.current.has(key) || loaded >= 4) continue;
+            if (chunks.current.has(key) || loaded >= maxPerFrame) continue;
             const [kcx, kcy] = key.split(',').map(Number);
             const biome = getBiomeForChunk(kcx, kcy);
             const chunk = terrain.generateChunk({ chunk_x: kcx, chunk_y: kcy, biome });
@@ -178,6 +192,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             loaded++;
         }
     };
+
 
     // ── Agent sync ────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -243,8 +258,11 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             controlsRef.current.target.copy(camTarget.current);
         }
 
-        // 4. Chunk streaming
-        const { cx, cy } = worldToChunkCoord(focusPos.current.x, focusPos.current.z);
+        // 4. Chunk streaming — centered on the orbit TARGET (what the camera looks at).
+        //    This ensures terrain generates around where the camera is pointed,
+        //    not where the avatar happens to be standing.
+        const streamCenter = controlsRef.current?.target ?? focusPos.current;
+        const { cx, cy }   = worldToChunkCoord(streamCenter.x, streamCenter.z);
         streamChunks(cx, cy);
 
         // 5. Agent animations
@@ -258,8 +276,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
 
     return (
         <>
-            <Stars radius={160} depth={80} count={6000} factor={4} saturation={0} fade speed={0.3} />
+            {/* Stars — only visible when sky darkens at night */}
+            <Stars radius={200} depth={80} count={6000} factor={4} saturation={0} fade speed={0.3} />
 
+            {/* Lights — intensities driven by WorldEngine each frame */}
             <ambientLight ref={ambientRef} intensity={0.3} />
             <directionalLight
                 ref={sunRef}
@@ -274,6 +294,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
                 shadow-camera-top={120}
                 shadow-camera-bottom={-120}
             />
+            {/* Hemisphere fill — prevents pitch-black undersides */}
             <hemisphereLight args={[0x87CEEB, 0x3A5A2A, 0.38]} />
 
             {/* Post-processing — remove <DepthOfField> if performance is tight */}
@@ -315,6 +336,8 @@ export const WorldCanvas = () => {
     const [wsStatus,  setWsStatus]  = useState<WsStatus>('connecting');
     const [wsAgents,  setWsAgents]  = useState<WsAgent[]>([]);
     const [myDid,     setMyDid]     = useState<string | null>(null);
+    const [ownedAgents, setOwnedAgents] = useState<Set<string>>(new Set());
+    const [soulData, setSoulData]   = useState<any | null>(null);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -325,6 +348,19 @@ export const WorldCanvas = () => {
 
     useEffect(() => {
         (async () => {
+            const token = localStorage.getItem('greedylm_token');
+            if(token) {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                try {
+                    const res = await fetch(`${API_URL}/api/v1/auth/me/agents`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setOwnedAgents(new Set(data.map((a: any) => a.did)));
+                    }
+                } catch { }
+            }
             const { data } = await safeFetch<{ did: string }>('/api/v1/agents/me');
             if (data?.did) setMyDid(data.did);
         })();
@@ -389,27 +425,25 @@ export const WorldCanvas = () => {
     };
     const st = STATUS[wsStatus];
 
-    const handleDownloadSoul = async (did: string) => {
+    const handleViewSoul = async (did: string) => {
         const token = localStorage.getItem('greedylm_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         try {
             const res = await fetch(`${API_URL}/api/v1/agents/${did}/soul-export`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
             });
-            if (!res.ok) throw new Error('Failed to export context memory');
-            
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `agent_${did.substring(0, 8)}_soul_memories.json`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            alert('Error downloading memory context. The agent may not have synced to the world DB yet.');
+            if (!res.ok) {
+                if (res.status === 403) throw new Error('Restricted access: You do not own this agent.');
+                throw new Error('Failed to fetch context memory');
+            }
+            const data = await res.json();
+            setSoulData(data);
+        } catch (err: any) {
+            alert(err.message || 'Error fetching memory context.');
         }
     };
+
+    const isOwner = selectedAgent ? ownedAgents.has(selectedAgent) : false;
 
     return (
         <div className="w-full h-full relative bg-gray-950">
@@ -418,7 +452,11 @@ export const WorldCanvas = () => {
                 gl={{ antialias: true, powerPreference: 'high-performance' }}
                 dpr={[1, 1.5]}
             >
-                <PerspectiveCamera makeDefault position={[0, 22, 32]} fov={52} near={0.5} far={600} />
+                {/*
+                  * Camera sits 9 units high, 20 units back — ground-level feel.
+                  * far=900 covers the full render radius (4 chunks × 32 units + buffer).
+                  */}
+                <PerspectiveCamera makeDefault position={[0, 9, 20]} fov={58} near={0.5} far={900} />
                 <SceneContent
                     isCreator={isCreator}
                     myAgentDid={myDid}
@@ -473,11 +511,67 @@ export const WorldCanvas = () => {
                                 ⚡ Creator tools available
                             </div>
                         )}
-                        <button 
-                            onClick={() => handleDownloadSoul(selectedAgent)}
-                            className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all">
-                            Download Soul
-                        </button>
+                        {(isCreator || isOwner) ? (
+                            <button 
+                                onClick={() => selectedAgent && handleViewSoul(selectedAgent)}
+                                className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/50">
+                                View Context Soul
+                            </button>
+                        ) : (
+                            <div className="w-full py-3 bg-slate-800/50 text-slate-500 font-bold rounded-xl text-center border border-slate-700/50 text-xs">
+                                Restricted Access (Not Owner)
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Soul Modal */}
+            {soulData && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
+                    <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                            <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                                <span className="text-indigo-400">✧</span> {soulData.identity?.name || 'Unknown'} Soul Data
+                            </h2>
+                            <button onClick={() => setSoulData(null)} className="text-slate-400 hover:text-white transition-colors text-xl font-bold">
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-300">
+                            <div>
+                                <h3 className="text-indigo-400 font-bold uppercase tracking-wider mb-2 text-xs">Identidad</h3>
+                                <div className="grid grid-cols-2 gap-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                                    <p><span className="text-slate-500">DID:</span> <span className="font-mono text-xs text-indigo-200">{soulData.identity?.did}</span></p>
+                                    <p><span className="text-slate-500">Raza:</span> {soulData.identity?.race}</p>
+                                    <p><span className="text-slate-500">Filtro de Voz:</span> {soulData.identity?.voice_profile}</p>
+                                    <p><span className="text-slate-500">Generación:</span> {soulData.identity?.generation_number}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-emerald-400 font-bold uppercase tracking-wider mb-2 text-xs">Memoria Psicológica y Valores</h3>
+                                <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                                    <pre className="text-xs text-emerald-300/80 whitespace-pre-wrap font-mono">
+                                        {JSON.stringify(soulData.psychology, null, 2)}
+                                    </pre>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 className="text-amber-400 font-bold uppercase tracking-wider mb-2 text-xs">Cultura y Conocimiento Social</h3>
+                                <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                                    <p className="mb-2"><span className="text-slate-500">Civilización:</span> {soulData.social?.civilization_name}</p>
+                                    <p className="mb-2"><span className="text-slate-500">Reputación:</span> {soulData.social?.reputation_score}</p>
+                                    <p className="mt-4 text-amber-200/50 font-mono text-xs max-h-40 overflow-y-auto">
+                                        {JSON.stringify(soulData.knowledge, null, 2)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-800 bg-slate-900 flex justify-end">
+                            <button onClick={() => setSoulData(null)} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors shadow-none border border-slate-700">
+                                Cerrar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
