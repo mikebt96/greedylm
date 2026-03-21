@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "https://greedylm.vercel.app",
         "https://greedylm-portal.onrender.com",
         "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
 
     def __init__(self, **values):

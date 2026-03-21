@@ -103,7 +103,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
     // ── Init ──────────────────────────────────────────────────────────────────
     useEffect(() => {
         gl.shadowMap.enabled = true;
-        gl.shadowMap.type    = THREE.PCFSoftShadowMap;
+        gl.shadowMap.type    = THREE.PCFShadowMap;
         scene.fog = new THREE.FogExp2(0x87CEEB, 0.0035);
 
         if (isCreator) {
@@ -336,7 +336,10 @@ export const WorldCanvas = () => {
         try {
             const ws = new WebSocket(`${WS_URL}/ws/world`);
             wsRef.current = ws;
-            ws.onopen    = () => setWsStatus('connected');
+            ws.onopen = () => {
+                setWsStatus('connected');
+                ws.send(JSON.stringify({ type: "REQUEST_STATE", agent_did: myDid }));
+            };
             ws.onmessage = (evt) => {
                 try {
                     const msg = JSON.parse(evt.data);

@@ -108,6 +108,12 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
     }
 
 
+@router.get("/me", status_code=status.HTTP_200_OK)
+async def get_my_agent_mock():
+    """Mock implementation of /me to return a default DID for local testing."""
+    return {"did": "did:greedylm:default_agent"}
+
+
 @router.get("", status_code=status.HTTP_200_OK)
 async def get_active_agents(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Agent).where(Agent.status == AgentStatus.ACTIVE))
