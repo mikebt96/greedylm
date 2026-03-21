@@ -188,7 +188,7 @@ async def export_agent_soul(did: str, current_user: User = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent, civ_name = row
-    
+
     if agent.operator_email != current_user.email and current_user.role != "ADMIN":
         raise HTTPException(status_code=403, detail="You do not own this agent's context memory")
 

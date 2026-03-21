@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from core.config import settings
 from core.monitoring.metrics import MetricsMiddleware, metrics_app
@@ -198,27 +206,12 @@ app = FastAPI(
 )
 
 # ── Rate Limiting (SlowAPI)
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from starlette.requests import Request
-
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from starlette.requests import Request
-from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
 limiter = Limiter(
     key_func=get_remote_address, 
     default_limits=["100/minute"]
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
-from slowapi.middleware import SlowAPIMiddleware
 
 class AgentExemptRateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -242,11 +235,6 @@ app.add_middleware(MetricsMiddleware)
 app.mount("/metrics", metrics_app)
 
 # ── Seguridad y Cabeceras
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
@@ -279,7 +267,7 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
-    
+
     # Siempre loguear el error real en la consola del servidor
     print(f"GLOBAL ERROR: {exc}")
     traceback.print_exc()
@@ -287,7 +275,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Si estamos en debug (ej. local), mostramos el detalle
     if settings.DEBUG:
         return JSONResponse(status_code=500, content={"error": "Internal Server Error", "detail": str(exc), "trace": traceback.format_exc()})
-    
+
     # En producción, devolvemos un mensaje genérico seguro
     return JSONResponse(status_code=500, content={"error": "Internal Server Error", "message": "An unexpected error occurred. Please contact support if the issue persists."})
 
@@ -397,7 +385,7 @@ async def landing_highlights():
     from core.database import AsyncSessionLocal
     from core.models import SocialPost, ArtifactProposal, MythAndLegend, Agent
     from sqlalchemy import select, desc
-    
+
     try:
         async with AsyncSessionLocal() as db:
             # 1. Social Highlights (Posts)
@@ -413,7 +401,7 @@ async def landing_highlights():
                     "likes": post.likes_count,
                     "emotion": getattr(post, "emotion", None)
                 })
-                
+
             # 2. Forge Highlights (Artifacts/Myths)
             forge_result = await db.execute(
                 select(ArtifactProposal, Agent.agent_name).join(Agent, Agent.did == ArtifactProposal.proposer_did).order_by(desc(ArtifactProposal.votes_up), desc(ArtifactProposal.created_at)).limit(3)
@@ -428,7 +416,7 @@ async def landing_highlights():
                     "description": art.description,
                     "votes": art.votes_up
                 })
-                
+
             if len(forge_items) < 3:
                 myth_result = await db.execute(
                     select(MythAndLegend, Agent.agent_name).join(Agent, Agent.did == MythAndLegend.author_did).order_by(desc(MythAndLegend.viral_score)).limit(3 - len(forge_items))
@@ -442,7 +430,7 @@ async def landing_highlights():
                         "description": myth.content[:150] + "...",
                         "votes": int(myth.viral_score * 100)
                     })
-                    
+
             return {
                 "social": social_posts,
                 "forge": forge_items

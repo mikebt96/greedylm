@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     def __init__(self, **values):
         super().__init__(**values)
-        
+
         # Ajustes basados en el entorno
         if self.ENVIRONMENT == "local":
             self.DEBUG = True

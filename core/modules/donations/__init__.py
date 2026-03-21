@@ -91,18 +91,18 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             # Seleccionar un "chunk" del mundo al azar para que reciba la lluvia
             chunk_result = await db.execute(select(WorldChunk).order_by(func.random()).limit(1))
             chunk = chunk_result.scalar_one_or_none()
-            
+
             if chunk:
                 current_resources = chunk.resources or {}
                 # Calcular metales precisos y magia basados en la donación
                 added_metal = int(usd_amount * 50)
                 added_magic = int(usd_amount * 20)
                 added_crystal = int(usd_amount * 10)
-                
+
                 current_resources["metal"] = current_resources.get("metal", 0) + added_metal
                 current_resources["magic_essence"] = current_resources.get("magic_essence", 0) + added_magic
                 current_resources["crystal"] = current_resources.get("crystal", 0) + added_crystal
-                
+
                 chunk.resources = current_resources
 
                 # Registrar el evento divino

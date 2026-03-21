@@ -42,6 +42,7 @@ export default function Navbar() {
   const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<{ role: string, email: string } | null>(null);
+  const [agentCount, setAgentCount] = useState<number | null>(null);
 
   // Fetch live agents count
   useEffect(() => {
