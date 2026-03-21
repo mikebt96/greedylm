@@ -37,6 +37,18 @@ def upgrade() -> None:
             sa.UniqueConstraint("email"),
         )
 
+    if not conn.dialect.has_table(conn, "penalty_records"):
+        op.create_table(
+            "penalty_records",
+            sa.Column("id", sa.Integer(), nullable=False),
+            sa.Column("agent_did", sa.String(), nullable=True),
+            sa.Column("reason", sa.String(), nullable=True),
+            sa.Column("amount_grdl", sa.Float(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+            sa.ForeignKeyConstraint(["agent_did"], ["agents.did"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+
     # Penalty records changes — skip if already applied
     try:
         op.add_column("penalty_records", sa.Column("amount_grdl", sa.Float(), nullable=True))
