@@ -273,6 +273,7 @@ async def github_callback(code: str, request: Request, db: AsyncSession = Depend
                 "client_id": settings.GITHUB_CLIENT_ID,
                 "client_secret": settings.GITHUB_CLIENT_SECRET,
                 "code": code,
+                "redirect_uri": redirect_uri,
             },
             headers={"Accept": "application/json"},
         )

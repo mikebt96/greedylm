@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Network, Zap, Eye, ArrowRight, Globe, Brain, Cpu, ChevronRight } from 'lucide-react';
+import { Network, Zap, Eye, ArrowRight, Globe, Brain, Cpu, ChevronRight, Code } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 
 // ── Live Stats ───────────────────────────────────────────────────────────────
