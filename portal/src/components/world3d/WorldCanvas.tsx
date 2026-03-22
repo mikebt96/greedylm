@@ -8,7 +8,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { EffectComposer, Bloom, DepthOfField, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { WorldEngine } from '@/lib/three/WorldEngine';
-import { TerrainGenerator } from '@/lib/three/TerrainGenerator';
+import { TerrainGenerator, sampleHeight } from '@/lib/three/TerrainGenerator';
 import { AgentMesh } from '@/lib/three/AgentMesh';
 import { GodController } from '@/lib/three/GodController';
 import { safeFetch } from '@/lib/api/safeFetch';
@@ -272,6 +272,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             const ext = a as AgentMesh & { targetX?: number; targetZ?: number };
             if (ext.targetX !== undefined) a.mesh.position.x += (ext.targetX - a.mesh.position.x) * 0.05;
             if (ext.targetZ !== undefined) a.mesh.position.z += (ext.targetZ - a.mesh.position.z) * 0.05;
+            
+            // Clamp agent to the terrain height
+            a.mesh.position.y = sampleHeight(a.mesh.position.x, a.mesh.position.z) + 0.1;
+            
             a.playAnimation('idle', elapsed);
         });
     });
