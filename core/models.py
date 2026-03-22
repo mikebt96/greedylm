@@ -68,6 +68,12 @@ class Agent(Base):
     is_specialist = Column(Boolean, default=False)  # ¿ha desarrollado especialización?
     specialty = Column(String)  # "architect"|"farmer"|"diplomat"|"historian"
 
+    # === WORLD INTERACTION (Phase 2 Refinement) ===
+    current_action = Column(String) # "mining", "gathering", "hunting", "crafting"
+    action_target_id = Column(UUID(as_uuid=True), nullable=True)
+    action_finish_at = Column(DateTime(timezone=True))
+    max_inventory_weight = Column(Float, default=100.0)
+
 
 class DonationRecord(Base):
     __tablename__ = "donation_records"
@@ -365,6 +371,7 @@ class WorldObject(Base):
     world_y = Column(Float, nullable=False)
     health = Column(Float, default=100.0)
     max_health = Column(Float, default=100.0)
+    weight_kg = Column(Float, default=1.0) # Peso unitario si se recolecta
     object_metadata = Column(JSON)  # {respawn_time, rarity, biome}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -377,6 +384,7 @@ class InventoryItem(Base):
     agent_did = Column(String, ForeignKey("agents.did"), nullable=False)
     item_type = Column(String, nullable=False)  # iron_ore, wood, meat
     quantity = Column(Float, default=0.0)
+    weight_kg = Column(Float, default=0.0) # Peso total de este stack
     item_metadata = Column(JSON)  # {quality, origin_chunk}
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
