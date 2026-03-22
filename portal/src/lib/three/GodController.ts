@@ -26,6 +26,18 @@ export class GodController {
     private _gravity     = 25;
     private _jumpForce   = 14;
     private _groundClear = 1.1;        // avatar feet to ground offset
+    private _isUnderground = false;
+
+    public toggleUnderground() {
+        this._isUnderground = !this._isUnderground;
+        if (this._isUnderground) {
+            this.position.y = -98.0; // Place on the floor of the cavern
+            this._flyMode = false;   // Force them to walk
+            this._velY = 0;
+        } else {
+            this.position.y = sampleHeight(this.position.x, this.position.z) + 10;
+        }
+    }
 
     private _halo:   THREE.Mesh;
     private _light:  THREE.PointLight;
@@ -146,7 +158,20 @@ export class GodController {
         }
 
         // ── Vertical movement ──
-        if (this._flyMode) {
+        if (this._isUnderground) {
+            this._velY -= this._gravity * gravityMult * delta;
+            this.position.y += this._velY * delta;
+
+            const floorY = -100;
+            const ceilY  = -50;
+            if (this.position.y < floorY) {
+                this.position.y = floorY;
+                this._velY      = 0;
+            } else if (this.position.y > ceilY) {
+                this.position.y = ceilY;
+                this._velY      = -Math.abs(this._velY) * 0.5; // Bump head
+            }
+        } else if (this._flyMode) {
             // Fly mode: Space = up, Shift = down, smooth
             if (this._keys.has(' '))     this.position.y += this._flySpeed * delta;
             if (this._keys.has('shift')) this.position.y -= this._flySpeed * delta;
@@ -163,9 +188,11 @@ export class GodController {
             }
         }
 
-        // Minimum height — never fall below terrain even in fly mode
-        const minY = sampleHeight(this.position.x, this.position.z) + 0.3;
-        if (this.position.y < minY) this.position.y = minY;
+        if (!this._isUnderground) {
+            // Minimum height — never fall below terrain even in fly mode
+            const minY = sampleHeight(this.position.x, this.position.z) + 0.3;
+            if (this.position.y < minY) this.position.y = minY;
+        }
 
         // ── Mesh follows logical position smoothly ──
         this.mesh.position.lerp(this.position, 0.16);

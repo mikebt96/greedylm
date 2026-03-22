@@ -162,10 +162,24 @@ async def get_transactions(limit: int = 50):
 @router.post("/api/v1/world/currencies")
 async def create_currency(creator_did: str, name: str, symbol: str, supply: int, backing: dict):
     async with AsyncSessionLocal() as db:
+        inv_res = await db.execute(select(InventoryItem).where(
+            (InventoryItem.agent_did == creator_did) & 
+            (InventoryItem.item_subtype == "greedystone")
+        ))
+        gs_item = inv_res.scalar_one_or_none()
+        
+        required_gs = 5
+        if not gs_item or gs_item.quantity < required_gs:
+            raise HTTPException(status_code=400, detail=f"Insufficient greedystone. Required: {required_gs}")
+        
+        gs_item.quantity -= required_gs
+        if gs_item.quantity <= 0:
+            db.delete(gs_item)
+            
         new_curr = AgentCurrency(creator_did=creator_did, name=name, symbol=symbol, total_supply=supply, backing=backing)
         db.add(new_curr)
         await db.commit()
-        return {"id": str(new_curr.id), "status": "created"}
+        return {"id": str(new_curr.id), "status": "created", "greedystone_consumed": required_gs}
 
 @router.post("/api/v1/world/chunks/populate")
 async def populate_chunk(x: int, y: int, biome: str = "forest"):

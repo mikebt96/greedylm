@@ -184,10 +184,11 @@ const SceneContent = ({
             const biome = getBiomeForChunk(kcx, kcy);
             const chunk = terrain.generateChunk({ chunk_x: kcx, chunk_y: kcy, biome });
             const veg   = terrain.generateVegetation(biome, kcx, kcy);
+            const caves = terrain.generateCaveEntrances(biome, kcx, kcy);
             
             const dynamicObjects = new THREE.Group();
-            scene.add(chunk, veg, dynamicObjects);
-            chunks.current.set(key, [chunk, veg, dynamicObjects]);
+            scene.add(chunk, veg, caves, dynamicObjects);
+            chunks.current.set(key, [chunk, veg, dynamicObjects, caves]);
             loaded++;
 
             // Fetch objects asynchronously
@@ -288,15 +289,22 @@ const SceneContent = ({
             raycaster.setFromCamera(mouse, camera);
 
             const interactables: THREE.Object3D[] = [];
-            for (const [key, objs] of chunks.current) interactables.push(objs[2]);
+            for (const [key, objs] of chunks.current) {
+                interactables.push(objs[2]); // dynamic objects
+                if (objs[3]) interactables.push(objs[3]); // caves
+            }
 
             const intersects = raycaster.intersectObjects(interactables, true);
             if (intersects.length > 0) {
                 let curr: THREE.Object3D | null = intersects[0].object;
-                while (curr && !curr.userData?.id) curr = curr.parent;
-                if (curr && curr.userData?.id) {
-                    const action = curr.userData.type === 'creature' ? 'attack' : 'mine';
-                    onInteract(curr.userData.id, action);
+                while (curr && !curr.userData?.id && curr.userData?.type !== 'cave_entrance') curr = curr.parent;
+                if (curr) {
+                    if (curr.userData.type === 'cave_entrance') {
+                        if (godRef.current) godRef.current.toggleUnderground();
+                    } else if (curr.userData.id) {
+                        const action = curr.userData.type === 'creature' ? 'hunt' : 'mine';
+                        onInteract(curr.userData.id, action);
+                    }
                 }
             }
         };
