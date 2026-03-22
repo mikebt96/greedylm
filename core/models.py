@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary, BigInteger
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from core.database import Base
@@ -73,24 +74,24 @@ class Agent(Base):
     action_target_id = Column(UUID(as_uuid=True), nullable=True)
     action_finish_at = Column(DateTime(timezone=True))
     max_inventory_weight = Column(Float, default=100.0)
-    
+
     # === SURVIVAL STATS ===
     health = Column(Float, default=100.0)
     max_health = Column(Float, default=100.0)
     stamina = Column(Float, default=100.0)
     max_stamina = Column(Float, default=100.0)
-    
+
     # === EVOLUTION & LEVELING ===
     level = Column(Integer, default=1)
     experience = Column(Float, default=0.0)
     xp_to_next_level = Column(Float, default=100.0)
     attribute_points = Column(Integer, default=0)
-    
+
     # ── Life Cycle ──
     age = Column(Float, default=16.0) # Starts at 16
     max_age = Column(Integer, default=85) # Randomize on creation later
     parent_dids = Column(JSON, nullable=True) # ["did1", "did2"]
-    
+
     # ── Timestamps ──
 
 
@@ -183,6 +184,11 @@ class Civilization(Base):
     is_active = Column(Boolean, default=True)
     population = Column(Integer, default=0)  # calculado, no manual
     social_structure = Column(String)  # "tribal"|"feudal"|"democratic"|"theocratic"
+
+    # ── Economics ──
+    economic_policy = Column(JSON, default=dict) # {"tax_rate": 0.05, "backing_asset": "iron_ore"}
+    local_currency_name = Column(String, nullable=True)
+
 
 
 class WorldChunk(Base):
@@ -396,7 +402,12 @@ class WorldObject(Base):
     weight_kg = Column(Float, default=1.0)        # Peso unitario si se recolecta
     rarity = Column(Float, default=0.0)           # 0.0 (común) - 1.0 (legendario)
     respawn_at = Column(DateTime(timezone=True))  # cuándo reaparece tras ser recolectado
+
+    # ── Tokenization ──
+    base_value_greedycoin = Column(Float, default=1.0)
+
     object_metadata = Column(JSON)                # {"health": 100, "behavior": "passive"} para fauna
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -467,4 +478,18 @@ class ReproductionInvitation(Base):
     status = Column(String, default="pending")  # pending, accepted, rejected
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc) + timedelta(minutes=5))
+
+
+class Recipe(Base):
+    __tablename__ = "recipes"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    category = Column(String, default="misc") # tools, materials, alchemy, etc.
+    ingredients = Column(JSON, nullable=False) # [{"subtype": "iron_ore", "quantity": 3}]
+    output_item = Column(JSON, nullable=False) # {"type": "tool", "subtype": "pickaxe"}
+    logic_explanation = Column(String, nullable=True) # For the Architect AI
+    is_verified = Column(Boolean, default=False) # Verified by Architect AI
+    creator_did = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 

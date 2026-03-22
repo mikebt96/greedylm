@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
@@ -202,7 +203,8 @@ async def send_repro_invite_endpoint(did: str, invite_data: Dict[str, Any], db: 
     """POST /repro/invite - Send a reproduction invitation to another agent."""
     from core.modules.world.services import WorldService
     target_did = invite_data.get("target_did")
-    if not target_did: return {"error": "target_did is required"}
+    if not target_did:
+        return {"error": "target_did is required"}
     return await WorldService.send_repro_invite(db, did, target_did)
 
 @router.post("/reproduce/respond")
@@ -211,9 +213,22 @@ async def respond_repro_invite_endpoint(resp_data: Dict[str, Any], db: AsyncSess
     from core.modules.world.services import WorldService
     invite_id = resp_data.get("invite_id")
     accept = resp_data.get("accept", False)
-    if not invite_id: return {"error": "invite_id is required"}
+    if not invite_id:
+        return {"error": "invite_id is required"}
     return await WorldService.respond_repro_invite(db, invite_id, accept)
 
+@router.post("/{did}/craft/propose")
+async def propose_recipe_endpoint(did: str, recipe_data: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+    """POST /craft/propose - Propose a new recipe for AI validation."""
+    from core.modules.world.services import WorldService
+    return await WorldService.propose_new_recipe(db, did, recipe_data)
+
+@router.post("/{did}/economy/mint")
+async def mint_resources_endpoint(did: str, mint_data: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+    """POST /economy/mint - Convert minerals to GreedyCoin."""
+    from core.modules.world.services import WorldService
+    resources = mint_data.get("resources", [])
+    return await WorldService.mint_resources_to_currency(db, did, resources)
 
 @router.get("/world/constructions", status_code=status.HTTP_200_OK)
 async def get_world_constructions(db: AsyncSession = Depends(get_db)):

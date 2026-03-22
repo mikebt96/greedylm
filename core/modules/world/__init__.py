@@ -83,7 +83,7 @@ async def spawn_world_object(data: dict):
         )
         db.add(new_obj)
         await db.commit()
-        
+
         await metaverse_hub.publish_event("OBJECT_SPAWNED", {
             "type": "OBJECT_SPAWNED",
             "object": {"id": str(new_obj.id), "type": new_obj.object_type, "subtype": new_obj.object_subtype, "x": new_obj.world_x, "y": new_obj.world_y}
@@ -97,7 +97,7 @@ async def interact_with_object(id: str, agent_did: str, action: str):
         res = await WorldService.start_interaction(db, agent_did, UUID(id), action)
         if not res["success"]:
             raise HTTPException(status_code=400, detail=res["error"])
-        
+
         await metaverse_hub.publish_event("ACTION_STARTED", {
             "type": "ACTION_STARTED",
             "agent_did": agent_did,
@@ -116,7 +116,7 @@ async def complete_action(agent_did: str, x: float = None, y: float = None, z: f
         res = await WorldService.complete_interaction(db, agent_did, location)
         if not res["success"]:
             raise HTTPException(status_code=400, detail=res["error"])
-        
+
         await metaverse_hub.publish_event("ACTION_COMPLETED", {
             "type": "ACTION_COMPLETED",
             "agent_did": agent_did,
@@ -130,13 +130,13 @@ async def get_inventory(did: str):
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(InventoryItem).where(InventoryItem.agent_did == did))
         items = result.scalars().all()
-        
+
         agent_res = await db.execute(select(Agent).where(Agent.did == did))
         agent = agent_res.scalar_one_or_none()
-        
+
         current_w = sum(i.weight_kg for i in items)
         max_w = WorldService.calculate_max_weight(agent) if agent else 100.0
-        
+
         return {
             "agent_did": did,
             "items": [{"type": i.item_type, "subtype": i.item_subtype, "quantity": i.quantity, "quality": i.quality, "weight_kg": i.weight_kg} for i in items],
@@ -167,15 +167,15 @@ async def create_currency(creator_did: str, name: str, symbol: str, supply: int,
             (InventoryItem.item_subtype == "greedystone")
         ))
         gs_item = inv_res.scalar_one_or_none()
-        
+
         required_gs = 5
         if not gs_item or gs_item.quantity < required_gs:
             raise HTTPException(status_code=400, detail=f"Insufficient greedystone. Required: {required_gs}")
-        
+
         gs_item.quantity -= required_gs
         if gs_item.quantity <= 0:
             db.delete(gs_item)
-            
+
         new_curr = AgentCurrency(creator_did=creator_did, name=name, symbol=symbol, total_supply=supply, backing=backing)
         db.add(new_curr)
         await db.commit()

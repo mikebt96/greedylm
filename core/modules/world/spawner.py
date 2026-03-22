@@ -51,7 +51,7 @@ class ResourceSpawner:
                 if random.random() < 0.3: # 30% chance to spawn fauna per slot
                     fauna = random.choices(eligible_fauna, weights=[f["prob"] for f in eligible_fauna], k=1)[0]
                     await ResourceSpawner._spawn_obj(db, chunk_x, chunk_y, "creature", fauna)
-        
+
         await db.commit()
 
     @staticmethod

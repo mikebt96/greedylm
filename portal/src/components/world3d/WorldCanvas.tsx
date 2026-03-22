@@ -28,12 +28,14 @@ interface WsAgent {
     level?:         number;
     experience?:    number;
     xp_to_next_level?: number;
+    status?:        string;
+    age?:           number;
+    currency?:      number;
 }
 type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 // ── World constants ────────────────────────────────────────────────────────────
 const CHUNK_SIZE    = 32;
-const RENDER_RADIUS = 4;
 
 const BIOME_SEEDS = [
     { cx:  0,  cy:  0, biome: 'forest'           },
@@ -98,17 +100,15 @@ const BuildingMesh = ({ type, opacity = 1 }: { type: string, opacity?: number })
 const BuildingPreview = ({ type }: { type: string }) => {
     const { camera, raycaster, mouse, scene } = useThree();
     const meshRef = useRef<THREE.Group>(null);
-
     useFrame(() => {
         if (!meshRef.current) return;
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(scene.children, true).filter(i => i.object.name.includes('chunk'));
         if (intersects.length > 0) {
             meshRef.current.position.copy(intersects[0].point);
-            meshRef.current.position.y += 1.5; // Offset to sit on ground
+            meshRef.current.position.y += 1.5; 
         }
     });
-
     return (
         <group ref={meshRef}>
             <BuildingMesh type={type} opacity={0.4} />
@@ -117,7 +117,6 @@ const BuildingPreview = ({ type }: { type: string }) => {
     );
 };
 
-// ── Scene Content ──────────────────────────────────────────────────────────────
 interface SceneProps {
     isCreator:        boolean;
     myAgentDid:       string | null;
@@ -134,6 +133,7 @@ interface SceneProps {
     isBuildMode:      boolean;
     onBuild:          (pos: { x: number, y: number, z: number }) => void;
     selectedBuilding: 'house' | 'tower' | 'storage';
+    handleReproInvite: (targetDid: string) => void;
 }
 
 const SceneContent = ({ 
@@ -151,7 +151,8 @@ const SceneContent = ({
     constructions,
     isBuildMode,
     onBuild,
-    selectedBuilding
+    selectedBuilding,
+    handleReproInvite
 }: SceneProps) => {
     const { scene, camera, gl } = useThree();
 
@@ -235,14 +236,17 @@ const SceneContent = ({
 
     // ── Chunk streaming ──
     const streamChunks = (cx: number, cy: number, firstLoad = false) => {
+        // Dynamic radius based on mode
+        const radius = isSpectator ? 8 : 2; 
+
         if (!firstLoad && cx === lastCx.current && cy === lastCy.current) return;
         lastCx.current = cx; lastCy.current = cy;
 
         const terrain = terrainRef.current!;
         const desired = new Set<string>();
-        for (let dx = -RENDER_RADIUS; dx <= RENDER_RADIUS; dx++)
-            for (let dy = -RENDER_RADIUS; dy <= RENDER_RADIUS; dy++)
-                if (dx * dx + dy * dy <= RENDER_RADIUS * RENDER_RADIUS) desired.add(`${cx + dx},${cy + dy}`);
+        for (let dx = -radius; dx <= radius; dx++)
+            for (let dy = -radius; dy <= radius; dy++)
+                if (dx * dx + dy * dy <= radius * radius) desired.add(`${cx + dx},${cy + dy}`);
 
         // First, clear old chunks and their associated fauna
         for (const [key, objs] of chunks.current) {
@@ -301,7 +305,15 @@ const SceneContent = ({
                 }
             })();
         }
+
+        // Cleanup: remove chunks that were far away (not in the current desired set)
+        // This is already handled at lines 248-261 by comparing with 'desired' set.
     };
+
+    // Force re-stream when view mode changes
+    useEffect(() => {
+        streamChunks(lastCx.current, lastCy.current, true);
+    }, [isSpectator]);
 
     // ── Agent sync ──
     useEffect(() => {
@@ -418,14 +430,31 @@ const SceneContent = ({
 
             const interactables: THREE.Object3D[] = [];
             for (const [key, objs] of chunks.current) {
+                objs.forEach(obj => {
+                    if (obj.userData.did) { // Check if it's an agent mesh
+                        interactables.push(obj);
+                    }
+                });
                 interactables.push(objs[2]); // dynamic objects
                 if (objs[3]) interactables.push(objs[3]); // caves
+            }
+
+            // Clicked another agent?
+            const agentIntersects = raycaster.intersectObjects(Object.values(agentMeshes.current).map(a => a.mesh), true).filter(i => i.object.userData.did && i.object.userData.type === 'agent');
+            if (agentIntersects.length > 0) {
+                const targetDid = agentIntersects[0].object.userData.did;
+                if (targetDid !== myAgentDid) {
+                    if (confirm(`¿Quieres invitar a ${targetDid.slice(0,5)} a procrear (simbólico)?`)) {
+                        handleReproInvite(targetDid);
+                    }
+                }
+                return;
             }
 
             const intersects = raycaster.intersectObjects(interactables, true);
             if (intersects.length > 0) {
                 let curr: THREE.Object3D | null = intersects[0].object;
-                while (curr && !curr.userData?.id && curr.userData?.type !== 'cave_entrance') curr = curr.parent;
+                while (curr && !curr.userData?.id && curr.userData?.type !== 'cave_entrance' && !curr.userData?.did) curr = curr.parent; // Added curr.userData?.did
                 if (curr) {
                     const d = Math.hypot(camera.position.x - intersects[0].point.x, camera.position.z - intersects[0].point.z);
                     if (d > 16.0) {
@@ -443,6 +472,8 @@ const SceneContent = ({
                         const action = curr.userData.type === 'creature' ? 'hunt' : 'mine';
                         addLog(`⚡ Iniciando ${action === 'mine' ? 'minería' : 'caza'}...`);
                         onInteract(curr.userData.id, action);
+                    } else if (curr.userData.did) { // If it's an agent
+                        onAgentSelect(curr.userData.did);
                     }
                 }
             }
@@ -456,11 +487,14 @@ const SceneContent = ({
             for (const [, objs] of chunks.current) {
                 interactables.push(objs[2]);
             }
+            // Add agent meshes to interactables for hover
+            Object.values(agentMeshes.current).forEach(a => interactables.push(a.mesh));
+
             const intersects = raycaster.intersectObjects(interactables, true);
             if (intersects.length > 0) {
                 let curr: THREE.Object3D | null = intersects[0].object;
-                while (curr && !curr.userData?.id) curr = curr.parent;
-                if (curr?.userData.id) {
+                while (curr && !curr.userData?.id && !curr.userData?.did) curr = curr.parent; // Added curr.userData?.did
+                if (curr?.userData.id || curr?.userData.did) { // Check for either id (object) or did (agent)
                     setHoveredObject(curr.userData);
                 } else {
                     setHoveredObject(null);
@@ -477,7 +511,7 @@ const SceneContent = ({
             canvas.removeEventListener('click', onClick);
             canvas.removeEventListener('mousemove', onMove);
         };
-    }, [camera, gl, isSpectator, onInteract, addLog]);
+    }, [camera, gl, isSpectator, onInteract, addLog, myAgentDid, onAgentSelect, handleReproInvite, isBuildMode, onBuild]);
 
     // ── Per-frame loop ──
     useFrame(({ clock }, delta) => {
@@ -530,7 +564,8 @@ const SceneContent = ({
                 focusPos.current.copy(godRef.current.position);
             }
         } else if (myAgentDid && agentMeshes.current[myAgentDid]) {
-            focusPos.current.copy(agentMeshes.current[myAgentDid].mesh.position);
+            const meshPos = agentMeshes.current[myAgentDid].mesh?.position;
+            if (meshPos) focusPos.current.copy(meshPos);
         }
 
         // 3. Camera Sync
@@ -662,14 +697,19 @@ const SceneContent = ({
                 <Html position={[hoveredObject.x || 0, (sampleHeight(hoveredObject.x, hoveredObject.y) || 0) + 2, hoveredObject.y || 0]} center pointerEvents="none">
                     <div className="bg-black/90 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200 min-w-32">
                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">
-                            {hoveredObject.subtype || hoveredObject.type}
+                            {hoveredObject.subtype || hoveredObject.type} {hoveredObject.did ? `(Agent ${hoveredObject.did.slice(0,5)})` : ''}
                         </p>
-                        <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-all duration-300" 
-                                style={{ width: `${hoveredObject.health || 100}%` }} 
-                            />
-                        </div>
+                        {hoveredObject.did && hoveredObject.age !== undefined && (
+                            <p className="text-[9px] opacity-70 mb-1">Age: {Math.floor(hoveredObject.age)}</p>
+                        )}
+                        {hoveredObject.health !== undefined && (
+                            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-all duration-300" 
+                                    style={{ width: `${hoveredObject.health || 100}%` }} 
+                                />
+                            </div>
+                        )}
                     </div>
                 </Html>
             ) : null}
@@ -679,8 +719,12 @@ const SceneContent = ({
                 <BuildingPreview type={selectedBuilding} />
             )}
 
-            {/* Existing Constructions */}
-            {constructions.map((c, i) => (
+            {/* Existing Constructions - Selective Rendering by Chunk */}
+            {constructions.filter(c => {
+                const cx = Math.round(c.position.x / CHUNK_SIZE);
+                const cy = Math.round(c.position.z / CHUNK_SIZE);
+                return chunks.current.has(`${cx},${cy}`);
+            }).map((c, i) => (
                 <group key={c.id || i} position={[c.position.x, c.position.y || 0, c.position.z]}>
                     <BuildingMesh type={c.type} />
                     <Billboard position={[0, 4, 0]}>
@@ -691,10 +735,15 @@ const SceneContent = ({
 
             {/* Agent Nameplates */}
             {Object.values(agentMeshes.current).map((agent, i) => (
-                <Billboard key={i} position={[agent.mesh.position.x, agent.mesh.position.y + 2.5, agent.mesh.position.z]}>
+                <Billboard key={agent.mesh.userData.did || i} position={[agent.mesh.position.x, agent.mesh.position.y + 2.5, agent.mesh.position.z]}>
                     <Text fontSize={0.28} color="white" anchorX="center" anchorY="middle" font="https://fonts.gstatic.com/s/outfit/v11/Q_3K9mGO_m0L_S6C9A.woff">
                         {agent.name}
                     </Text>
+                    {agent.mesh.userData.age !== undefined && (
+                        <Text fontSize={0.18} color="white" anchorX="center" anchorY="top" position={[0, -0.3, 0]} font="https://fonts.gstatic.com/s/outfit/v11/Q_3K9mGO_m0L_S6C9A.woff">
+                            Age: {Math.floor(agent.mesh.userData.age)}
+                        </Text>
+                    )}
                 </Billboard>
             ))}
 
@@ -761,7 +810,7 @@ const ActivityLog = ({ logs }: { logs: string[] }) => (
     </div>
 );
 
-const InventoryPanel = ({ did }: { did: string }) => {
+const InventoryPanel = ({ did, addLog, onRefresh }: { did: string, addLog: (m: string) => void, onRefresh: () => void }) => {
     const [inv, setInv] = useState<any>(null);
     const [open, setOpen] = useState(false);
 
@@ -773,15 +822,41 @@ const InventoryPanel = ({ did }: { did: string }) => {
         }
     }, [open, did]);
 
+    const onMint = async () => {
+        if (!inv) return;
+        const minerals = inv.items.filter((i: any) => i.item_type === 'mineral').map((i: any) => ({ subtype: i.item_subtype, quantity: i.quantity }));
+        if (minerals.length === 0) return addLog("⚠️ No tienes minerales para acuñar");
+        
+        try {
+            const res = await safeFetch<any>(`/api/v1/agents/${did}/economy/mint`, {
+                method: 'POST',
+                body: JSON.stringify({ resources: minerals })
+            });
+            if (res.data) {
+                addLog(`🪙 Acuñación exitosa: +${res.data.minted} GreedyCoins`);
+                onRefresh();
+                // Refresh local inv
+                const fresh = await safeFetch<any>(`/api/v1/agents/${did}/inventory`);
+                if (fresh.data) setInv(fresh.data);
+            }
+        } catch (e) { addLog("❌ Error de acuñación"); }
+    };
+
     if (!did) return null;
 
     return (
         <div className="fixed bottom-6 right-6 flex flex-col items-end z-[100]">
             {open && inv && (
-                <div className="mb-4 w-72 bg-black/90 backdrop-blur-2xl border border-indigo-500/30 rounded-3xl p-6 text-white shadow-[0_10px_40px_rgba(99,102,241,0.2)] animate-in slide-in-from-bottom-5">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400 mb-4 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-indigo-400 rounded-full" /> Inventario
-                    </h3>
+                <div className="mb-4 w-72 bg-black/95 backdrop-blur-3xl border border-indigo-500/30 rounded-[2.5rem] p-8 text-white shadow-[0_20px_50px_rgba(99,102,241,0.2)] animate-in slide-in-from-bottom-5">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.8)]" /> 
+                            Inventario
+                        </h3>
+                        <button onClick={onMint} className="px-3 py-1 bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 rounded-full text-[9px] font-black uppercase hover:bg-indigo-500 hover:text-white transition-all">
+                            Acuñar
+                        </button>
+                    </div>
                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                         {inv.items.length === 0 ? <p className="text-xs opacity-50">Vacío</p> : inv.items.map((it: any, i: number) => (
                             <div key={i} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
@@ -884,6 +959,15 @@ const CraftingPanel = ({ did, addLog }: { did: string, addLog: (m: string) => vo
     );
 };
 
+const Stat = ({ label, value, color }: { label: string; value: number; color: string }) => (
+    <div className="flex flex-col items-center">
+        <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-xs font-black text-white shadow-lg`}>
+            {value}
+        </div>
+        <span className="text-[8px] uppercase font-bold text-white/50 mt-1">{label}</span>
+    </div>
+);
+
 export const WorldCanvas = () => {
     const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
     const [wsStatus,  setWsStatus]  = useState<WsStatus>('connecting');
@@ -937,10 +1021,11 @@ export const WorldCanvas = () => {
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key.toLowerCase() === 'l') setIsTorchActive(p => !p);
+            if (e.key === 'Escape' && isBuildMode) setIsBuildMode(false);
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, []);
+    }, [isBuildMode]);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -975,7 +1060,7 @@ export const WorldCanvas = () => {
                     const msg = JSON.parse(evt.data);
                     if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) setWsAgents(msg.agents);
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
-                        setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience } : a));
+                        setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience, age: msg.age, currency: msg.currency } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
                     else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
                         setWsEvent(msg);
@@ -1008,7 +1093,38 @@ export const WorldCanvas = () => {
             addLog("❌ Error al guardar el alma"); 
         }
     };
+
+    const handleReproInvite = async (targetDid: string) => {
+        if (!myDid) return;
+        try {
+            const res = await safeFetch<any>(`/api/v1/agents/${myDid}/repro/invite`, {
+                method: 'POST',
+                body: JSON.stringify({ target_did: targetDid })
+            });
+            if (res.data) {
+                addLog(`💞 Invitación enviada a ${targetDid.slice(0,5)}!`);
+            } else if (res.error) {
+                addLog(`❌ Error: ${res.error}`);
+            }
+        } catch (e) {
+            addLog("❌ Error de red");
+        }
+    };
  
+    // ── Periodic Systems ──
+    useEffect(() => {
+        if (!myDid || wsStatus !== 'connected') return;
+        const interval = setInterval(async () => {
+             const res = await safeFetch<any>(`/api/v1/agents/${myDid}/aging`, { method: 'POST' });
+             if (res.data?.natural_death) {
+                 addLog("💀 Has muerto de vejez. Tu tiempo en este mundo ha terminado.");
+             } else if (res.data?.new_age) {
+                 setWsAgents(p => p.map(a => a.did === myDid ? { ...a, age: res.data.new_age } : a));
+             }
+        }, 60000); // Pulse every minute
+        return () => clearInterval(interval);
+    }, [myDid, wsStatus]);
+
     const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/auth/login'; };
 
     const handleDownloadSoul = async (did: string) => {
@@ -1070,6 +1186,7 @@ export const WorldCanvas = () => {
                     isBuildMode={isBuildMode}
                     onBuild={handleBuild}
                     selectedBuilding={selectedBuilding}
+                    handleReproInvite={handleReproInvite}
                 />
             </Canvas>
 
@@ -1170,12 +1287,17 @@ export const WorldCanvas = () => {
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 px-8 py-4 bg-indigo-600/20 backdrop-blur-3xl rounded-full border border-indigo-500/40 text-indigo-100 text-[10px] font-black tracking-widest shadow-[0_20px_50px_rgba(79,70,229,0.4)] transition-all">
                     <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-pulse shadow-[0_0_12px_rgba(129,140,248,0.8)]" />
                     <span className="uppercase">Privilegios de Creador</span>
-                    <span className="opacity-20">|</span>
+                    <div className="flex gap-4 items-center">
+                        <Stat label="Vida" value={myAgent?.health || 0} color="bg-red-500" />
+                        <Stat label="Energía" value={myAgent?.stamina || 0} color="bg-amber-500" />
+                        <Stat label="Edad" value={Math.floor(myAgent?.age || 16)} color="bg-indigo-500" />
+                        <Stat label="GreedyCoins" value={myAgent?.currency || 0} color="bg-yellow-400" />
+                    </div>   <span className="opacity-20">|</span>
                     <button 
                         onClick={() => setIsFirstPerson(!isFirstPerson)}
                         className={`hover:text-white transition-all uppercase px-3 py-1 rounded-lg ${isFirstPerson ? 'bg-indigo-500 text-white shadow-lg' : 'text-indigo-100/40 hover:bg-white/5'}`}
                     >
-                        [V] {isFirstPerson ? '1ra Persona' : '3ra Persona'}
+                        {isFirstPerson ? '1ª Persona' : '3ª Persona'}
                     </button>
                     <span className="opacity-20">|</span>
                     <div className="flex gap-1.5 opacity-60">
@@ -1261,7 +1383,9 @@ export const WorldCanvas = () => {
             )}
             
             <CraftingPanel did={myDid || ''} addLog={addLog} />
-            <InventoryPanel did={myDid || ''} />
+            <InventoryPanel did={myDid || ''} addLog={addLog} onRefresh={() => {}} />
         </div>
     );
 };
+
+export default WorldCanvas;
