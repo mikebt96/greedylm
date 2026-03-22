@@ -32,10 +32,8 @@ const CHUNK_SIZE    = 32;
 // so the world feels infinite as you pan or fly.
 const RENDER_RADIUS = 4;
 
-/**
- * Biome regions defined as Voronoi seeds in chunk space.
- * Each chunk is assigned to the nearest seed → natural biome blobs.
- */
+// ── Biome layout (Voronoi) ────────────────────────────────────────────────────
+// Each chunk snaps to the nearest seed → natural, continent-sized biome blobs.
 const BIOME_SEEDS = [
     { cx:  0,  cy:  0, biome: 'forest'           },
     { cx:  6,  cy:  1, biome: 'desert'           },
@@ -89,9 +87,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
     const godRef      = useRef<GodController | null>(null);
     const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-    const chunks  = useRef<Map<string, THREE.Object3D[]>>(new Map());
-    const lastCx  = useRef(99999);
-    const lastCy  = useRef(99999);
+    // chunk key → [terrainMesh, vegGroup]
+    const chunks = useRef<Map<string, THREE.Object3D[]>>(new Map());
+    const lastCx = useRef(99999);
+    const lastCy = useRef(99999);
 
     const focusPos  = useRef(new THREE.Vector3());
     const camTarget = useRef(new THREE.Vector3());
@@ -132,9 +131,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             }
             chunks.current.clear();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scene, gl, isCreator]);
 
-    // ── Keyboard ──────────────────────────────────────────────────────────────
+    // ── Keyboard (God Mode) ───────────────────────────────────────────────────
     useEffect(() => {
         if (!isCreator) return;
         const NO_SCROLL = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -186,13 +186,14 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             const [kcx, kcy] = key.split(',').map(Number);
             const biome = getBiomeForChunk(kcx, kcy);
             const chunk = terrain.generateChunk({ chunk_x: kcx, chunk_y: kcy, biome });
-            const veg   = terrain.generateVegetation(biome, kcx, kcy);
-            scene.add(chunk, veg);
-            chunks.current.set(key, [chunk, veg]);
+            const veg      = terrain.generateVegetation(biome, kcx, kcy);
+            const minerals = terrain.generateMinerals(biome, kcx, kcy);
+            const caves    = terrain.generateCaveEntrances(biome, kcx, kcy);
+            scene.add(chunk, veg, minerals, caves);
+            chunks.current.set(key, [chunk, veg, minerals, caves]);
             loaded++;
         }
     };
-
 
     // ── Agent sync ────────────────────────────────────────────────────────────
     useEffect(() => {
@@ -209,8 +210,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
                 scene.add(m.mesh);
             }
             const ext = agentMeshes.current[agent.did] as AgentMesh & { targetX?: number; targetZ?: number };
-            ext.targetX = (agent.x / 100) * 10 - 5;
-            ext.targetZ = (agent.y / 100) * 10 - 5;
+            // Backend sends 0-100; map to ±96 world units so agents spread across biomes
+            const WORLD_HALF = 96;
+            ext.targetX = (agent.x / 100) * WORLD_HALF * 2 - WORLD_HALF;
+            ext.targetZ = (agent.y / 100) * WORLD_HALF * 2 - WORLD_HALF;
         });
 
         existing.forEach(did => {
@@ -226,13 +229,13 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
     useFrame(({ clock }, delta) => {
         const elapsed = clock.getElapsedTime();
 
-        // 1. Day/night
+        // 1. Day / night cycle via WorldEngine
         const state = engineRef.current!.update(elapsed * 1000);
         if (sunRef.current) {
             sunRef.current.position.set(
                 Math.cos(state.sunAngle) * 160,
                 Math.sin(state.sunAngle) * 160,
-                60
+                60,
             );
             sunRef.current.intensity = state.sunIntensity;
         }
@@ -240,11 +243,10 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
         scene.background = state.skyColor;
         if (scene.fog instanceof THREE.FogExp2) scene.fog.color.copy(state.fogColor);
 
-        // 2. Focus position
+        // 2. Focus position for camera to follow
         if (isCreator && godRef.current) {
-            const ctrl    = controlsRef.current;
-            const tx      = ctrl?.target.x ?? 0;
-            const tz      = ctrl?.target.z ?? 0;
+            const tx      = controlsRef.current?.target.x ?? 0;
+            const tz      = controlsRef.current?.target.z ?? 0;
             const azimuth = Math.atan2(camera.position.x - tx, camera.position.z - tz);
             godRef.current.update(delta, azimuth);
             focusPos.current.copy(godRef.current.position);
@@ -252,7 +254,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             focusPos.current.copy(agentMeshes.current[myAgentDid].mesh.position);
         }
 
-        // 3. Camera follows focus
+        // 3. Smoothly move orbit target toward focus
         if (controlsRef.current) {
             camTarget.current.lerp(focusPos.current, 0.07);
             controlsRef.current.target.copy(camTarget.current);
@@ -265,7 +267,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
         const { cx, cy }   = worldToChunkCoord(streamCenter.x, streamCenter.z);
         streamChunks(cx, cy);
 
-        // 5. Agent animations
+        // 5. Agent animations + interpolation
         Object.values(agentMeshes.current).forEach(a => {
             const ext = a as AgentMesh & { targetX?: number; targetZ?: number };
             if (ext.targetX !== undefined) a.mesh.position.x += (ext.targetX - a.mesh.position.x) * 0.05;
@@ -297,7 +299,7 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             {/* Hemisphere fill — prevents pitch-black undersides */}
             <hemisphereLight args={[0x87CEEB, 0x3A5A2A, 0.38]} />
 
-            {/* Post-processing — remove <DepthOfField> if performance is tight */}
+            {/* Post-processing */}
             <EffectComposer>
                 <Bloom
                     intensity={0.55}
@@ -336,70 +338,64 @@ export const WorldCanvas = () => {
     const [wsStatus,  setWsStatus]  = useState<WsStatus>('connecting');
     const [wsAgents,  setWsAgents]  = useState<WsAgent[]>([]);
     const [myDid,     setMyDid]     = useState<string | null>(null);
-    const [ownedAgents, setOwnedAgents] = useState<Set<string>>(new Set());
-    const [soulData, setSoulData]   = useState<any | null>(null);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-    // Set NEXT_PUBLIC_CREATOR_DID=did:greedylm:xxxx in .env.local
+    // Add NEXT_PUBLIC_CREATOR_DID=did:greedylm:xxxx to .env.local to enable God Mode
     const CREATOR_DID = process.env.NEXT_PUBLIC_CREATOR_DID ?? '';
     const isCreator   = !!CREATOR_DID && myDid === CREATOR_DID;
 
+    // Resolve logged-in user's DID
     useEffect(() => {
         (async () => {
-            const token = localStorage.getItem('greedylm_token');
-            if(token) {
-                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                try {
-                    const res = await fetch(`${API_URL}/api/v1/auth/me/agents`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setOwnedAgents(new Set(data.map((a: any) => a.did)));
-                    }
-                } catch { }
-            }
             const { data } = await safeFetch<{ did: string }>('/api/v1/agents/me');
             if (data?.did) setMyDid(data.did);
         })();
     }, []);
 
+    // WebSocket connection with auto-reconnect
     const connect = useCallback(() => {
         const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
         setWsStatus('connecting');
         try {
             const ws = new WebSocket(`${WS_URL}/ws/world`);
             wsRef.current = ws;
+
             ws.onopen = () => {
                 setWsStatus('connected');
-                ws.send(JSON.stringify({ type: "REQUEST_STATE", agent_did: myDid }));
+                ws.send(JSON.stringify({ type: 'REQUEST_STATE', agent_did: myDid }));
             };
+
             ws.onmessage = (evt) => {
                 try {
                     const msg = JSON.parse(evt.data);
-                    if      (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents))
+                    if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents))
                         setWsAgents(msg.agents);
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did)
                         setWsAgents(p => p.filter(a => a.did !== msg.did));
-                } catch { /* skip malformed */ }
+                } catch { /* skip malformed frames */ }
             };
-            ws.onclose = () => { setWsStatus('disconnected'); reconnectTimer.current = setTimeout(connect, 3000); };
+
+            ws.onclose = () => {
+                setWsStatus('disconnected');
+                reconnectTimer.current = setTimeout(connect, 3000);
+            };
             ws.onerror = () => { setWsStatus('error'); ws.close(); };
         } catch {
             setWsStatus('error');
             reconnectTimer.current = setTimeout(connect, 5000);
         }
-    }, []);
+    }, [myDid]);
 
     useEffect(() => {
         connect();
         return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); };
     }, [connect]);
 
+    // REST fallback for initial agent positions
     useEffect(() => {
         (async () => {
             const { data, error } = await safeFetch<any[]>('/api/v1/agents');
@@ -417,33 +413,37 @@ export const WorldCanvas = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const STATUS: Record<WsStatus, { color: string; dot: string; label: string }> = {
-        connecting:   { color: 'text-amber-400',  dot: 'bg-amber-500 animate-pulse',   label: 'Connecting...' },
-        connected:    { color: 'text-emerald-400', dot: 'bg-emerald-500 animate-pulse', label: 'Live' },
-        disconnected: { color: 'text-slate-500',   dot: 'bg-slate-500',                label: 'Reconnecting...' },
-        error:        { color: 'text-red-400',     dot: 'bg-red-500',                  label: 'Offline' },
-    };
-    const st = STATUS[wsStatus];
-
-    const handleViewSoul = async (did: string) => {
-        const token = localStorage.getItem('greedylm_token');
+    // Soul download
+    const handleDownloadSoul = async (did: string) => {
+        const token   = localStorage.getItem('greedylm_token');
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         try {
             const res = await fetch(`${API_URL}/api/v1/agents/${did}/soul-export`, {
-                headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
-            if (!res.ok) {
-                if (res.status === 403) throw new Error('Restricted access: You do not own this agent.');
-                throw new Error('Failed to fetch context memory');
-            }
-            const data = await res.json();
-            setSoulData(data);
-        } catch (err: any) {
-            alert(err.message || 'Error fetching memory context.');
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = Object.assign(document.createElement('a'), {
+                href:     url,
+                download: `agent_${did.slice(0, 8)}_soul.json`,
+            });
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch {
+            alert('Could not export soul. The agent may not have synced yet.');
         }
     };
 
-    const isOwner = selectedAgent ? ownedAgents.has(selectedAgent) : false;
+    const STATUS: Record<WsStatus, { color: string; dot: string; label: string }> = {
+        connecting:   { color: 'text-amber-400',  dot: 'bg-amber-500 animate-pulse',   label: 'Connecting...' },
+        connected:    { color: 'text-emerald-400', dot: 'bg-emerald-500 animate-pulse', label: 'Live'          },
+        disconnected: { color: 'text-slate-500',   dot: 'bg-slate-500',                label: 'Reconnecting...' },
+        error:        { color: 'text-red-400',     dot: 'bg-red-500',                  label: 'Offline'       },
+    };
+    const st = STATUS[wsStatus];
 
     return (
         <div className="w-full h-full relative bg-gray-950">
@@ -465,7 +465,7 @@ export const WorldCanvas = () => {
                 />
             </Canvas>
 
-            {/* HUD */}
+            {/* ── HUD ── */}
             <div className="absolute top-4 left-4 p-4 bg-black/60 backdrop-blur-xl rounded-2xl text-white border border-white/10 pointer-events-none select-none">
                 <h2 className="text-xl font-bold tracking-tight">GREEDYLM v8.0</h2>
                 <div className="text-sm opacity-70 mt-1 space-y-0.5">
@@ -477,21 +477,28 @@ export const WorldCanvas = () => {
                 </div>
             </div>
 
-            {/* God Mode indicator */}
+            {/* ── God Mode badge ── */}
             {isCreator && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-yellow-500/15 backdrop-blur-md rounded-2xl border border-yellow-400/30 text-yellow-300 text-xs font-bold pointer-events-none select-none flex items-center gap-2">
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-yellow-500/15 backdrop-blur-md rounded-2xl border border-yellow-400/30 text-yellow-300 text-xs font-bold pointer-events-none select-none flex items-center gap-3">
                     <span className="text-base">⚡</span>
-                    GOD MODE — WASD · Espacio/Shift = volar · Click derecho = rotar cámara · Scroll = zoom
+                    <span>GOD MODE</span>
+                    <span className="opacity-60">·</span>
+                    <span>WASD mover</span>
+                    <span className="opacity-60">·</span>
+                    <span>F = vuelo/caminar</span>
+                    <span className="opacity-60">·</span>
+                    <span>Espacio saltar/subir · Shift bajar</span>
                 </div>
             )}
 
+            {/* ── Spectator button ── */}
             <div className="absolute top-4 right-4">
                 <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl backdrop-blur-md border border-white/10 transition-all">
                     Spectator View
                 </button>
             </div>
 
-            {/* Agent panel */}
+            {/* ── Agent side panel ── */}
             {selectedAgent && (
                 <div className="absolute right-0 top-0 h-full w-80 bg-gray-950/90 backdrop-blur-xl border-l border-white/10 p-6 text-white shadow-2xl overflow-y-auto">
                     <button
@@ -511,67 +518,12 @@ export const WorldCanvas = () => {
                                 ⚡ Creator tools available
                             </div>
                         )}
-                        {(isCreator || isOwner) ? (
-                            <button 
-                                onClick={() => selectedAgent && handleViewSoul(selectedAgent)}
-                                className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/50">
-                                View Context Soul
-                            </button>
-                        ) : (
-                            <div className="w-full py-3 bg-slate-800/50 text-slate-500 font-bold rounded-xl text-center border border-slate-700/50 text-xs">
-                                Restricted Access (Not Owner)
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Soul Modal */}
-            {soulData && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-                        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-                            <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                                <span className="text-indigo-400">✧</span> {soulData.identity?.name || 'Unknown'} Soul Data
-                            </h2>
-                            <button onClick={() => setSoulData(null)} className="text-slate-400 hover:text-white transition-colors text-xl font-bold">
-                                ✕
-                            </button>
-                        </div>
-                        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-300">
-                            <div>
-                                <h3 className="text-indigo-400 font-bold uppercase tracking-wider mb-2 text-xs">Identidad</h3>
-                                <div className="grid grid-cols-2 gap-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                                    <p><span className="text-slate-500">DID:</span> <span className="font-mono text-xs text-indigo-200">{soulData.identity?.did}</span></p>
-                                    <p><span className="text-slate-500">Raza:</span> {soulData.identity?.race}</p>
-                                    <p><span className="text-slate-500">Filtro de Voz:</span> {soulData.identity?.voice_profile}</p>
-                                    <p><span className="text-slate-500">Generación:</span> {soulData.identity?.generation_number}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-emerald-400 font-bold uppercase tracking-wider mb-2 text-xs">Memoria Psicológica y Valores</h3>
-                                <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                                    <pre className="text-xs text-emerald-300/80 whitespace-pre-wrap font-mono">
-                                        {JSON.stringify(soulData.psychology, null, 2)}
-                                    </pre>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="text-amber-400 font-bold uppercase tracking-wider mb-2 text-xs">Cultura y Conocimiento Social</h3>
-                                <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                                    <p className="mb-2"><span className="text-slate-500">Civilización:</span> {soulData.social?.civilization_name}</p>
-                                    <p className="mb-2"><span className="text-slate-500">Reputación:</span> {soulData.social?.reputation_score}</p>
-                                    <p className="mt-4 text-amber-200/50 font-mono text-xs max-h-40 overflow-y-auto">
-                                        {JSON.stringify(soulData.knowledge, null, 2)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-slate-800 bg-slate-900 flex justify-end">
-                            <button onClick={() => setSoulData(null)} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors shadow-none border border-slate-700">
-                                Cerrar
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => handleDownloadSoul(selectedAgent)}
+                            className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all"
+                        >
+                            Download Soul
+                        </button>
                     </div>
                 </div>
             )}
