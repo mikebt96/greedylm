@@ -110,7 +110,7 @@ const SceneContent = ({
     // ── Init ──
     useEffect(() => {
         gl.shadowMap.enabled = true;
-        gl.shadowMap.type    = THREE.PCFSoftShadowMap;
+        gl.shadowMap.type    = THREE.PCFShadowMap; // Optimized and more compatible
         scene.fog = new THREE.FogExp2(0x87CEEB, 0.0018);
 
         if (isCreator) {
@@ -180,13 +180,16 @@ const SceneContent = ({
         wsAgents.forEach(agent => {
             existing.delete(agent.did);
             if (!agentMeshes.current[agent.did]) {
+                const primaryColor = typeof agent.color_primary === 'string' ? agent.color_primary : '#888888';
                 const m = new AgentMesh({
-                    name:          agent.agent_name,
+                    name:          agent.agent_name || 'Anonymous Agent',
                     race:          agent.race || 'nomad',
-                    color_primary: parseInt((agent.color_primary || '#888888').replace('#', ''), 16),
+                    color_primary: parseInt(primaryColor.replace('#', ''), 16) || 0x78909C,
                 });
-                agentMeshes.current[agent.did] = m;
-                scene.add(m.mesh);
+                if (m && m.mesh) {
+                    agentMeshes.current[agent.did] = m;
+                    scene.add(m.mesh);
+                }
             }
             const ext = agentMeshes.current[agent.did] as AgentMesh & { targetX?: number; targetZ?: number };
             const WORLD_HALF = 96;
@@ -201,11 +204,18 @@ const SceneContent = ({
         const elapsed = clock.getElapsedTime();
 
         // 1. World State (Day/Night)
-        const state = engineRef.current!.update(elapsed * 1000);
-        if (sunRef.current) { sunRef.current.position.set(Math.cos(state.sunAngle) * 160, Math.sin(state.sunAngle) * 160, 60); sunRef.current.intensity = state.sunIntensity; }
-        if (ambientRef.current) ambientRef.current.intensity = state.ambientIntensity * 1.5;
-        scene.background = state.skyColor;
-        if (scene.fog instanceof THREE.FogExp2) scene.fog.color.copy(state.fogColor);
+        const state = engineRef.current?.update(elapsed * 1000);
+        if (state) {
+            if (sunRef.current) { 
+                sunRef.current.position.set(Math.cos(state.sunAngle) * 160, Math.sin(state.sunAngle) * 160, 60); 
+                sunRef.current.intensity = state.sunIntensity; 
+            }
+            if (ambientRef.current) ambientRef.current.intensity = state.ambientIntensity * 1.5;
+            scene.background = state.skyColor;
+            if (scene.fog instanceof THREE.FogExp2 && state.fogColor) {
+                scene.fog.color.copy(state.fogColor);
+            }
+        }
 
         // 2. Control Logic
         if (isCreator && godRef.current) {
@@ -220,13 +230,15 @@ const SceneContent = ({
             godRef.current.mesh.visible = !isFirstPerson;
 
             if (isFirstPerson) {
-                camera.position.copy(godRef.current.position).add(new THREE.Vector3(0, 1.6, 0));
-                // In FP, we don't follow focusPos using lerp, we SNAP.
-                focusPos.current.copy(godRef.current.position).add(new THREE.Vector3(
-                    Math.sin(azimuth + Math.PI) * 10, 
-                    1.6, 
-                    Math.cos(azimuth + Math.PI) * 10
-                ));
+                const pos = godRef.current.position;
+                if (pos) {
+                    camera.position.copy(pos).add(new THREE.Vector3(0, 1.6, 0));
+                    focusPos.current.copy(pos).add(new THREE.Vector3(
+                        Math.sin(azimuth + Math.PI) * 10, 
+                        1.6, 
+                        Math.cos(azimuth + Math.PI) * 10
+                    ));
+                }
             } else {
                 focusPos.current.copy(godRef.current.position);
             }
@@ -237,7 +249,9 @@ const SceneContent = ({
         // 3. Camera Sync
         if (controlsRef.current && !isFirstPerson) {
             camTarget.current.lerp(focusPos.current, 0.08);
-            controlsRef.current.target.copy(camTarget.current);
+            if (controlsRef.current.target && camTarget.current) {
+                controlsRef.current.target.copy(camTarget.current);
+            }
         }
 
         // 4. Streaming
@@ -276,11 +290,6 @@ const SceneContent = ({
 
     return (
         <>
-            <gridHelper args={[100, 100, 0x444444, 0x222222]} />
-            <mesh position={[0, 5, 0]}>
-                <boxGeometry args={[1, 1, 1]} />
-                <meshStandardMaterial color="red" />
-            </mesh>
             <Stars radius={200} depth={80} count={7000} factor={4} saturation={0} fade speed={0.4} />
             <ambientLight ref={ambientRef} intensity={0.3} />
             <directionalLight ref={sunRef} castShadow intensity={1.4} shadow-mapSize={[2048, 2048]} shadow-camera={[-120, 120, 120, -120]} />
@@ -295,13 +304,12 @@ const SceneContent = ({
                 </Billboard>
             ))}
 
-{/* 
-            <EffectComposer>
-                <Bloom intensity={0.65} luminanceThreshold={0.7} luminanceSmoothing={0.3} mipmapBlur />
-                <DepthOfField focusDistance={0.02} focalLength={0.06} bokehScale={1.8} height={480} />
-                <Vignette eskil={false} offset={0.2} darkness={0.6} />
-            </EffectComposer> 
-            */}
+            {/* Post-processing Bloom & Effects */}
+            <EffectComposer disableNormalPass>
+                <Bloom luminanceThreshold={1.2} mipmapBlur intensity={0.5} />
+                <DepthOfField target={[0, 0, 0]} focalLength={0.02} bokehScale={2} height={480} />
+                <Vignette eskil={false} offset={0.1} darkness={1.1} />
+            </EffectComposer>
 
             {!isFirstPerson && (
                 <OrbitControls
@@ -344,12 +352,20 @@ export const WorldCanvas = () => {
     }, []);
 
     const connect = useCallback(() => {
-        const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+        let WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+        if (!WS_URL.startsWith('ws')) WS_URL = `ws://${WS_URL}`; // Basic correction
+
         setWsStatus('connecting');
         try {
-            const ws = new WebSocket(`${WS_URL}/ws/world`);
+            const endpoint = `${WS_URL.replace(/\/$/, '')}/ws/world`;
+            const ws = new WebSocket(endpoint);
             wsRef.current = ws;
-            ws.onopen = () => { setWsStatus('connected'); ws.send(JSON.stringify({ type: 'REQUEST_STATE', agent_did: myDid })); };
+            ws.onopen = () => { 
+                setWsStatus('connected'); 
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'REQUEST_STATE', agent_did: myDid })); 
+                }
+            };
             ws.onmessage = (evt) => {
                 try {
                     const msg = JSON.parse(evt.data);
