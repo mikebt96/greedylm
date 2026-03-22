@@ -312,8 +312,10 @@ export class TerrainGenerator {
         const rand  = this.seededRandom(chunkX * 89 + chunkY * 193 + 4444);
         const SIZE  = CHUNK_SIZE;
 
-        // Try up to 3 random spots in the chunk to find a suitable environment
-        for (let i = 0; i < 3; i++) {
+        const spawnedSpecies = new Set<string>();
+
+        // Intenta generar en 5 posiciones aleatorias del chunk
+        for (let i = 0; i < 5; i++) {
             const lx = (rand() - 0.5) * (SIZE - 6);
             const lz = (rand() - 0.5) * (SIZE - 6);
             const wx = lx + chunkX * SIZE;
@@ -355,7 +357,8 @@ export class TerrainGenerator {
                 if (gy > 12 && rand() < 0.03) subtype = 'Storm Glider'; // Muy alto, 3%
             }
 
-            if (subtype !== '') {
+            // Solo genera si hay un subtipo y si no ha aparecido ya en este chunk
+            if (subtype !== '' && !spawnedSpecies.has(subtype)) {
                 const faunaMesh = this.makeFaunaMesh(subtype);
                 faunaMesh.position.set(wx, gy, wz);
                 faunaMesh.rotation.y = rand() * Math.PI * 2;
@@ -366,8 +369,7 @@ export class TerrainGenerator {
                     intelligence: this.getFaunaIntelligence(subtype)
                 };
                 group.add(faunaMesh);
-                // Solo 1 por chunk como máximo para mantener la rareza
-                break;
+                spawnedSpecies.add(subtype);
             }
         }
 
