@@ -405,7 +405,7 @@ export class TerrainGenerator {
         return i[subtype] || 1;
     }
 
-    private makeFaunaMesh(subtype: string): THREE.Group {
+    private makeFaunaMesh(subtype: string, biome: string = 'forest'): THREE.Group {
         const g = new THREE.Group();
         // Since we don't have distinct models for each, we'll use geometric representations
         
@@ -444,16 +444,28 @@ export class TerrainGenerator {
             g.add(body);
         }
         else {
-            // Low Intel fauna (generic geometric shapes)
+            // Low Intel fauna (generic geometric shapes with biome-aware colors)
+            const biomeColors: Record<string, number> = {
+                'volcanic': 0xFF3D00, 'desert': 0xFFD54F, 'snow': 0xE3F2FD,
+                'forest': 0x4CAF50, 'caverns': 0x607D8B, 'mythic_zones': 0xAA00FF
+            };
+            const defaultColor = biomeColors[biome] || 0x888888;
             const colors: Record<string, number> = {
                 'Grubmole': 0x5D4037, 'Sandscuttler': 0xF8B195, 'Ashcrawler': 0xBF360C,
-                'Luminos Beast': 0xE1BEE7, 'Frosthorn': 0xCFD8DC, 'Duskfox': 0xE65100
+                'Luminos Beast': 0xE1BEE7, 'Frosthorn': 0xCFD8DC, 'Duskfox': 0xE65100,
+                'Apex Stalker': 0x212121
             };
-            const mat = new THREE.MeshLambertMaterial({ color: colors[subtype] || 0x888888 });
-            const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 5, 4), mat);
+            const mat = new THREE.MeshLambertMaterial({ color: colors[subtype] || defaultColor });
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 6, 5), mat);
             body.scale.set(1, 0.6, 1.2);
             body.position.y = 0.24;
             g.add(body);
+            
+            // Add tiny eyes or glowing spots
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 4, 4), new THREE.MeshBasicMaterial({ color: 0xFFFFFF }));
+            eye.position.set(0.15, 0.1, 0.35);
+            const eye2 = eye.clone(); eye2.position.x = -0.15;
+            g.add(eye, eye2);
         }
         
         return g;
@@ -605,15 +617,39 @@ export class TerrainGenerator {
     }
 
     // ── API-driven object rendering helper ────────────────────────────────────
-    public spawnWorldObjectMesh(type: string, subtype: string, rarity: number = 0.5): THREE.Group {
+    public spawnWorldObjectMesh(type: string, subtype: string, rarity: number = 0.5, biome: string = 'forest'): THREE.Group {
         if (type === 'creature') {
-            return this.makeFaunaMesh(subtype);
+            return this.makeFaunaMesh(subtype, biome);
         } else if (type === 'mineral_deposit') {
             const m = MINERALS.find(x => x.subtype === subtype) || MINERALS[0];
             return this.makeMineralDeposit({ ...m, rarity });
         } else if (type === 'cave_entrance') {
             return this.makeCaveEntrance();
+        } else if (type === 'plant') {
+            return this.generateSinglePlant(biome, subtype);
         }
         return new THREE.Group();
+    }
+
+    private generateSinglePlant(biome: string, subtype: string): THREE.Group {
+        if (subtype.includes('Cactus')) return this.makeCactus();
+        if (subtype.includes('Mushroom')) {
+             const g = new THREE.Group();
+             const mat = new THREE.MeshLambertMaterial({ color: 0xFF5252 });
+             const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.3), new THREE.MeshLambertMaterial({ color: 0xFFFFFF }));
+             const cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 4), mat);
+             cap.position.y = 0.2; cap.scale.y = 0.5;
+             g.add(stem, cap);
+             return g;
+        }
+        if (biome === 'volcanic') {
+             const g = new THREE.Group();
+             const mat = new THREE.MeshLambertMaterial({ color: 0x212121 });
+             const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2), mat);
+             const glow = new THREE.PointLight(0xFF4500, 0.5, 1);
+             g.add(rock, glow);
+             return g;
+        }
+        return this.makeTree(0x5D4037, 0x2E7D32);
     }
 }

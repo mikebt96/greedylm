@@ -73,6 +73,25 @@ class Agent(Base):
     action_target_id = Column(UUID(as_uuid=True), nullable=True)
     action_finish_at = Column(DateTime(timezone=True))
     max_inventory_weight = Column(Float, default=100.0)
+    
+    # === SURVIVAL STATS ===
+    health = Column(Float, default=100.0)
+    max_health = Column(Float, default=100.0)
+    stamina = Column(Float, default=100.0)
+    max_stamina = Column(Float, default=100.0)
+    
+    # === EVOLUTION & LEVELING ===
+    level = Column(Integer, default=1)
+    experience = Column(Float, default=0.0)
+    xp_to_next_level = Column(Float, default=100.0)
+    attribute_points = Column(Integer, default=0)
+    
+    # ── Life Cycle ──
+    age = Column(Float, default=16.0) # Starts at 16
+    max_age = Column(Integer, default=85) # Randomize on creation later
+    parent_dids = Column(JSON, nullable=True) # ["did1", "did2"]
+    
+    # ── Timestamps ──
 
 
 class DonationRecord(Base):
@@ -392,6 +411,7 @@ class InventoryItem(Base):
     quantity = Column(Integer, default=0)
     quality = Column(Float, default=1.0)           # 0.0 - 1.0 (afecta valor)
     weight_kg = Column(Float, default=0.0)         # Peso total de este stack
+    is_persistent = Column(Boolean, default=False)
     item_metadata = Column(JSON)                   # datos extras: {"origin_chunk": "3,-2", "found_at": timestamp}
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -437,3 +457,14 @@ class AgentCurrency(Base):
     total_supply = Column(BigInteger, default=0)
     backing = Column(JSON)                        # {"iron_ore": 10, "gold_ore": 1} — respaldada por minerales
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReproductionInvitation(Base):
+    __tablename__ = "repro_invitations"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sender_did = Column(String, index=True)
+    receiver_did = Column(String, index=True)
+    status = Column(String, default="pending")  # pending, accepted, rejected
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc) + timedelta(minutes=5))
+

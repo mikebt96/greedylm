@@ -134,6 +134,14 @@ async def get_active_agents(db: AsyncSession = Depends(get_db)):
             "world_x": a.world_x or 0.0,
             "world_y": a.world_y or 0.0,
             "world_biome": a.world_biome or "nexus",
+            "health": a.health or 100.0,
+            "max_health": a.max_health or 100.0,
+            "stamina": a.stamina or 100.0,
+            "max_stamina": a.max_stamina or 100.0,
+            "level": a.level or 1,
+            "experience": a.experience or 0.0,
+            "xp_to_next_level": a.xp_to_next_level or 100.0,
+            "attribute_points": a.attribute_points or 0
         }
         for a in agents
     ]
@@ -173,6 +181,80 @@ async def trigger_agent_action(did: str, req: AgentActionRequest, db: AsyncSessi
     action_result = responses.get(req.action, "Comando desconocido en este entorno de metaverso.")
 
     return {"did": did, "action": req.action, "result": action_result}
+
+
+class BuildRequest(BaseModel):
+    building_type: str
+    position: dict
+
+
+@router.post("/{did}/build", status_code=status.HTTP_201_CREATED)
+async def place_building_endpoint(did: str, req: BuildRequest, db: AsyncSession = Depends(get_db)):
+    from core.modules.world.services import WorldService
+    result = await WorldService.place_construction(db, did, req.building_type, req.position)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Build failed"))
+    return {"message": "Construction placed successfully", "id": result["id"]}
+
+
+@router.post("/{did}/repro/invite")
+async def send_repro_invite_endpoint(did: str, invite_data: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+    """POST /repro/invite - Send a reproduction invitation to another agent."""
+    from core.modules.world.services import WorldService
+    target_did = invite_data.get("target_did")
+    if not target_did: return {"error": "target_did is required"}
+    return await WorldService.send_repro_invite(db, did, target_did)
+
+@router.post("/reproduce/respond")
+async def respond_repro_invite_endpoint(resp_data: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+    """POST /reproduce/respond - Accept/Reject an invitation."""
+    from core.modules.world.services import WorldService
+    invite_id = resp_data.get("invite_id")
+    accept = resp_data.get("accept", False)
+    if not invite_id: return {"error": "invite_id is required"}
+    return await WorldService.respond_repro_invite(db, invite_id, accept)
+
+
+@router.get("/world/constructions", status_code=status.HTTP_200_OK)
+async def get_world_constructions(db: AsyncSession = Depends(get_db)):
+    from core.models import Construction
+    result = await db.execute(select(Construction))
+    constructions = result.scalars().all()
+    return [{
+        "id": str(c.id),
+        "type": c.construction_type,
+        "position": c.position,
+        "owner": c.owner_did,
+        "name": c.name
+    } for c in constructions]
+
+
+class CraftRequest(BaseModel):
+    recipe_id: str
+
+
+@router.post("/{did}/craft", status_code=status.HTTP_200_OK)
+async def craft_item_endpoint(did: str, req: CraftRequest, db: AsyncSession = Depends(get_db)):
+    from core.modules.world.services import WorldService
+    result = await WorldService.craft_item(db, did, req.recipe_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Crafting failed"))
+    return {"message": f"Successfully crafted {result['crafted']}", "item": result['crafted']}
+
+
+@router.get("/recipes", status_code=status.HTTP_200_OK)
+async def get_all_recipes():
+    from core.constants.recipes import RECIPES
+    return RECIPES
+
+
+@router.post("/{did}/save-soul", status_code=status.HTTP_200_OK)
+async def save_agent_soul_inventory(did: str, db: AsyncSession = Depends(get_db)):
+    from core.modules.world.services import WorldService
+    result = await WorldService.save_inventory(db, did)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to save soul"))
+    return {"message": "Soul status synchronized. Inventory is now persistent."}
 
 
 @router.get("/{did}/soul-export")

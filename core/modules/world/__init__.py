@@ -244,6 +244,8 @@ async def world_websocket(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"type": "ACTION_SUCCESS", "results": res}))
                         if res.get("depleted"):
                             await metaverse_hub.publish_event("OBJECT_REMOVED", {"type": "OBJECT_REMOVED", "id": res.get("target_id")})
+                        elif res.get("fled"):
+                            await metaverse_hub.publish_event("OBJECT_FLED", {"type": "OBJECT_FLED", "id": res.get("target_id")})
                     else:
                         await websocket.send_text(json.dumps({"type": "ACTION_ERROR", "error": res["error"]}))
 

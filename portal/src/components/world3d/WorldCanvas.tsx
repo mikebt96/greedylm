@@ -1,11 +1,11 @@
 /// <reference path="../../types/three-jsx.d.ts" />
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, PerspectiveCamera, Text, Billboard } from '@react-three/drei';
+import { OrbitControls, Stars, PerspectiveCamera, Text, Billboard, Html } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { EffectComposer, Bloom, DepthOfField, Vignette } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, DepthOfField, Vignette, HueSaturation } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { WorldEngine } from '@/lib/three/WorldEngine';
 import { TerrainGenerator, sampleHeight } from '@/lib/three/TerrainGenerator';
@@ -21,6 +21,13 @@ interface WsAgent {
     y:              number;
     race?:          string;
     color_primary?: string;
+    health?:        number;
+    max_health?:    number;
+    stamina?:       number;
+    max_stamina?:   number;
+    level?:         number;
+    experience?:    number;
+    xp_to_next_level?: number;
 }
 type WsStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -65,6 +72,51 @@ function disposeObject(obj: THREE.Object3D) {
     });
 }
 
+const BuildingMesh = ({ type, opacity = 1 }: { type: string, opacity?: number }) => {
+    const color = type === 'house' ? 0x8b4513 : type === 'tower' ? 0x708090 : 0x556b2f;
+    return (
+        <group>
+            {/* Base */}
+            <mesh castShadow receiveShadow>
+                <boxGeometry args={[4, type === 'tower' ? 8 : 4, 4]} />
+                <meshStandardMaterial color={color} transparent opacity={opacity} />
+            </mesh>
+            {/* Roof */}
+            <mesh position={[0, type === 'tower' ? 5 : 3, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+                <coneGeometry args={[3, 2, 4]} />
+                <meshStandardMaterial color={0x333333} transparent opacity={opacity} />
+            </mesh>
+            {/* Windows/Detail */}
+            <mesh position={[0, 1, 2.01]}>
+                <planeGeometry args={[0.8, 0.8]} />
+                <meshBasicMaterial color={0xffff00} transparent opacity={opacity * 0.8} />
+            </mesh>
+        </group>
+    );
+};
+
+const BuildingPreview = ({ type }: { type: string }) => {
+    const { camera, raycaster, mouse, scene } = useThree();
+    const meshRef = useRef<THREE.Group>(null);
+
+    useFrame(() => {
+        if (!meshRef.current) return;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true).filter(i => i.object.name.includes('chunk'));
+        if (intersects.length > 0) {
+            meshRef.current.position.copy(intersects[0].point);
+            meshRef.current.position.y += 1.5; // Offset to sit on ground
+        }
+    });
+
+    return (
+        <group ref={meshRef}>
+            <BuildingMesh type={type} opacity={0.4} />
+            <pointLight position={[0, 2, 0]} color={0x00ff00} intensity={1} distance={5} />
+        </group>
+    );
+};
+
 // ── Scene Content ──────────────────────────────────────────────────────────────
 interface SceneProps {
     isCreator:        boolean;
@@ -76,6 +128,12 @@ interface SceneProps {
     onAgentSelect:    (did: string) => void;
     wsEvent:          any;
     onInteract:       (targetId: string, action: string) => void;
+    addLog:           (msg: string) => void;
+    isTorchActive:    boolean;
+    constructions:    any[];
+    isBuildMode:      boolean;
+    onBuild:          (pos: { x: number, y: number, z: number }) => void;
+    selectedBuilding: 'house' | 'tower' | 'storage';
 }
 
 const SceneContent = ({ 
@@ -87,7 +145,13 @@ const SceneContent = ({
     setIsFirstPerson,
     onAgentSelect,
     wsEvent,
-    onInteract
+    onInteract,
+    addLog,
+    isTorchActive,
+    constructions,
+    isBuildMode,
+    onBuild,
+    selectedBuilding
 }: SceneProps) => {
     const { scene, camera, gl } = useThree();
 
@@ -107,7 +171,27 @@ const SceneContent = ({
     const ambientRef = useRef<THREE.AmbientLight>(null);
 
     const agentMeshes = useRef<Record<string, AgentMesh>>({});
-    const faunaMeshes = useRef<Record<string, THREE.Group>>({});
+    const faunaMeshes = useRef<Record<string, THREE.Object3D>>({});
+    const torchRef    = useRef<THREE.PointLight>(null);
+
+    const [hoveredObject, setHoveredObject] = useState<any>(null);
+    const [reviveTimer, setReviveTimer] = useState(0);
+
+    // ── Local Particle System ──
+    const particles = useRef<{ pos: THREE.Vector3, life: number, color: THREE.Color }[]>([]);
+    const particleGeometry = useMemo(() => new THREE.SphereGeometry(0.05, 4, 4), []);
+    const particleMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: 0xffaa00 }), []);
+    const particleGroup    = useRef<THREE.Group>(null);
+
+    const spawnParticles = (pos: THREE.Vector3, color = 0xffaa00) => {
+        for(let i=0; i<8; i++) {
+            const p = new THREE.Mesh(particleGeometry, new THREE.MeshBasicMaterial({ color }));
+            p.position.copy(pos);
+            const vel = new THREE.Vector3((Math.random()-0.5)*0.2, Math.random()*0.3, (Math.random()-0.5)*0.2);
+            p.userData = { vel, life: 1.0 };
+            particleGroup.current?.add(p);
+        }
+    };
 
     if (!engineRef.current)  engineRef.current  = new WorldEngine();
     if (!terrainRef.current) terrainRef.current = new TerrainGenerator();
@@ -275,7 +359,41 @@ const SceneContent = ({
                  }
              }
         }
-    }, [wsEvent]);
+        else if (msg.type === 'ACTION_SUCCESS') {
+             const results = msg.results;
+             if (results && results.target_id) {
+                 // Simple visual feedback: spark at target or camera
+                 addLog(`Acción completada: ${results.items_gained?.map((it:any)=>`${it.quantity} ${it.subtype}`).join(', ') || 'Éxito'}`);
+                 if (results.leveled_up) addLog("🌟 ¡SUBIDA DE NIVEL! 🌟");
+                 if (results.damage_taken > 0) {
+                     const critPrefix = results.is_critical ? "💥 ¡ATAQUE CRÍTICO! " : "⚠️ ";
+                     addLog(`${critPrefix}Has recibido ${Math.round(results.damage_taken)} de daño!`);
+                 }
+                 if (results.died) {
+                     if (results.is_true_death) {
+                         addLog("🌑 MUERTE DEFINITIVA: Tu alma ha sido desterrada del ecosistema.");
+                     } else {
+                         addLog("💀 Tu cuerpo ha sucumbido. Te has convertido en fantasma y has perdido objetos no guardados.");
+                     }
+                 }
+                 const targetMesh = faunaMeshes.current[results.target_id];
+                 if (targetMesh) {
+                     spawnParticles(targetMesh.position, 0x00ff00); // Green sparks for success
+                 } else {
+                     spawnParticles(camera.position.clone().add(new THREE.Vector3(0, -1, -2)), 0x00ff00);
+                 }
+             }
+        }
+        else if (msg.type === 'OBJECT_FLED' && msg.id) {
+             const fauna = faunaMeshes.current[msg.id];
+             if (fauna) {
+                 fauna.userData.behavior = 'flee';
+                 fauna.userData.sprint = 5.0;
+                 fauna.userData.initialX = fauna.position.x;
+                 fauna.userData.initialZ = fauna.position.z;
+             }
+        }
+    }, [wsEvent, addLog, camera, spawnParticles]);
 
     // ── Raycaster Interaction ──
     useEffect(() => {
@@ -288,6 +406,16 @@ const SceneContent = ({
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
 
+            // If Build Mode, only interact with terrain
+            if (isBuildMode) {
+                const terrainObj = scene.getObjectByName('terrain_root'); // I should name the terrain or just find meshes
+                const intersects = raycaster.intersectObjects(scene.children, true).filter(i => i.object.name.includes('chunk'));
+                if (intersects.length > 0) {
+                    onBuild({ x: intersects[0].point.x, y: intersects[0].point.y, z: intersects[0].point.z });
+                }
+                return;
+            }
+
             const interactables: THREE.Object3D[] = [];
             for (const [key, objs] of chunks.current) {
                 interactables.push(objs[2]); // dynamic objects
@@ -299,36 +427,80 @@ const SceneContent = ({
                 let curr: THREE.Object3D | null = intersects[0].object;
                 while (curr && !curr.userData?.id && curr.userData?.type !== 'cave_entrance') curr = curr.parent;
                 if (curr) {
+                    const d = Math.hypot(camera.position.x - intersects[0].point.x, camera.position.z - intersects[0].point.z);
+                    if (d > 16.0) {
+                        addLog("❌ Estás muy lejos para interactuar");
+                        return;
+                    }
                     if (curr.userData.type === 'cave_entrance') {
+                        addLog("⚡ Entrando a las profundidades...");
                         if (godRef.current) godRef.current.toggleUnderground();
                     } else if (curr.userData.id) {
+                        // "Punch" effect
+                        curr.scale.set(0.9, 0.9, 0.9);
+                        setTimeout(() => curr?.scale.set(1,1,1), 100);
+                        
                         const action = curr.userData.type === 'creature' ? 'hunt' : 'mine';
+                        addLog(`⚡ Iniciando ${action === 'mine' ? 'minería' : 'caza'}...`);
                         onInteract(curr.userData.id, action);
                     }
                 }
             }
         };
 
+        const onMove = (e: MouseEvent) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const interactables: THREE.Object3D[] = [];
+            for (const [, objs] of chunks.current) {
+                interactables.push(objs[2]);
+            }
+            const intersects = raycaster.intersectObjects(interactables, true);
+            if (intersects.length > 0) {
+                let curr: THREE.Object3D | null = intersects[0].object;
+                while (curr && !curr.userData?.id) curr = curr.parent;
+                if (curr?.userData.id) {
+                    setHoveredObject(curr.userData);
+                } else {
+                    setHoveredObject(null);
+                }
+            } else {
+                setHoveredObject(null);
+            }
+        };
+
         const canvas = gl.domElement;
         canvas.addEventListener('click', onClick);
-        return () => canvas.removeEventListener('click', onClick);
-    }, [camera, gl, isSpectator, onInteract]);
+        canvas.addEventListener('mousemove', onMove);
+        return () => {
+            canvas.removeEventListener('click', onClick);
+            canvas.removeEventListener('mousemove', onMove);
+        };
+    }, [camera, gl, isSpectator, onInteract, addLog]);
 
     // ── Per-frame loop ──
     useFrame(({ clock }, delta) => {
         const elapsed = clock.getElapsedTime();
 
-        // 1. World State (Day/Night)
+        // 1. World State (Day/Night & Verticality)
         const state = engineRef.current?.update(elapsed * 1000);
         if (state) {
+            const isDeep = camera.position.y < -30;
             if (sunRef.current) { 
                 sunRef.current.position.set(Math.cos(state.sunAngle) * 160, Math.sin(state.sunAngle) * 160, 60); 
-                sunRef.current.intensity = state.sunIntensity; 
+                sunRef.current.intensity = isDeep ? 0.0 : state.sunIntensity; 
             }
-            if (ambientRef.current) ambientRef.current.intensity = state.ambientIntensity * 1.5;
-            scene.background = state.skyColor;
-            if (scene.fog instanceof THREE.FogExp2 && state.fogColor) {
-                scene.fog.color.copy(state.fogColor);
+            if (ambientRef.current) ambientRef.current.intensity = isDeep ? 0.05 : (state.ambientIntensity * 1.5);
+            scene.background = isDeep ? new THREE.Color(0x000000) : state.skyColor;
+            if (scene.fog instanceof THREE.FogExp2) {
+                if (isDeep) {
+                     scene.fog.color = new THREE.Color(0x000000);
+                     scene.fog.density = 0.08;
+                } else {
+                     scene.fog.color.copy(state.fogColor!);
+                     scene.fog.density = 0.015;
+                }
             }
         }
 
@@ -403,7 +575,7 @@ const SceneContent = ({
         });
 
         // 6. Fauna movement
-        Object.values(faunaMeshes.current).forEach((m: any) => {
+        Object.values(faunaMeshes.current).forEach(m => {
             const data = m.userData;
             if (!m.userData.initialX) {
                 m.userData.initialX = m.position.x;
@@ -411,6 +583,8 @@ const SceneContent = ({
                 m.userData.randomOffset = Math.random() * 100;
             }
             if (data.behavior !== 'passive' && data.behavior !== 'passive_flee') {
+               const speed = (m.userData.behavior === 'flee' ? 4.0 : 1.0) * delta;
+               // Existing fauna move logic (simplified for diff)
                const r = 2.0;
                m.position.x = m.userData.initialX + Math.sin(elapsed * 0.5 + m.userData.randomOffset) * r;
                m.position.z = m.userData.initialZ + Math.cos(elapsed * 0.3 + m.userData.randomOffset) * r;
@@ -420,14 +594,100 @@ const SceneContent = ({
                m.position.y = sampleHeight(m.position.x, m.position.z) + Math.sin(elapsed * 2 + m.userData.randomOffset) * 0.05;
             }
         });
+
+        // 7. Torch follows camera
+        if (torchRef.current) {
+            torchRef.current.position.copy(camera.position);
+        }
+
+        // 8. Update Particles
+        if (particleGroup.current) {
+            particleGroup.current.children.forEach(p => {
+                p.position.add(p.userData.vel);
+                p.userData.vel.y -= 0.01; // gravity
+                p.userData.life -= 0.03;
+                const mat = (p as THREE.Mesh).material as THREE.MeshBasicMaterial;
+                mat.transparent = true;
+                mat.opacity = p.userData.life;
+                if (p.userData.life <= 0) particleGroup.current?.remove(p);
+            });
+        }
+
+        // 9. Rebirth logic (Ghost at 0,0)
+        const me = wsAgents.find(a => a.did === myAgentDid);
+        if (me && me.health === 0) {
+            const distToOrigin = Math.hypot(camera.position.x, camera.position.z);
+            if (distToOrigin < 6) {
+                setReviveTimer(t => t + delta);
+                if (reviveTimer > 30) {
+                     addLog("✨ Tu alma ha sido restaurada...");
+                     onInteract('00000000-0000-0000-0000-000000000000', 'revive');
+                     setReviveTimer(0);
+                }
+            } else {
+                setReviveTimer(0);
+            }
+        } else {
+            setReviveTimer(0);
+        }
     });
+
+    const isGhost = wsAgents.find(a => a.did === myAgentDid)?.health === 0;
 
     return (
         <>
+            <group ref={particleGroup} />
             <Stars radius={200} depth={80} count={7000} factor={4} saturation={0} fade speed={0.4} />
             <ambientLight ref={ambientRef} intensity={0.3} />
             <directionalLight ref={sunRef} castShadow intensity={1.4} shadow-mapSize={[2048, 2048]} shadow-camera={[-120, 120, 120, -120]} />
             <hemisphereLight args={[0x87CEEB, 0x3A5A2A, 0.45]} />
+
+            {/* Pillar of Souls */}
+            <group position={[0, -2, 0]}>
+                <mesh>
+                    <cylinderGeometry args={[2, 2.5, 0.5, 32]} />
+                    <meshPhongMaterial color={0x1a237e} />
+                </mesh>
+                <pointLight position={[0, 4, 0]} color={0x00ffff} intensity={2} distance={15} />
+                {isGhost ? (
+                     <mesh position={[0, 15, 0]}>
+                         <cylinderGeometry args={[0.1, 0.1, 30, 8]} />
+                         <meshBasicMaterial color={0x00ffff} transparent opacity={0.3} />
+                     </mesh>
+                ) : null}
+            </group>
+
+            {/* Tooltip */}
+            {hoveredObject ? (
+                <Html position={[hoveredObject.x || 0, (sampleHeight(hoveredObject.x, hoveredObject.y) || 0) + 2, hoveredObject.y || 0]} center pointerEvents="none">
+                    <div className="bg-black/90 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200 min-w-32">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">
+                            {hoveredObject.subtype || hoveredObject.type}
+                        </p>
+                        <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-all duration-300" 
+                                style={{ width: `${hoveredObject.health || 100}%` }} 
+                            />
+                        </div>
+                    </div>
+                </Html>
+            ) : null}
+
+            {/* Ghost Preview for Building */}
+            {isBuildMode && (
+                <BuildingPreview type={selectedBuilding} />
+            )}
+
+            {/* Existing Constructions */}
+            {constructions.map((c, i) => (
+                <group key={c.id || i} position={[c.position.x, c.position.y || 0, c.position.z]}>
+                    <BuildingMesh type={c.type} />
+                    <Billboard position={[0, 4, 0]}>
+                        <Text fontSize={0.2} color="cyan">{c.name}</Text>
+                    </Billboard>
+                </group>
+            ))}
 
             {/* Agent Nameplates */}
             {Object.values(agentMeshes.current).map((agent, i) => (
@@ -443,9 +703,10 @@ const SceneContent = ({
                 <Bloom luminanceThreshold={1.2} mipmapBlur intensity={0.5} />
                 <DepthOfField target={[0, 0, 0]} focalLength={0.02} bokehScale={2} height={480} />
                 <Vignette eskil={false} offset={0.1} darkness={1.1} />
+                <HueSaturation saturation={isGhost ? -1 : 0} />
             </EffectComposer>
 
-            {!isFirstPerson && (
+            {!isFirstPerson ? (
                 <OrbitControls
                     ref={controlsRef}
                     maxPolarAngle={Math.PI / 2.05}
@@ -457,7 +718,7 @@ const SceneContent = ({
                     rotateSpeed={0.8}
                     enableDamping
                 />
-            )}
+            ) : null}
         </>
     );
 };
@@ -490,6 +751,139 @@ const ProgressBar = ({ finishAt, duration }: { finishAt: string, duration: numbe
     );
 };
 
+const ActivityLog = ({ logs }: { logs: string[] }) => (
+    <div className="fixed bottom-24 left-6 w-72 pointer-events-none select-none flex flex-col gap-2 z-50">
+        {logs.map((log, i) => (
+            <div key={i} className="px-4 py-2 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 text-[11px] font-bold text-white/90 shadow-lg animate-in fade-in slide-in-from-left-5 duration-300">
+                <span className="text-indigo-400 mr-2">✦</span> {log}
+            </div>
+        ))}
+    </div>
+);
+
+const InventoryPanel = ({ did }: { did: string }) => {
+    const [inv, setInv] = useState<any>(null);
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        if (open && did) {
+            safeFetch<any>(`/api/v1/agents/${did}/inventory`).then(res => {
+                if (res.data) setInv(res.data);
+            });
+        }
+    }, [open, did]);
+
+    if (!did) return null;
+
+    return (
+        <div className="fixed bottom-6 right-6 flex flex-col items-end z-[100]">
+            {open && inv && (
+                <div className="mb-4 w-72 bg-black/90 backdrop-blur-2xl border border-indigo-500/30 rounded-3xl p-6 text-white shadow-[0_10px_40px_rgba(99,102,241,0.2)] animate-in slide-in-from-bottom-5">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-indigo-400 mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-indigo-400 rounded-full" /> Inventario
+                    </h3>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        {inv.items.length === 0 ? <p className="text-xs opacity-50">Vacío</p> : inv.items.map((it: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                                <div>
+                                    <p className="text-xs font-bold capitalize">{it.subtype || it.type}</p>
+                                    <p className="text-[9px] opacity-50 uppercase tracking-wider">{it.weight_kg.toFixed(1)} kg</p>
+                                </div>
+                                <div className="text-lg font-black font-mono px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg">x{it.quantity}</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs font-bold opacity-70 uppercase tracking-wider">
+                        <span>Carga</span>
+                        <span>{inv.total_weight.toFixed(1)} / {inv.max_weight.toFixed(1)} KG</span>
+                    </div>
+                </div>
+            )}
+            <button onClick={() => setOpen(!open)} className="w-14 h-14 bg-indigo-600 hover:bg-indigo-500 rounded-2xl shadow-[0_0_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white font-black text-xl border border-indigo-400/50 transition-all hover:scale-105 active:scale-95">
+                {open ? '✕' : '🎒'}
+            </button>
+        </div>
+    );
+};
+
+const CraftingPanel = ({ did, addLog }: { did: string, addLog: (m: string) => void }) => {
+    const [recipes, setRecipes] = useState<any>(null);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            safeFetch<any>('/api/v1/world/recipes').then(res => {
+                if (res.data) setRecipes(res.data);
+            });
+        }
+    }, [open]);
+
+    const handleCraft = async (recipeId: string) => {
+        if (!did || loading) return;
+        setLoading(true);
+        try {
+            const res = await safeFetch<any>(`/api/v1/agents/${did}/craft`, {
+                method: 'POST',
+                body: JSON.stringify({ recipe_id: recipeId })
+            });
+            if (res.data) {
+                addLog(`⚒️ ${res.data.message}`);
+            } else if (res.error) {
+                addLog(`❌ Error: ${res.error}`);
+            }
+        } catch {
+            addLog("❌ Error de conexión al craftear");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!did) return null;
+
+    return (
+        <div className="fixed bottom-24 right-6 flex flex-col items-end z-[100]">
+            {open && recipes && (
+                <div className="mb-4 w-80 bg-black/95 backdrop-blur-3xl border border-emerald-500/30 rounded-[2.5rem] p-8 text-white shadow-[0_20px_50px_rgba(16,185,129,0.2)] animate-in slide-in-from-bottom-10 duration-500 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50" />
+                    <h3 className="text-sm font-black uppercase tracking-[0.3em] text-emerald-400 mb-6 flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.8)]" /> 
+                        Forja de Almas
+                    </h3>
+                    <div className="space-y-4 max-h-[28rem] overflow-y-auto pr-2 custom-scrollbar">
+                        {Object.entries(recipes).map(([id, r]: [string, any]) => (
+                            <div key={id} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-emerald-500/20 transition-all group">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className="text-xs font-black uppercase tracking-wider text-white group-hover:text-emerald-400 transition-colors">{r.name}</p>
+                                    <button 
+                                        disabled={loading}
+                                        onClick={() => handleCraft(id)}
+                                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg active:scale-90"
+                                    >
+                                        {loading ? '...' : 'FORJAR'}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] opacity-40 mb-3 leading-relaxed">{r.description}</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(r.ingredients).map(([ing, qty]: [string, any]) => (
+                                        <span key={ing} className="px-2 py-0.5 bg-black/40 rounded-md text-[8px] font-bold text-emerald-300/60 uppercase border border-white/5">
+                                            {qty} {ing.replace('_', ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            <button onClick={() => setOpen(!open)} className="w-14 h-14 bg-emerald-600 hover:bg-emerald-500 rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.4)] flex items-center justify-center text-white font-black text-xl border border-emerald-400/50 transition-all hover:scale-105 active:scale-95 group overflow-hidden relative">
+                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                 <span className="relative z-10">{open ? '✕' : '⚒️'}</span>
+            </button>
+        </div>
+    );
+};
+
 export const WorldCanvas = () => {
     const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
     const [wsStatus,  setWsStatus]  = useState<WsStatus>('connecting');
@@ -499,8 +893,54 @@ export const WorldCanvas = () => {
 
     const [isSpectator, setIsSpectator] = useState(false);
     const [isFirstPerson, setIsFirstPerson] = useState(false);
+    const [isTorchActive, setIsTorchActive] = useState(false);
     const [wsEvent, setWsEvent]       = useState<any>(null);
     const [actionPending, setActionPending] = useState<{ finish_at: string, duration: number } | null>(null);
+    const [isBuildMode, setIsBuildMode] = useState(false);
+    const [selectedBuilding, setSelectedBuilding] = useState<'house' | 'tower' | 'storage'>('house');
+    const [constructions, setConstructions] = useState<any[]>([]);
+    const [logs, setLogs] = useState<string[]>([]);
+
+    const fetchConstructions = async () => {
+        const { data } = await safeFetch<any[]>('/api/v1/world/constructions');
+        if (data) setConstructions(data);
+    };
+
+    useEffect(() => {
+        fetchConstructions();
+        const interval = setInterval(fetchConstructions, 30000); // Sync every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleBuild = async (pos: { x: number, y: number, z: number }) => {
+        if (!myDid) return;
+        try {
+            const res = await safeFetch<any>(`/api/v1/agents/${myDid}/build`, {
+                method: 'POST',
+                body: JSON.stringify({ building_type: selectedBuilding, position: pos })
+            });
+            if (res.data) {
+                addLog(`🏗️ ¡Construcción de ${selectedBuilding} iniciada!`);
+                fetchConstructions();
+            } else if (res.error) {
+                addLog(`❌ Error: ${res.error}`);
+            }
+        } catch { addLog("❌ Error de red al construir"); }
+        setIsBuildMode(false);
+    };
+
+    const addLog = (msg: string) => {
+        setLogs(prev => [msg, ...prev.slice(0, 4)]);
+    };
+
+    // ── Keybinds ──
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'l') setIsTorchActive(p => !p);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, []);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -535,9 +975,9 @@ export const WorldCanvas = () => {
                     const msg = JSON.parse(evt.data);
                     if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) setWsAgents(msg.agents);
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
-                        setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y } : a));
+                        setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
-                    else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED') {
+                    else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
                         setWsEvent(msg);
                     }
                     else if (msg.type === 'ACTION_PENDING') {
@@ -558,7 +998,17 @@ export const WorldCanvas = () => {
     }, [myDid]);
 
     useEffect(() => { connect(); return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); }; }, [connect]);
-
+ 
+    const handleSaveSoul = async () => {
+        if (!myDid) return;
+        try {
+            const res = await safeFetch<any>(`/api/v1/agents/${myDid}/save-soul`, { method: 'POST' });
+            if (res.data) addLog("💠 Tu alma ha sido sincronizada. Inventario seguro.");
+        } catch (e) { 
+            addLog("❌ Error al guardar el alma"); 
+        }
+    };
+ 
     const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/auth/login'; };
 
     const handleDownloadSoul = async (did: string) => {
@@ -579,9 +1029,25 @@ export const WorldCanvas = () => {
         error:        { color: 'text-red-400',     dot: 'bg-red-500',                  label: 'Offline'       },
     };
     const st = STATUS[wsStatus];
+    const isGhost = wsAgents.find(a => a.did === myDid)?.health === 0;
+    const myAgent = wsAgents.find(a => a.did === myDid);
+    const isExpelled = myAgent?.status === 'EXPELLED';
 
     return (
         <div className="w-full h-full relative bg-gray-900 overflow-hidden font-sans">
+            {isExpelled && (
+                <div className="fixed inset-0 z-[2000] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-10 animate-in fade-in duration-1000">
+                    <div className="w-32 h-32 bg-red-500/20 rounded-full flex items-center justify-center text-6xl mb-8 border border-red-500/40 shadow-[0_0_50px_rgba(239,68,68,0.3)] animate-pulse">🌑</div>
+                    <h1 className="text-5xl font-black text-white tracking-tighter mb-4">ALMA DESTERRADA</h1>
+                    <p className="max-w-md text-red-400 font-bold uppercase tracking-[0.3em] text-[10px] leading-loose">
+                        Has sufrido una muerte definitiva o has sido objeto de un ritual de olvido. 
+                        Tus pertenencias han regresado a la tierra y tu esencia ya no pertenece a este plano.
+                    </p>
+                    <button onClick={handleLogout} className="mt-12 px-10 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all">
+                        Regresar al Vacío
+                    </button>
+                </div>
+            )}
             <Canvas shadows gl={{ antialias: true }} dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 15, 30]} fov={50} near={0.1} far={1000} />
                 <SceneContent
@@ -598,18 +1064,38 @@ export const WorldCanvas = () => {
                             wsRef.current.send(JSON.stringify({ type: 'AGENT_ACTION', target_id: targetId, action: action, agent_did: myDid || 'editor' }));
                         }
                     }}
+                    addLog={addLog}
+                    isTorchActive={isTorchActive}
+                    constructions={constructions}
+                    isBuildMode={isBuildMode}
+                    onBuild={handleBuild}
+                    selectedBuilding={selectedBuilding}
                 />
             </Canvas>
+
+            <ActivityLog logs={logs} />
 
             {/* ── HUD ── */}
             <div className="absolute top-6 left-6 p-6 bg-black/80 backdrop-blur-2xl rounded-[2.5rem] text-white border border-white/10 shadow-3xl pointer-events-none select-none">
                 <div className="flex items-center gap-4 mb-3">
                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center font-black text-xl shadow-2xl border border-white/20">G</div>
-                   <div>
-                       <h2 className="text-xl font-black tracking-tighter leading-none">GREEDYLM</h2>
-                       <p className="text-[10px] uppercase tracking-[0.3em] opacity-40 font-bold mt-1">Neural Playground</p>
-                   </div>
+                    <div>
+                        <h2 className="text-xl font-black tracking-tighter leading-none">GREEDYLM</h2>
+                        <p className="text-[10px] uppercase tracking-[0.3em] opacity-40 font-bold mt-1">Neural Playground</p>
+                    </div>
                 </div>
+
+                {/* Level Badge */}
+                {(() => {
+                    const me = wsAgents.find(a => a.did === myDid);
+                    if (!me) return null;
+                    return (
+                        <div className="mb-4 px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Nivel de Conciencia</span>
+                            <span className="text-lg font-black text-indigo-400">Lv.{me.level || 1}</span>
+                        </div>
+                    );
+                })()}
                 
                 <div className="space-y-2 pt-3 border-t border-white/5">
                     <div className="flex justify-between items-center text-xs font-bold">
@@ -618,9 +1104,62 @@ export const WorldCanvas = () => {
                     </div>
                 </div>
 
-                <div className={`inline-flex items-center gap-2 mt-5 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest ${st.color}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${st.dot} shadow-[0_0_8px_currentColor]`} />
-                    {st.label}
+                {/* Survival Stats */}
+                {(() => {
+                    const me = wsAgents.find(a => a.did === myDid);
+                    if (!me) return null;
+                    const h_pct = ((me.health ?? 100) / (me.max_health ?? 100)) * 100;
+                    const s_pct = ((me.stamina ?? 100) / (me.max_stamina ?? 100)) * 100;
+                    return (
+                        <div className="mt-4 space-y-3 pt-3 border-t border-white/5">
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-red-400">
+                                    <span>Vitalidad</span>
+                                    <span>{Math.round(me.health ?? 100)}%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] transition-all duration-500" style={{ width: `${h_pct}%` }} />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-amber-400">
+                                    <span>Energía</span>
+                                    <span>{Math.round(me.stamina ?? 100)}%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all duration-500" style={{ width: `${s_pct}%` }} />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-indigo-400">
+                                    <span>Evolución (XP)</span>
+                                    <span>{Math.round(me.experience ?? 0)} / {Math.round(me.xp_to_next_level ?? 100)}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-500" style={{ width: `${(me.experience ?? 0) / (me.xp_to_next_level ?? 100) * 100}%` }} />
+                                </div>
+                            </div>
+ 
+                            <button 
+                                onClick={handleSaveSoul}
+                                className="w-full mt-2 py-2 bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-500/30 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300 transition-all pointer-events-auto"
+                            >
+                                💠 Guardar Alma (Sincronizar)
+                            </button>
+                        </div>
+                    );
+                })()}
+
+                <div className="flex items-center gap-3 mt-5">
+                    <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest ${st.color}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${st.dot} shadow-[0_0_8px_currentColor]`} />
+                        {st.label}
+                    </div>
+                    {isTorchActive && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-black uppercase tracking-widest animate-pulse">
+                            🔦 Torch ON
+                        </div>
+                    )}
                 </div>
 
                 {actionPending && <ProgressBar finishAt={actionPending.finish_at} duration={actionPending.duration} />}
@@ -667,7 +1206,30 @@ export const WorldCanvas = () => {
                     </button>
                 </div>
             </div>
-
+ 
+            {/* ── Build Mode HUD ── */}
+            <div className="absolute top-6 right-80 flex gap-3">
+                <button 
+                    onClick={() => setIsBuildMode(!isBuildMode)}
+                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all border ${
+                        isBuildMode ? 'bg-emerald-600 border-emerald-400 shadow-[0_15px_30px_rgba(16,185,129,0.5)]' : 'bg-black/60 border-white/10 hover:bg-black/80'
+                    } text-white pointer-events-auto`}
+                >
+                    {isBuildMode ? '👷 ESC para Cancelar' : '🏗️ MODO CONSTRUCCIÓN'}
+                </button>
+                {isBuildMode && (
+                    <select 
+                        value={selectedBuilding} 
+                        onChange={(e) => setSelectedBuilding(e.target.value as any)}
+                        className="bg-black/80 text-white text-[10px] font-black uppercase tracking-widest px-4 rounded-xl border border-white/10 pointer-events-auto"
+                    >
+                        <option value="house">🏘️ Casa (10w 10s)</option>
+                        <option value="tower">🏰 Torre (30s 5i)</option>
+                        <option value="storage">📦 Almacén (20w 2i)</option>
+                    </select>
+                )}
+            </div>
+ 
             {/* ── Agent Info Panel ── */}
             {selectedAgent && (
                 <div className="absolute right-8 top-24 bottom-8 w-96 bg-black/90 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-10 text-white shadow-4xl animate-in slide-in-from-right duration-500">
@@ -697,6 +1259,9 @@ export const WorldCanvas = () => {
                     </div>
                 </div>
             )}
+            
+            <CraftingPanel did={myDid || ''} addLog={addLog} />
+            <InventoryPanel did={myDid || ''} />
         </div>
     );
 };

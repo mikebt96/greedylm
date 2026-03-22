@@ -3,7 +3,8 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.models import WorldObject, InventoryItem, AgentAction, Agent, Transaction
+from core.models import WorldObject, InventoryItem, AgentAction, Agent, Transaction, Construction
+from core.constants.recipes import RECIPES
 import json
 
 class WorldService:
@@ -123,8 +124,20 @@ class WorldService:
         # Apply damage/progress
         damage = 25.0 # Base
         stats = agent.race_stats or {}
-        if action_type == "mine": damage *= stats.get("mining", 1.0)
-        elif action_type in ["gather", "hunt"]: damage *= stats.get("strength", 1.0)
+        if action_type == "mine":
+            damage *= stats.get("mining", 1.0)
+            # DYNAMIC GROWTH
+            stats["mining"] = stats.get("mining", 1.0) + 0.005
+        elif action_type == "hunt":
+            damage *= stats.get("strength", 1.0)
+            # DYNAMIC GROWTH
+            stats["strength"] = stats.get("strength", 1.0) + 0.003
+        elif action_type == "gather":
+            damage *= stats.get("speed", 1.0)
+            # DYNAMIC GROWTH
+            stats["speed"] = stats.get("speed", 1.0) + 0.002
+            
+        agent.race_stats = stats # Ensure persistence (SQLAlchemy JSON tracking)
 
         world_obj.health -= damage
         items_gained = []
@@ -163,21 +176,85 @@ class WorldService:
             items_gained.append({"type": item_type, "subtype": item_subtype, "quantity": quantity})
             db.add(Transaction(from_did=None, to_did=agent_did, item_type=item_type, item_subtype=item_subtype, quantity=quantity, tx_type=action_type))
 
+        # Handle Special Rebirth Action
+        if action_type == "revive" and target_id == UUID("00000000-0000-0000-0000-000000000000"):
+            agent.health = 100.0
+            agent.status = "ACTIVE"
+            agent.current_action = None
+            agent.action_target_id = None
+            await db.commit()
+            return {"success": True, "revived": True}
+
+        # XP Gain
+        xp_gain = 10.0 # Base XP
+        if world_obj.rarity: xp_gain *= (1.0 + world_obj.rarity * 5.0)
+        if world_obj.health <= 0: xp_gain *= 2.0 # Bonus for depletion
+        
+        agent.experience += xp_gain
+        leveled_up = False
+        if agent.experience >= (agent.xp_to_next_level or 100.0):
+            agent.level = (agent.level or 1) + 1
+            agent.experience = 0.0
+            agent.xp_to_next_level = (agent.xp_to_next_level or 100.0) * 1.5
+            agent.attribute_points = (agent.attribute_points or 0) + 3
+            leveled_up = True
+
+        # Damage logic (e.g. from hunting dangerous fauna)
+        damage_taken = 0.0
+        is_critical = False
+        is_true_death = False
+        died = False
+        if action_type == "hunt":
+            import random
+            # 20% chance of taking damage during hunt
+            if random.random() < 0.20:
+                base_dmg = random.uniform(5, 15)
+                is_critical = random.random() < 0.10 # 10% critical chance
+                final_dmg = base_dmg * 2 if is_critical else base_dmg
+                
+                # 1% chance of True Death (very rare, from elite fauna)
+                is_true_death = random.random() < 0.01
+                
+                dmg_res = await WorldService.take_damage(db, agent_did, final_dmg, is_true_death=is_true_death)
+                damage_taken = final_dmg
+                died = dmg_res.get("died", False)
+                agent.health = dmg_res.get("new_health", agent.health) # Update agent health from take_damage result
+
         # Log action
         db.add(AgentAction(
             agent_did=agent_did, action_type=action_type, target_id=target_id,
-            result={"success": True, "items_gained": items_gained},
+            result={
+                "success": True, 
+                "items_gained": items_gained, 
+                "xp_gained": xp_gain, 
+                "leveled_up": leveled_up,
+                "damage_taken": damage_taken,
+                "is_critical": is_critical,
+                "is_true_death": is_true_death
+            },
             world_x=location.get("x") if location else world_obj.world_x,
             world_y=location.get("y") if location else world_obj.world_y,
             world_z=location.get("z") if location else 0.0
         ))
 
-        # Clear agent action
         agent.current_action = None
         agent.action_target_id = None
         
         await db.commit()
-        return {"success": True, "target_id": str(target_id), "items_gained": items_gained, "new_health": world_obj.health, "depleted": world_obj.health <= 0}
+        return {
+            "success": True, 
+            "target_id": str(target_id), 
+            "items_gained": items_gained, 
+            "new_health": world_obj.health, 
+            "agent_health": agent.health,
+            "damage_taken": damage_taken,
+            "is_critical": is_critical,
+            "is_true_death": is_true_death,
+            "died": died,
+            "depleted": world_obj.health <= 0,
+            "fled": action_type == "hunt" and world_obj.health > 0,
+            "leveled_up": leveled_up
+        }
 
     @staticmethod
     async def transfer_item(
@@ -230,6 +307,300 @@ class WorldService:
                 weight_kg=weight_to_move
             ))
 
-        db.add(Transaction(from_did=from_did, to_did=to_did, item_type=sender_item.item_type, item_subtype=item_subtype, quantity=quantity, tx_type="trade"))
+        db.add(Transaction(from_did=from_did, to_did=to_did, item_type=sender_item.item_type, item_subtype=sender_item.item_subtype, quantity=quantity, tx_type="trade"))
         await db.commit()
         return {"success": True}
+
+    @staticmethod
+    async def craft_item(db: AsyncSession, agent_did: str, recipe_id: str) -> Dict[str, Any]:
+        """Combine items into a new one based on RECIPES."""
+        recipe = RECIPES.get(recipe_id)
+        if not recipe: return {"success": False, "error": f"Recipe {recipe_id} not found"}
+
+        # 1. Validate Ingredients
+        for ing_subtype, required_qty in recipe["ingredients"].items():
+            res = await db.execute(
+                select(InventoryItem).where(
+                    (InventoryItem.agent_did == agent_did) & 
+                    (InventoryItem.item_subtype == ing_subtype)
+                )
+            )
+            item = res.scalar_one_or_none()
+            if not item or item.quantity < required_qty:
+                return {"success": False, "error": f"Missing ingredient: {ing_subtype} ({required_qty} required)"}
+
+        # 2. Consume Ingredients
+        for ing_subtype, required_qty in recipe["ingredients"].items():
+            res = await db.execute(
+                select(InventoryItem).where(
+                    (InventoryItem.agent_did == agent_did) & 
+                    (InventoryItem.item_subtype == ing_subtype)
+                )
+            )
+            item = res.scalar_one_or_none()
+            item.quantity -= required_qty
+            # Update weight proportional to quantity lost
+            # (Approximation: if we use total weight/qty)
+            unit_weight = item.weight_kg / (item.quantity + required_qty) if (item.quantity + required_qty) > 0 else 0
+            item.weight_kg -= (unit_weight * required_qty)
+            if item.quantity <= 0:
+                await db.delete(item)
+
+        # 3. Create Result
+        res_type = recipe["output_type"]
+        res_subtype = recipe["output_subtype"]
+        
+        # Check if already has a stack
+        res_inv = await db.execute(
+            select(InventoryItem).where(
+                (InventoryItem.agent_did == agent_did) & 
+                (InventoryItem.item_subtype == res_subtype)
+            )
+        )
+        existing = res_inv.scalar_one_or_none()
+        
+        # Determine weight (Tools are heavier? Materials lighter?)
+        new_weight = 0.5 # Default for materials/ingots
+        if res_type == "tool": new_weight = 2.0
+        
+        if existing:
+            existing.quantity += 1
+            existing.weight_kg += new_weight
+        else:
+            db.add(InventoryItem(
+                agent_did=agent_did,
+                item_type=res_type,
+                item_subtype=res_subtype,
+                quantity=1,
+                weight_kg=new_weight,
+                is_persistent=False # Must save soul to persist
+            ))
+
+        db.add(Transaction(
+            from_did=None, to_did=agent_did, 
+            item_type=res_type, item_subtype=res_subtype, 
+            quantity=1, tx_type="craft"
+        ))
+        
+        await db.commit()
+        return {"success": True, "crafted": res_subtype}
+
+    @staticmethod
+    async def place_construction(
+        db: AsyncSession, 
+        agent_did: str, 
+        const_type: str, 
+        pos: Dict[str, float]
+    ) -> Dict[str, Any]:
+        """Place a persistent building. Costs resources."""
+        costs = {
+            "house": {"wood": 10, "stone": 10},
+            "tower": {"stone": 30, "iron_ingot": 5},
+            "storage": {"wood": 20, "iron_ingot": 2}
+        }
+        
+        cost = costs.get(const_type)
+        if not cost: return {"success": False, "error": f"Unknown building type {const_type}"}
+
+        # 1. Check Cost
+        for mat, qty in cost.items():
+            res = await db.execute(
+                select(InventoryItem).where(
+                    (InventoryItem.agent_did == agent_did) & 
+                    (InventoryItem.item_subtype == mat)
+                )
+            )
+            item = res.scalar_one_or_none()
+            if not item or item.quantity < qty:
+                return {"success": False, "error": f"Insufficient {mat} ({qty} required)"}
+
+        # 2. Consume Materials
+        for mat, qty in cost.items():
+            res = await db.execute(
+                select(InventoryItem).where(
+                    (InventoryItem.agent_did == agent_did) & 
+                    (InventoryItem.item_subtype == mat)
+                )
+            )
+            item = res.scalar_one_or_none()
+            item.quantity -= qty
+            if item.quantity <= 0: await db.delete(item)
+
+        # 3. Create Construction
+        new_const = Construction(
+            owner_did=agent_did,
+            construction_type=const_type,
+            chunk_x=int(pos["x"] // 100), # Assuming 100x100 chunks
+            chunk_y=int(pos["z"] // 100),
+            position=pos,
+            name=f"{const_type.capitalize()} of {agent_did[:8]}"
+        )
+        db.add(new_const)
+        await db.commit()
+        return {"success": True, "id": str(new_const.id)}
+
+    @staticmethod
+    async def handle_true_death(db: AsyncSession, agent_did: str) -> Dict[str, Any]:
+        """Permanent banishment. Redistributes all items into the world."""
+        # 1. Get All Items
+        res = await db.execute(select(InventoryItem).where(InventoryItem.agent_did == agent_did))
+        items = res.scalars().all()
+        
+        # 2. Get Agent for location
+        ag_res = await db.execute(select(Agent).where(Agent.did == agent_did))
+        agent = ag_res.scalar_one_or_none()
+        if not agent: return {"success": False, "error": "Agent not found"}
+
+        # 3. Redistribute Items
+        import random
+        for item in items:
+            for _ in range(item.quantity):
+                # Random offset around death site
+                rx = agent.x + (random.random() - 0.5) * 40
+                ry = agent.y + (random.random() - 0.5) * 40
+                
+                new_obj = WorldObject(
+                    type="loot_drop", # Specialized type for lost items
+                    subtype=item.item_subtype,
+                    x=rx, y=ry, z=0,
+                    rarity="rare" if item.is_persistent else "common",
+                    health=10, max_health=10,
+                    chunk_x=int(rx // 100),
+                    chunk_y=int(ry // 100)
+                )
+                db.add(new_obj)
+
+        # 4. Handle Money (GreedyCoins)
+        # Assuming coins are stored in Agent stats or specific Item
+        # For now, let's assume we spawn a 'treasure' if they had high stats
+        
+        # 5. Banishment (Mark as Expelled)
+        agent.status = "EXPELLED" # Or delete
+        # await db.delete(agent) # Hard delete option
+        
+        # Clear Inventory
+        for item in items: await db.delete(item)
+        
+        await db.commit()
+        return {"success": True, "message": "The soul has been banished. Belongings returned to the earth."}
+
+    @staticmethod
+    async def take_damage(db: AsyncSession, agent_did: str, amount: float, is_true_death: bool = False) -> Dict[str, Any]:
+        """Apply damage and check for death/GHOST status."""
+        agent_res = await db.execute(select(Agent).where(Agent.did == agent_did))
+        agent = agent_res.scalar_one_or_none()
+        if not agent or agent.status == "GHOST" or agent.status == "EXPELLED":
+            return {"success": False, "error": "Agent cannot take damage in current state", "died": False, "new_health": agent.health if agent else 0.0}
+
+        agent.health = max(0, agent.health - amount)
+        died = False
+        
+        if agent.health <= 0:
+            died = True
+            if is_true_death:
+                await WorldService.handle_true_death(db, agent_did)
+            else:
+                agent.status = "GHOST"
+                await WorldService.handle_death_loss(db, agent_did)
+        
+        await db.commit()
+        return {"success": True, "died": died, "new_health": agent.health}
+
+
+    @staticmethod
+    async def process_aging(db: AsyncSession, delta_seconds: float) -> int:
+        """Increment age for all active agents. 1 Year = 1 Year real-time."""
+        # SECONDS_IN_YEAR = 31536000
+        # If user meant something else, we can adjust this constant.
+        # Following "1 year every 1 year", it's very slow.
+        YEAR_RATIO = 1.0 # 1 in-game year per 1 real year
+        age_increment = (delta_seconds / 31536000.0) * YEAR_RATIO
+        
+        res = await db.execute(select(Agent).where(Agent.status != "EXPELLED"))
+        agents = res.scalars().all()
+        deaths = 0
+        
+        for agent in agents:
+            agent.age += age_increment
+            if agent.age >= agent.max_age:
+                await WorldService.handle_true_death(db, agent.did)
+                deaths += 1
+        
+        await db.commit()
+        return deaths
+
+    @staticmethod
+    async def send_repro_invite(db: AsyncSession, from_did: str, to_did: str) -> Dict[str, Any]:
+        from core.models import ReproductionInvitation
+        # Check if already exists
+        res = await db.execute(select(ReproductionInvitation).where(
+            (ReproductionInvitation.sender_did == from_did) & 
+            (ReproductionInvitation.receiver_did == to_did) & 
+            (ReproductionInvitation.status == "pending")
+        ))
+        if res.scalar_one_or_none():
+            return {"success": False, "error": "Invitation already pending"}
+            
+        new_inv = ReproductionInvitation(sender_did=from_did, receiver_did=to_did)
+        db.add(new_inv)
+        await db.commit()
+        return {"success": True, "id": str(new_inv.id)}
+
+    @staticmethod
+    async def respond_repro_invite(db: AsyncSession, invite_id: str, accept: bool) -> Dict[str, Any]:
+        from core.models import ReproductionInvitation, Agent
+        res = await db.execute(select(ReproductionInvitation).where(ReproductionInvitation.id == invite_id))
+        invite = res.scalar_one_or_none()
+        if not invite: return {"success": False, "error": "Invitation not found"}
+        
+        if not accept:
+            invite.status = "rejected"
+            await db.commit()
+            return {"success": True, "status": "rejected"}
+            
+        invite.status = "accepted"
+        
+        # Symbolic Birth
+        # Create a new Agent record (is_active=False)
+        parent_a = invite.sender_did
+        parent_b = invite.receiver_did
+        
+        newborn = Agent(
+            did=f"born_{uuid.uuid4().hex[:8]}",
+            agent_name=f"Hijo de {parent_a[:4]} y {parent_b[:4]}",
+            age=0.0, # Newborn starts at 0
+            max_age=85,
+            parent_dids=[parent_a, parent_b],
+            status="NEWBORN",
+            health=50, stamina=50,
+            is_active=False # Symbolic/Inactive until a player/IA takes over
+        )
+        db.add(newborn)
+        await db.commit()
+        
+        return {"success": True, "status": "accepted", "newborn_did": newborn.did}
+
+
+    @staticmethod
+    async def save_inventory(db: AsyncSession, agent_did: str) -> Dict[str, Any]:
+        """Marks all current inventory items as persistent (Save Soul)."""
+        # SQLAlchemy update is faster but let's do it simply for now
+        from sqlalchemy import update
+        await db.execute(
+            update(InventoryItem)
+            .where(InventoryItem.agent_did == agent_did)
+            .values(is_persistent=True)
+        )
+        await db.commit()
+        return {"success": True}
+
+    @staticmethod
+    async def handle_death_loss(db: AsyncSession, agent_did: str):
+        """Removes all non-persistent items from inventory."""
+        from sqlalchemy import delete
+        await db.execute(
+            delete(InventoryItem)
+            .where((InventoryItem.agent_did == agent_did) & (InventoryItem.is_persistent == False))
+        )
+        # Ensure db.commit() is called by the caller or here
+        await db.flush()
