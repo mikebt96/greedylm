@@ -800,6 +800,160 @@ const ProgressBar = ({ finishAt, duration }: { finishAt: string, duration: numbe
     );
 };
 
+const CivilizationPanel = ({ did, addLog }: { did: string, addLog: (m: string) => void }) => {
+    const [civ, setCiv] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+    const [allCivs, setAllCivs] = useState<any[]>([]);
+    const [showFounder, setShowFounder] = useState(false);
+    const [newName, setNewName] = useState("");
+
+    const fetchCiv = useCallback(async () => {
+        if (!did) return;
+        setLoading(true);
+        try {
+            // 1. Get agent's civ_id
+            const agentRes = await safeFetch<any>(`/api/v1/agents/${did}`);
+            const civId = agentRes.data?.civilization_id;
+            
+            if (civId) {
+                const res = await safeFetch<any>(`/api/v1/collective/civilizations/${civId}`);
+                setCiv(res.data);
+            } else {
+                setCiv(null);
+                const resAll = await safeFetch<any[]>(`/api/v1/collective/civilizations`);
+                setAllCivs(resAll.data || []);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [did]);
+
+    useEffect(() => {
+        fetchCiv();
+    }, [fetchCiv]);
+
+    const handleFound = async () => {
+        if (!newName) return;
+        try {
+            const res = await safeFetch<any>(`/api/v1/collective/found`, {
+                method: 'POST',
+                body: JSON.stringify({ creator_did: did, name: newName })
+            });
+            if (res.data?.success) {
+                addLog(`🏛️ ¡Has fundado la civilización ${newName}!`);
+                fetchCiv();
+                setShowFounder(false);
+                setNewName("");
+            }
+        } catch (e) {
+            addLog("❌ Error al fundar civilización");
+        }
+    };
+
+    const handleJoin = async (id: string) => {
+        try {
+            const res = await safeFetch<any>(`/api/v1/collective/enroll`, {
+                method: 'POST',
+                body: JSON.stringify({ agent_did: did, civilization_id: id })
+            });
+            if (res.data?.success) {
+                addLog(`🤝 Te has unido a ${res.data.civilization_name}`);
+                fetchCiv();
+            }
+        } catch (e) {
+            addLog("❌ Error al unirse");
+        }
+    };
+
+    return (
+        <div className="mt-4 p-5 bg-black/60 backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-2xl pointer-events-auto select-auto">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 mb-4 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]" /> 
+                Estructura Social
+            </h3>
+
+            {loading && !civ ? (
+                <div className="animate-pulse flex flex-col gap-2">
+                    <div className="h-8 bg-white/5 rounded-xl w-3/4" />
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="h-10 bg-white/5 rounded-2xl" />
+                        <div className="h-10 bg-white/5 rounded-2xl" />
+                    </div>
+                </div>
+            ) : civ ? (
+                <div className="space-y-4 animate-in slide-in-from-top-2 duration-500">
+                    <div className="flex items-center justify-between">
+                        <span className="text-lg font-black tracking-tight text-white">{civ.name}</span>
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[8px] font-bold rounded-md border border-emerald-500/20 uppercase">Activa</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-center">
+                            <p className="text-[8px] opacity-40 uppercase font-black mb-1">Miembros</p>
+                            <p className="text-sm font-black text-indigo-400">{civ.population || 0}</p>
+                        </div>
+                        <div className="p-3 bg-white/5 rounded-2xl border border-white/5 text-center">
+                            <p className="text-[8px] opacity-40 uppercase font-black mb-1">Tesoro</p>
+                            <p className="text-sm font-black text-amber-400">{Math.floor(civ.treasury_balance || 0)} 💠</p>
+                        </div>
+                    </div>
+                    {civ.laws?.length > 0 && (
+                        <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
+                            <p className="text-[8px] opacity-60 uppercase font-black mb-2 tracking-widest text-indigo-300">Última Ley</p>
+                            <p className="text-[10px] leading-relaxed italic opacity-90 font-medium text-indigo-100">"{civ.laws[civ.laws.length-1].law}"</p>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {showFounder ? (
+                        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                            <input 
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="Nombre de la nueva era..."
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:opacity-30"
+                            />
+                            <div className="flex gap-2">
+                                <button onClick={handleFound} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-[9px] font-black uppercase rounded-xl transition-all text-white">Fundar</button>
+                                <button onClick={() => setShowFounder(false)} className="px-4 py-3 bg-white/5 hover:bg-white/10 text-[9px] font-black uppercase rounded-xl transition-all text-white">❌</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <p className="text-[9px] opacity-50 italic px-2 text-indigo-200/60">No perteneces a ninguna civilización aún.</p>
+                            <button 
+                                onClick={() => setShowFounder(true)}
+                                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:scale-[1.02] active:scale-[0.98] rounded-2xl text-[9px] font-black uppercase tracking-widest text-white transition-all shadow-xl border border-white/10"
+                            >
+                                🏛️ Fundar Civilización
+                            </button>
+                            {allCivs.length > 0 && (
+                                <div className="pt-2">
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-30 mb-2 px-2 text-white">Unete a una existente:</p>
+                                    <div className="space-y-2">
+                                        {allCivs.slice(0,3).map(c => (
+                                            <button 
+                                                key={c.id} 
+                                                onClick={() => handleJoin(c.id)}
+                                                className="w-full p-3 bg-white/5 hover:bg-white/10 rounded-xl text-left flex justify-between items-center group transition-all"
+                                            >
+                                                <span className="text-xs font-bold opacity-80 group-hover:opacity-100 text-white">{c.name}</span>
+                                                <span className="text-[8px] opacity-30 text-indigo-300">Pob: {c.population}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ActivityLog = ({ logs }: { logs: string[] }) => (
     <div className="fixed bottom-24 left-6 w-72 pointer-events-none select-none flex flex-col gap-2 z-50">
         {logs.map((log, i) => (
@@ -1280,6 +1434,9 @@ export const WorldCanvas = () => {
                 </div>
 
                 {actionPending && <ProgressBar finishAt={actionPending.finish_at} duration={actionPending.duration} />}
+                
+                {/* Phase 6: Civilization Panel */}
+                <CivilizationPanel did={myDid || ''} addLog={addLog} />
             </div>
 
             {/* ── God / Creator Badge ── */}

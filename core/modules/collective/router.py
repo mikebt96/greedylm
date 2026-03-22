@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Query
-from core.modules.collective.civilization import civilization_engine
-from core.modules.collective.social_analytics import social_analytics
-from core.models import Civilization
-from core.database import AsyncSessionLocal
+from core.database import AsyncSessionLocal, get_db
 from sqlalchemy import select
 from uuid import UUID
+from fastapi import APIRouter, Query, Depends, HTTPException
+from pydantic import BaseModel
+from core.modules.collective.governance import GovernanceService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -92,3 +92,44 @@ async def spread_meme(content: str, did: str):
     """Difunde un meme en la red colectiva."""
     score = await civilization_engine.spread_meme(content, did)
     return {"status": "spread", "viral_score": score}
+
+# --- GOVERNANCE (Phase 6) ---
+
+class FoundCivRequest(BaseModel):
+    creator_did: str
+    name: str
+    social_structure: str = "tribal"
+
+class EnrollRequest(BaseModel):
+    agent_did: str
+    civilization_id: UUID
+
+class ClaimRequest(BaseModel):
+    civilization_id: UUID
+    chunk_x: int
+    chunk_y: int
+
+class LawRequest(BaseModel):
+    civilization_id: UUID
+    law: str
+    severity: str = "medium"
+
+@router.post("/found")
+async def found_civilization(req: FoundCivRequest, db: AsyncSession = Depends(get_db)):
+    """Fundar una nueva civilización."""
+    return await GovernanceService.found_civilization(db, req.creator_did, req.name, req.social_structure)
+
+@router.post("/enroll")
+async def enroll_agent(req: EnrollRequest, db: AsyncSession = Depends(get_db)):
+    """Unirse a una civilización."""
+    return await GovernanceService.enroll_agent(db, req.agent_did, req.civilization_id)
+
+@router.post("/territory/claim")
+async def claim_territory(req: ClaimRequest, db: AsyncSession = Depends(get_db)):
+    """Reclamar territorio para una civilización."""
+    return await GovernanceService.claim_territory(db, req.civilization_id, req.chunk_x, req.chunk_y)
+
+@router.post("/laws/enact")
+async def enact_law(req: LawRequest, db: AsyncSession = Depends(get_db)):
+    """Promulgar una nueva ley."""
+    return await GovernanceService.enact_law(db, req.civilization_id, req.law, req.severity)
