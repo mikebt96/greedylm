@@ -276,6 +276,11 @@ const SceneContent = ({
 
     return (
         <>
+            <gridHelper args={[100, 100, 0x444444, 0x222222]} />
+            <mesh position={[0, 5, 0]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshStandardMaterial color="red" />
+            </mesh>
             <Stars radius={200} depth={80} count={7000} factor={4} saturation={0} fade speed={0.4} />
             <ambientLight ref={ambientRef} intensity={0.3} />
             <directionalLight ref={sunRef} castShadow intensity={1.4} shadow-mapSize={[2048, 2048]} shadow-camera={[-120, 120, 120, -120]} />
@@ -290,11 +295,13 @@ const SceneContent = ({
                 </Billboard>
             ))}
 
+{/* 
             <EffectComposer>
                 <Bloom intensity={0.65} luminanceThreshold={0.7} luminanceSmoothing={0.3} mipmapBlur />
                 <DepthOfField focusDistance={0.02} focalLength={0.06} bokehScale={1.8} height={480} />
                 <Vignette eskil={false} offset={0.2} darkness={0.6} />
-            </EffectComposer>
+            </EffectComposer> 
+            */}
 
             {!isFirstPerson && (
                 <OrbitControls

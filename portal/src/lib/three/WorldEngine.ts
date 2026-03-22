@@ -51,7 +51,9 @@ export class WorldEngine {
      * @param elapsedMs  clock.getElapsedTime() * 1000  (milliseconds)
      */
     public update(elapsedMs: number): DayNightState {
-        const elapsed = elapsedMs / 1000;
+        // Use an offset so that elapsed = 0 corresponds to Midday (PI/2)
+        const dayOffset = this.dayNightCycleDuration / 4; 
+        const elapsed   = (elapsedMs / 1000) + dayOffset;
         const cycleProgress = (elapsed % this.dayNightCycleDuration) / this.dayNightCycleDuration;
         const angle = cycleProgress * Math.PI * 2;
 

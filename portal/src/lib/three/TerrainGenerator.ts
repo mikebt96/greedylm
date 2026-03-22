@@ -95,8 +95,8 @@ function getBiomeBlend(wx: number, wz: number): [string, string, number] {
 }
 
 // ── Biome palettes ────────────────────────────────────────────────────────────
-interface Palette { base: number; dark: number; light: number }
-const BIOME_PALETTE: Record<string, Palette> = {
+const BIOME_PALETTE: Record<string, { base: THREE.Color, dark: THREE.Color, light: THREE.Color }> = {};
+Object.entries({
     forest:           { base: 0x2E7D32, dark: 0x1B5E20, light: 0x66BB6A },
     plains:           { base: 0x7CB342, dark: 0x558B2F, light: 0xAED581 },
     desert:           { base: 0xF9A825, dark: 0xE65100, light: 0xFFE082 },
@@ -108,13 +108,19 @@ const BIOME_PALETTE: Record<string, Palette> = {
     ruins:            { base: 0x78909C, dark: 0x546E7A, light: 0xB0BEC5 },
     floating_islands: { base: 0x81C784, dark: 0x388E3C, light: 0xC8E6C9 },
     mythic_zones:     { base: 0x4A148C, dark: 0x1A0033, light: 0xCE93D8 },
-};
-const FALLBACK_PALETTE: Palette = { base: 0x37474F, dark: 0x263238, light: 0x78909C };
+}).forEach(([k, v]) => {
+    BIOME_PALETTE[k] = {
+        base: new THREE.Color(v.base),
+        dark: new THREE.Color(v.dark),
+        light: new THREE.Color(v.light)
+    };
+});
+const FALLBACK_PALETTE = { base: new THREE.Color(0x37474F), dark: new THREE.Color(0x263238), light: new THREE.Color(0x78909C) };
 
 function biomeColor(biome: string, t: number, out: THREE.Color): THREE.Color {
     const p = BIOME_PALETTE[biome] ?? FALLBACK_PALETTE;
-    if (t < 0.5) return out.lerpColors(new THREE.Color(p.dark),  new THREE.Color(p.base),  t * 2);
-    return             out.lerpColors(new THREE.Color(p.base),  new THREE.Color(p.light), (t - 0.5) * 2);
+    if (t < 0.5) return out.lerpColors(p.dark,  p.base,  t * 2);
+    return             out.lerpColors(p.base,  p.light, (t - 0.5) * 2);
 }
 
 // ── Mineral definitions ───────────────────────────────────────────────────────
