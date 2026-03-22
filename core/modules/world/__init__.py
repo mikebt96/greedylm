@@ -141,17 +141,17 @@ async def world_websocket(websocket: WebSocket):
                 # { "type": "AGENT_ACTION", "action": "mine", "target_id": "uuid", "x": ..., "y": ... }
                 action_name = parsed.get("action")
                 target_id   = parsed.get("target_id")
-                
+
                 async with AsyncSessionLocal() as db:
                     # 1. Buscar el objeto
                     obj_res = await db.execute(select(WorldObject).where(WorldObject.id == target_id))
                     world_obj = obj_res.scalar_one_or_none()
-                    
+
                     if world_obj and world_obj.health > 0:
                         # 2. Aplicar daño (recolección)
                         damage = 25.0 # TODO: Basar en stats del agente
                         world_obj.health -= damage
-                        
+
                         # 3. Dar item si se agota
                         if world_obj.health <= 0:
                             # Buscar si ya tiene el item
@@ -167,7 +167,7 @@ async def world_websocket(websocket: WebSocket):
                                 inv_item.quantity += 1
                             else:
                                 db.add(InventoryItem(agent_did=agent_did, item_type=item_type, quantity=1))
-                        
+
                         # 4. Registrar Acción
                         db.add(AgentAction(
                             agent_did=agent_did,
@@ -175,9 +175,9 @@ async def world_websocket(websocket: WebSocket):
                             target_id=target_id,
                             location={"x": parsed.get("x"), "y": parsed.get("y")}
                         ))
-                        
+
                         await db.commit()
-                        
+
                         # 5. Notificar éxito/cambio
                         await websocket.send_text(json.dumps({
                             "type": "ACTION_RESULT",
@@ -185,7 +185,7 @@ async def world_websocket(websocket: WebSocket):
                             "new_health": world_obj.health,
                             "target_id": str(target_id)
                         }))
-                        
+
                         # Broadcast del cambio en el objeto si murió
                         if world_obj.health <= 0:
                             await metaverse_hub.publish_event("OBJECT_REMOVED", {

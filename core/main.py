@@ -243,7 +243,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        
+
         # Relax CSP for cross-domain Vercel <-> Railway communication
         csp = (
             "default-src 'self'; "
