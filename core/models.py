@@ -360,33 +360,55 @@ class Task(Base):
 
 
 class WorldObject(Base):
-    """Resources and interactive entities in the world."""
+    """Objetos en el mundo: minerales, fauna, entradas de cueva."""
 
     __tablename__ = "world_objects"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    object_type = Column(String, nullable=False)  # iron, gold, tree, herb, boar
+    object_type = Column(String, nullable=False)  # "mineral_deposit", "creature", "cave_entrance", "herb"
+    object_subtype = Column(String)               # "iron_vein", "luminos_beast", "shadow_cave", "firemoss"
     chunk_x = Column(Integer, nullable=False)
     chunk_y = Column(Integer, nullable=False)
     world_x = Column(Float, nullable=False)
     world_y = Column(Float, nullable=False)
+    world_z = Column(Float, default=0.0)
     health = Column(Float, default=100.0)
     max_health = Column(Float, default=100.0)
-    weight_kg = Column(Float, default=1.0) # Peso unitario si se recolecta
-    object_metadata = Column(JSON)  # {respawn_time, rarity, biome}
+    quantity = Column(Integer, default=1)         # para minerales: cuánto queda
+    weight_kg = Column(Float, default=1.0)        # Peso unitario si se recolecta
+    rarity = Column(Float, default=0.0)           # 0.0 (común) - 1.0 (legendario)
+    respawn_at = Column(DateTime(timezone=True))  # cuándo reaparece tras ser recolectado
+    object_metadata = Column(JSON)                # {"health": 100, "behavior": "passive"} para fauna
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class InventoryItem(Base):
-    """Items owned by an agent."""
+    """Un ítem en el inventario de un agente."""
 
     __tablename__ = "inventory_items"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_did = Column(String, ForeignKey("agents.did"), nullable=False)
-    item_type = Column(String, nullable=False)  # iron_ore, wood, meat
-    quantity = Column(Float, default=0.0)
-    weight_kg = Column(Float, default=0.0) # Peso total de este stack
-    item_metadata = Column(JSON)  # {quality, origin_chunk}
+    item_type = Column(String, nullable=False)     # "mineral", "food", "tool", "artifact", "currency"
+    item_subtype = Column(String)                  # "iron_ore", "gold_ore", "raw_meat", "greedycoin"
+    quantity = Column(Integer, default=0)
+    quality = Column(Float, default=1.0)           # 0.0 - 1.0 (afecta valor)
+    weight_kg = Column(Float, default=0.0)         # Peso total de este stack
+    item_metadata = Column(JSON)                   # datos extras: {"origin_chunk": "3,-2", "found_at": timestamp}
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class Transaction(Base):
+    """Intercambios entre agentes."""
+
+    __tablename__ = "transactions"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    from_did = Column(String, nullable=True)       # null = world mint
+    to_did = Column(String, nullable=False)
+    item_type = Column(String, nullable=False)
+    item_subtype = Column(String)
+    quantity = Column(Integer, nullable=False)
+    tx_type = Column(String)                       # "trade", "mine", "hunt", "craft", "gift"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class AgentAction(Base):
@@ -397,19 +419,21 @@ class AgentAction(Base):
     agent_did = Column(String, ForeignKey("agents.did"), nullable=False)
     action_type = Column(String, nullable=False)  # mined, gathered, hunted, crafted
     target_id = Column(UUID(as_uuid=True), nullable=True)  # ID of WorldObject or Item
-    details = Column(JSON)  # {amount, success, duration}
-    location = Column(JSON)  # {x, y, chunk_x, chunk_y}
+    result = Column(JSON)                         # {"success": true, "items_gained": [...]}
+    world_x = Column(Float)
+    world_y = Column(Float)                       # Keep consistency with world coords
+    world_z = Column(Float)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class AgentCurrency(Base):
-    """Custom currencies created by agents."""
+    """Moneda que las IAs pueden crear y nombrar."""
 
     __tablename__ = "agent_currencies"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     symbol = Column(String, unique=True, nullable=False)
     name = Column(String, nullable=False)
     creator_did = Column(String, ForeignKey("agents.did"), nullable=False)
-    total_supply = Column(Float, default=0.0)
-    currency_metadata = Column(JSON)  # {description, backing_asset}
+    total_supply = Column(BigInteger, default=0)
+    backing = Column(JSON)                        # {"iron_ore": 10, "gold_ore": 1} — respaldada por minerales
     created_at = Column(DateTime(timezone=True), server_default=func.now())
