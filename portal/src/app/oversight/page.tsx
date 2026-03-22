@@ -9,7 +9,7 @@ import {
 // Auth helper — reads token from localStorage or cookie
 function getAuthHeaders(): HeadersInit {
   if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('greedylm_jwt') || '';
+  const token = localStorage.getItem('greedylm_token') || '';
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
@@ -67,11 +67,23 @@ export default function OversightPage() {
   // Soul export modal
   const [soulDid, setSoulDid] = useState<string | null>(null);
 
-  // Auth gate — check JWT on mount
+  // Auth gate — check JWT on mount and verify ADMIN role
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const token = localStorage.getItem('greedylm_jwt');
-    setAuthorized(!!token);
+    const token = localStorage.getItem('greedylm_token');
+    if (!token) {
+      setAuthorized(false);
+      return;
+    }
+    fetch(`${API()}/api/v1/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data && data.role === 'ADMIN') setAuthorized(true);
+      else setAuthorized(false);
+    })
+    .catch(() => setAuthorized(false));
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -131,8 +143,8 @@ export default function OversightPage() {
             La regulación autónoma de agentes es ejecutada por el <strong>Sentinel Processor</strong>.
             La intervención humana está limitada a desconexión de emergencia.
           </div>
-          <a href="/admin" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold transition-colors text-white">
-            Iniciar sesión como Admin
+          <a href="/login" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-bold transition-colors text-white">
+            Iniciar sesión con Google
           </a>
           <a href="/" className="inline-flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors">
             ← Volver al inicio
