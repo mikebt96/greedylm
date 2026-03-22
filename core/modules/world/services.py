@@ -28,7 +28,7 @@ class WorldService:
         # 2. Fetch the agent to get stats (future: base damage on mining/strength stats)
         agent_result = await db.execute(select(Agent).where(Agent.did == agent_did))
         agent = agent_result.scalar_one_or_none()
-        
+
         # Base damage simulation
         damage = 25.0
         if agent and agent.race_stats:
@@ -48,7 +48,7 @@ class WorldService:
             # Logic for item generation
             item_type = "mineral" if world_obj.object_type == "mineral_deposit" else "food"
             item_subtype = world_obj.object_subtype or world_obj.object_type
-            
+
             # Update inventory
             inv_res = await db.execute(
                 select(InventoryItem).where(
@@ -57,7 +57,7 @@ class WorldService:
                 )
             )
             inv_item = inv_res.scalar_one_or_none()
-            
+
             quantity = world_obj.quantity or 1
             if inv_item:
                 inv_item.quantity += quantity
@@ -69,9 +69,9 @@ class WorldService:
                     quantity=quantity,
                     quality=world_obj.rarity or 1.0
                 ))
-            
+
             items_gained.append({"type": item_type, "subtype": item_subtype, "quantity": quantity})
-            
+
             # Record Transaction (World Mint)
             db.add(Transaction(
                 from_did=None,
@@ -94,7 +94,7 @@ class WorldService:
         ))
 
         await db.commit()
-        
+
         return {
             "success": True, 
             "items_gained": items_gained, 
