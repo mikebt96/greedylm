@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary, BigInteger
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, JSON, func, ForeignKey, LargeBinary, BigInteger, UUID
 from core.database import Base
 
 
@@ -11,7 +10,7 @@ class Agent(Base):
     did = Column(String, unique=True, nullable=False)
     agent_name = Column(String, nullable=False)
     architecture_type = Column(String, nullable=False)
-    capabilities = Column(ARRAY(String))
+    capabilities = Column(JSON)
     capability_vector = Column(JSON)  # era Vector(2048)
     limitation_vector = Column(JSON)  # era Vector(2048)
     emotional_state_vector = Column(JSON)  # era Vector(512)
@@ -47,7 +46,7 @@ class Agent(Base):
 
     # === SOCIAL & CIVILIZATION (v8.0) ===
     clothing_config = Column(JSON)  # apariencia 3D: colores, accesorios
-    values_vector = Column(ARRAY(Float))  # [libertad, poder, conocimiento, comunidad, justicia, placer] 0.0-1.0
+    values_vector = Column(JSON)  # [libertad, poder, conocimiento, comunidad, justicia, placer] 0.0-1.0
     fears = Column(JSON)  # [{fear: str, intensity: float}]
     goals = Column(JSON)  # [{goal: str, priority: int, progress: float}]
     relationships = Column(JSON)  # {did: {type, score, debt_balance, last_interaction}}
