@@ -22,7 +22,7 @@ export default function MetaversePage() {
                 href="/register-agent"
                 className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 rounded-lg transition-colors font-medium text-sm"
             >
-                Spaw New Node
+                Spawn New Node
             </Link>
         </div>
 
