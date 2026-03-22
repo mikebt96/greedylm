@@ -189,8 +189,9 @@ const SceneContent = ({ isCreator, myAgentDid, wsAgents, onAgentSelect }: SceneP
             const veg      = terrain.generateVegetation(biome, kcx, kcy);
             const minerals = terrain.generateMinerals(biome, kcx, kcy);
             const caves    = terrain.generateCaveEntrances(biome, kcx, kcy);
-            scene.add(chunk, veg, minerals, caves);
-            chunks.current.set(key, [chunk, veg, minerals, caves]);
+            const fauna    = (terrain as any).generateFauna ? (terrain as any).generateFauna(biome, kcx, kcy) : new THREE.Group();
+            scene.add(chunk, veg, minerals, caves, fauna);
+            chunks.current.set(key, [chunk, veg, minerals, caves, fauna]);
             loaded++;
         }
     };

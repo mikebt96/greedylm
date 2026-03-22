@@ -301,6 +301,156 @@ export class TerrainGenerator {
         return group;
     }
 
+    // ── Fauna ─────────────────────────────────────────────────────────────────
+    /**
+     * Generates visible fauna meshes for a chunk.
+     * The list of spawned fauna is returned so WorldCanvas can sync
+     * them with the backend (POST /api/v1/world/objects).
+     */
+    public generateFauna(biome: string, chunkX = 0, chunkY = 0): THREE.Group {
+        const group = new THREE.Group();
+        const rand  = this.seededRandom(chunkX * 89 + chunkY * 193 + 4444);
+        const SIZE  = CHUNK_SIZE;
+
+        // Try up to 3 random spots in the chunk to find a suitable environment
+        for (let i = 0; i < 3; i++) {
+            const lx = (rand() - 0.5) * (SIZE - 6);
+            const lz = (rand() - 0.5) * (SIZE - 6);
+            const wx = lx + chunkX * SIZE;
+            const wz = lz + chunkY * SIZE;
+            const gy = sampleHeight(wx, wz);
+
+            let subtype = '';
+
+            // 1. High intelligence (rarer, stricter environments)
+            // 2. Low intelligence (more common, lenient environments)
+            if (biome === 'forest' || biome === 'plains') {
+                if (gy > 4 && rand() < 0.04) subtype = 'Apex Stalker'; // Altitud alta, 4%
+                else if (rand() < 0.30) subtype = 'Duskfox';          // 30%
+            } 
+            else if (biome === 'snow') {
+                if (rand() < 0.35) subtype = 'Frosthorn';
+            }
+            else if (biome === 'desert') {
+                // Mirage solo en dunas planas
+                const isFlat = Math.abs(gy - sampleHeight(wx + 2, wz)) < 0.8;
+                if (isFlat && rand() < 0.05) subtype = 'Desert Mirage'; // 5%
+                else if (rand() < 0.40) subtype = 'Sandscuttler';       // 40%
+            }
+            else if (biome === 'volcanic') {
+                if (rand() < 0.35) subtype = 'Ashcrawler';
+            }
+            else if (biome === 'caverns') {
+                if (gy < -5 && rand() < 0.06) subtype = 'Crystal Weaver'; // Profundidad, 6%
+                else if (rand() < 0.40) subtype = 'Grubmole';
+            }
+            else if (biome === 'mythic_zones') {
+                if (rand() < 0.08) subtype = 'Crystal Weaver'; // 8%
+                else if (rand() < 0.25) subtype = 'Luminos Beast';
+            }
+            else if (biome === 'ruins') {
+                if (rand() < 0.07) subtype = 'Ruin Sentinel'; // 7%
+            }
+            else if (biome === 'floating_islands' || biome === 'ocean') {
+                if (gy > 12 && rand() < 0.03) subtype = 'Storm Glider'; // Muy alto, 3%
+            }
+
+            if (subtype !== '') {
+                const faunaMesh = this.makeFaunaMesh(subtype);
+                faunaMesh.position.set(wx, gy, wz);
+                faunaMesh.rotation.y = rand() * Math.PI * 2;
+                faunaMesh.userData = {
+                    type: 'creature',
+                    subtype: subtype,
+                    behavior: this.getFaunaBehavior(subtype),
+                    intelligence: this.getFaunaIntelligence(subtype)
+                };
+                group.add(faunaMesh);
+                // Solo 1 por chunk como máximo para mantener la rareza
+                break;
+            }
+        }
+
+        return group;
+    }
+
+    private getFaunaBehavior(subtype: string): string {
+        const b: Record<string, string> = {
+            'Grubmole': 'pasivo', 'Sandscuttler': 'pasivo',
+            'Luminos Beast': 'huye', 'Duskfox': 'ataca',
+            'Frosthorn': 'manada', 'Ashcrawler': 'agresivo',
+            'Crystal Weaver': 'nidos', 'Desert Mirage': 'huidizo', 
+            'Storm Glider': 'observador', 'Ruin Sentinel': 'guarda', 
+            'Apex Stalker': 'embosca'
+        };
+        return b[subtype] || 'pasivo';
+    }
+
+    private getFaunaIntelligence(subtype: string): number {
+        const i: Record<string, number> = {
+            'Grubmole': 1, 'Sandscuttler': 1, 'Ashcrawler': 1,
+            'Luminos Beast': 2, 'Frosthorn': 2,
+            'Duskfox': 3, 'Crystal Weaver': 3,
+            'Desert Mirage': 4, 'Storm Glider': 4, 'Ruin Sentinel': 4,
+            'Apex Stalker': 5
+        };
+        return i[subtype] || 1;
+    }
+
+    private makeFaunaMesh(subtype: string): THREE.Group {
+        const g = new THREE.Group();
+        // Since we don't have distinct models for each, we'll use geometric representations
+        
+        // High intel fauna get unique shapes/glows
+        if (subtype === 'Storm Glider') {
+            const mat = new THREE.MeshPhongMaterial({ color: 0x81D4FA, emissive: 0x0277BD, flatShading: true });
+            const body = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.2, 3), mat);
+            body.rotation.x = Math.PI / 2;
+            body.position.y = 1.5; // Glides above ground
+            g.add(body);
+        }
+        else if (subtype === 'Crystal Weaver') {
+            const mat = new THREE.MeshPhongMaterial({ color: 0xE08283, emissive: 0x96281B, flatShading: true, transparent: true, opacity: 0.9 });
+            const body = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 1), mat);
+            body.position.y = 0.5;
+            g.add(body);
+        }
+        else if (subtype === 'Apex Stalker') {
+            const mat = new THREE.MeshPhongMaterial({ color: 0x111111, flatShading: true, transparent: true, opacity: 0.6 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 1.2), mat);
+            body.position.y = 0.2;
+            g.add(body);
+        }
+        else if (subtype === 'Ruin Sentinel') {
+            const mat = new THREE.MeshPhongMaterial({ color: 0x607D8B, emissive: 0x263238, flatShading: true });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.5, 6), mat);
+            body.position.y = 0.75;
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 4, 4), new THREE.MeshBasicMaterial({ color: 0xFF1744 }));
+            eye.position.set(0, 1.2, 0.35);
+            g.add(body, eye);
+        }
+        else if (subtype === 'Desert Mirage') {
+            const mat = new THREE.MeshBasicMaterial({ color: 0xFFD54F, transparent: true, opacity: 0.4 });
+            const body = new THREE.Mesh(new THREE.TorusKnotGeometry(0.3, 0.1, 32, 8), mat);
+            body.position.y = 0.6;
+            g.add(body);
+        }
+        else {
+            // Low Intel fauna (generic geometric shapes)
+            const colors: Record<string, number> = {
+                'Grubmole': 0x5D4037, 'Sandscuttler': 0xF8B195, 'Ashcrawler': 0xBF360C,
+                'Luminos Beast': 0xE1BEE7, 'Frosthorn': 0xCFD8DC, 'Duskfox': 0xE65100
+            };
+            const mat = new THREE.MeshLambertMaterial({ color: colors[subtype] || 0x888888 });
+            const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 5, 4), mat);
+            body.scale.set(1, 0.6, 1.2);
+            body.position.y = 0.24;
+            g.add(body);
+        }
+        
+        return g;
+    }
+
     // ── Mineral deposit mesh ──────────────────────────────────────────────────
     private makeMineralDeposit(m: typeof MINERALS[0]): THREE.Group {
         const g   = new THREE.Group();
