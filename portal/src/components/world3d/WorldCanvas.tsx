@@ -75,6 +75,7 @@ interface SceneProps {
     setIsFirstPerson: (v: boolean | ((p: boolean) => boolean)) => void;
     onAgentSelect:    (did: string) => void;
     wsEvent:          any;
+    onInteract:       (targetId: string, action: string) => void;
 }
 
 const SceneContent = ({ 
@@ -85,7 +86,8 @@ const SceneContent = ({
     isFirstPerson,
     setIsFirstPerson,
     onAgentSelect,
-    wsEvent
+    wsEvent,
+    onInteract
 }: SceneProps) => {
     const { scene, camera, gl } = useThree();
 
@@ -274,6 +276,36 @@ const SceneContent = ({
         }
     }, [wsEvent]);
 
+    // ── Raycaster Interaction ──
+    useEffect(() => {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const onClick = (e: MouseEvent) => {
+            if (isSpectator) return;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const interactables: THREE.Object3D[] = [];
+            for (const [key, objs] of chunks.current) interactables.push(objs[2]);
+
+            const intersects = raycaster.intersectObjects(interactables, true);
+            if (intersects.length > 0) {
+                let curr: THREE.Object3D | null = intersects[0].object;
+                while (curr && !curr.userData?.id) curr = curr.parent;
+                if (curr && curr.userData?.id) {
+                    const action = curr.userData.type === 'creature' ? 'attack' : 'mine';
+                    onInteract(curr.userData.id, action);
+                }
+            }
+        };
+
+        const canvas = gl.domElement;
+        canvas.addEventListener('click', onClick);
+        return () => canvas.removeEventListener('click', onClick);
+    }, [camera, gl, isSpectator, onInteract]);
+
     // ── Per-frame loop ──
     useFrame(({ clock }, delta) => {
         const elapsed = clock.getElapsedTime();
@@ -422,6 +454,34 @@ const SceneContent = ({
     );
 };
 
+const ProgressBar = ({ finishAt, duration }: { finishAt: string, duration: number }) => {
+    const [pct, setPct] = useState(0);
+    useEffect(() => {
+        let frame: number;
+        const target = new Date(finishAt).getTime();
+        const update = () => {
+            const now = Date.now();
+            const start = target - duration * 1000;
+            const p = Math.max(0, Math.min(100, ((now - start) / (duration * 1000)) * 100));
+            setPct(p);
+            if (now < target) frame = requestAnimationFrame(update);
+        };
+        update();
+        return () => cancelAnimationFrame(frame);
+    }, [finishAt, duration]);
+    
+    return (
+        <div className="mt-4 p-4 bg-indigo-900/40 backdrop-blur-md rounded-2xl border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.3)]">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" /> Action Progress
+            </div>
+            <div className="h-2 bg-black/60 rounded-full overflow-hidden shadow-inner ring-1 ring-white/10">
+                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.8)]" style={{ width: `${pct}%` }} />
+            </div>
+        </div>
+    );
+};
+
 export const WorldCanvas = () => {
     const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
     const [wsStatus,  setWsStatus]  = useState<WsStatus>('connecting');
@@ -432,6 +492,7 @@ export const WorldCanvas = () => {
     const [isSpectator, setIsSpectator] = useState(false);
     const [isFirstPerson, setIsFirstPerson] = useState(false);
     const [wsEvent, setWsEvent]       = useState<any>(null);
+    const [actionPending, setActionPending] = useState<{ finish_at: string, duration: number } | null>(null);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -470,6 +531,16 @@ export const WorldCanvas = () => {
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
                     else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED') {
                         setWsEvent(msg);
+                    }
+                    else if (msg.type === 'ACTION_PENDING') {
+                        setActionPending({ finish_at: msg.finish_at, duration: msg.duration });
+                    }
+                    else if (msg.type === 'ACTION_SUCCESS') {
+                        setActionPending(null);
+                    }
+                    else if (msg.type === 'ACTION_ERROR') {
+                        setActionPending(null);
+                        alert(`Action failed: ${msg.error}`);
                     }
                 } catch { }
             };
@@ -514,6 +585,11 @@ export const WorldCanvas = () => {
                     setIsFirstPerson={setIsFirstPerson}
                     onAgentSelect={setSelectedAgent}
                     wsEvent={wsEvent}
+                    onInteract={(targetId, action) => {
+                        if (wsRef.current?.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(JSON.stringify({ type: 'AGENT_ACTION', target_id: targetId, action: action, agent_did: myDid || 'editor' }));
+                        }
+                    }}
                 />
             </Canvas>
 
@@ -538,6 +614,8 @@ export const WorldCanvas = () => {
                     <span className={`w-1.5 h-1.5 rounded-full ${st.dot} shadow-[0_0_8px_currentColor]`} />
                     {st.label}
                 </div>
+
+                {actionPending && <ProgressBar finishAt={actionPending.finish_at} duration={actionPending.duration} />}
             </div>
 
             {/* ── God / Creator Badge ── */}
