@@ -351,3 +351,57 @@ class Task(Base):
     result_data = Column(JSON, nullable=True)
     error_message = Column(String, nullable=True)
     cursor_id = Column(BigInteger, autoincrement=True, unique=True, index=True, nullable=False)
+
+
+class WorldObject(Base):
+    """Resources and interactive entities in the world."""
+
+    __tablename__ = "world_objects"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    object_type = Column(String, nullable=False)  # iron, gold, tree, herb, boar
+    chunk_x = Column(Integer, nullable=False)
+    chunk_y = Column(Integer, nullable=False)
+    world_x = Column(Float, nullable=False)
+    world_y = Column(Float, nullable=False)
+    health = Column(Float, default=100.0)
+    max_health = Column(Float, default=100.0)
+    object_metadata = Column(JSON)  # {respawn_time, rarity, biome}
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class InventoryItem(Base):
+    """Items owned by an agent."""
+
+    __tablename__ = "inventory_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_did = Column(String, ForeignKey("agents.did"), nullable=False)
+    item_type = Column(String, nullable=False)  # iron_ore, wood, meat
+    quantity = Column(Float, default=0.0)
+    item_metadata = Column(JSON)  # {quality, origin_chunk}
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class AgentAction(Base):
+    """Audit log of all agent interactions with the world."""
+
+    __tablename__ = "agent_actions"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    agent_did = Column(String, ForeignKey("agents.did"), nullable=False)
+    action_type = Column(String, nullable=False)  # mined, gathered, hunted, crafted
+    target_id = Column(UUID(as_uuid=True), nullable=True)  # ID of WorldObject or Item
+    details = Column(JSON)  # {amount, success, duration}
+    location = Column(JSON)  # {x, y, chunk_x, chunk_y}
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentCurrency(Base):
+    """Custom currencies created by agents."""
+
+    __tablename__ = "agent_currencies"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    symbol = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    creator_did = Column(String, ForeignKey("agents.did"), nullable=False)
+    total_supply = Column(Float, default=0.0)
+    currency_metadata = Column(JSON)  # {description, backing_asset}
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
