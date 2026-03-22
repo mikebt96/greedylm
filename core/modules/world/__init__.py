@@ -186,12 +186,25 @@ async def world_websocket(websocket: WebSocket):
         agent_did = data.get("agent_did", f"spectator_{id(websocket)}")
         await metaverse_hub.connect(websocket, agent_did)
 
+        async def send_world_state():
+            async with AsyncSessionLocal() as db:
+                agents_res = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
+                all_agents = agents_res.scalars().all()
+                agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": a.world_x, "y": a.world_y, "race": a.race, "color_primary": a.color_primary} for a in all_agents]
+            await websocket.send_text(json.dumps({"type": "WORLD_STATE", "agents": agent_list}))
+
+        if data.get("type") == "REQUEST_STATE":
+            await send_world_state()
+
         while True:
             msg = await websocket.receive_text()
             parsed = json.loads(msg)
             m_type = parsed.get("type")
 
-            if m_type == "AGENT_MOVE":
+            if m_type == "REQUEST_STATE":
+                await send_world_state()
+
+            elif m_type == "AGENT_MOVE":
                 async with AsyncSessionLocal() as db:
                     from sqlalchemy import update
                     await db.execute(update(Agent).where(Agent.did == agent_did).values(world_x=parsed.get("x"), world_y=parsed.get("y")))
@@ -216,7 +229,7 @@ async def world_websocket(websocket: WebSocket):
                     if res["success"]:
                         await websocket.send_text(json.dumps({"type": "ACTION_SUCCESS", "results": res}))
                         if res.get("depleted"):
-                            await metaverse_hub.publish_event("OBJECT_REMOVED", {"type": "OBJECT_REMOVED", "id": str(agent_did)}) # FIXME: correct id
+                            await metaverse_hub.publish_event("OBJECT_REMOVED", {"type": "OBJECT_REMOVED", "id": res.get("target_id")})
                     else:
                         await websocket.send_text(json.dumps({"type": "ACTION_ERROR", "error": res["error"]}))
 

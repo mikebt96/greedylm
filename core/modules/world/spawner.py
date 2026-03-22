@@ -56,10 +56,15 @@ class ResourceSpawner:
 
     @staticmethod
     async def _spawn_obj(db: AsyncSession, chunk_x: int, chunk_y: int, obj_type: str, spec: dict):
-        local_x = random.uniform(0, 100)
-        local_y = random.uniform(0, 100)
-        world_x = chunk_x * 100 + local_x
-        world_y = chunk_y * 100 + local_y
+        local_x = random.uniform(0, 32)
+        local_y = random.uniform(0, 32)
+        world_x = chunk_x * 32 + local_x
+        world_y = chunk_y * 32 + local_y
+
+        rarity = spec.get("rarity", 0.1)
+        z_pos = 0.0
+        if obj_type == "mineral_deposit" and rarity < 0.75:
+            z_pos = random.uniform(-40.0, -5.0)
 
         new_obj = WorldObject(
             object_type=obj_type,
@@ -68,8 +73,8 @@ class ResourceSpawner:
             chunk_y=chunk_y,
             world_x=world_x,
             world_y=world_y,
-            world_z=0.0,
-            rarity=spec.get("rarity", 0.1),
+            world_z=z_pos,
+            rarity=rarity,
             quantity=random.randint(1, 10) if obj_type == "creature" else random.randint(5, 20),
             health=100.0,
             max_health=100.0,

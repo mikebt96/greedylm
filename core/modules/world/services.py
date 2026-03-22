@@ -177,7 +177,7 @@ class WorldService:
         agent.action_target_id = None
         
         await db.commit()
-        return {"success": True, "items_gained": items_gained, "new_health": world_obj.health, "depleted": world_obj.health <= 0}
+        return {"success": True, "target_id": str(target_id), "items_gained": items_gained, "new_health": world_obj.health, "depleted": world_obj.health <= 0}
 
     @staticmethod
     async def transfer_item(

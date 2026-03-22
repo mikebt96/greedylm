@@ -74,6 +74,7 @@ interface SceneProps {
     isFirstPerson:    boolean;
     setIsFirstPerson: (v: boolean | ((p: boolean) => boolean)) => void;
     onAgentSelect:    (did: string) => void;
+    wsEvent:          any;
 }
 
 const SceneContent = ({ 
@@ -83,7 +84,8 @@ const SceneContent = ({
     isSpectator, 
     isFirstPerson,
     setIsFirstPerson,
-    onAgentSelect 
+    onAgentSelect,
+    wsEvent
 }: SceneProps) => {
     const { scene, camera, gl } = useThree();
 
@@ -103,6 +105,7 @@ const SceneContent = ({
     const ambientRef = useRef<THREE.AmbientLight>(null);
 
     const agentMeshes = useRef<Record<string, AgentMesh>>({});
+    const faunaMeshes = useRef<Record<string, THREE.Group>>({});
 
     if (!engineRef.current)  engineRef.current  = new WorldEngine();
     if (!terrainRef.current) terrainRef.current = new TerrainGenerator();
@@ -155,7 +158,21 @@ const SceneContent = ({
             for (let dy = -RENDER_RADIUS; dy <= RENDER_RADIUS; dy++)
                 if (dx * dx + dy * dy <= RENDER_RADIUS * RENDER_RADIUS) desired.add(`${cx + dx},${cy + dy}`);
 
-        for (const [key, objs] of chunks.current) if (!desired.has(key)) { objs.forEach(o => { scene.remove(o); disposeObject(o); }); chunks.current.delete(key); }
+        // First, clear old chunks and their associated fauna
+        for (const [key, objs] of chunks.current) {
+            if (!desired.has(key)) {
+                objs.forEach((o: any) => {
+                    o.traverse((child: any) => {
+                        if (child.userData?.id && child.userData?.type === 'creature') {
+                            delete faunaMeshes.current[child.userData.id];
+                        }
+                    });
+                    scene.remove(o);
+                    disposeObject(o);
+                });
+                chunks.current.delete(key);
+            }
+        }
 
         const maxPerFrame = firstLoad ? Infinity : 4;
         let loaded = 0;
@@ -164,13 +181,38 @@ const SceneContent = ({
             const [kcx, kcy] = key.split(',').map(Number);
             const biome = getBiomeForChunk(kcx, kcy);
             const chunk = terrain.generateChunk({ chunk_x: kcx, chunk_y: kcy, biome });
-            const veg      = terrain.generateVegetation(biome, kcx, kcy);
-            const minerals = terrain.generateMinerals(biome, kcx, kcy);
-            const caves    = terrain.generateCaveEntrances(biome, kcx, kcy);
-            const fauna    = terrain.generateFauna(biome, kcx, kcy);
-            scene.add(chunk, veg, minerals, caves, fauna);
-            chunks.current.set(key, [chunk, veg, minerals, caves, fauna]);
+            const veg   = terrain.generateVegetation(biome, kcx, kcy);
+            
+            const dynamicObjects = new THREE.Group();
+            scene.add(chunk, veg, dynamicObjects);
+            chunks.current.set(key, [chunk, veg, dynamicObjects]);
             loaded++;
+
+            // Fetch objects asynchronously
+            (async () => {
+                try {
+                    let res = await safeFetch<any[]>(`/api/v1/world/objects?chunk_x=${kcx}&chunk_y=${kcy}`);
+                    if (res.data && res.data.length === 0) {
+                        try {
+                            await safeFetch<any>(`/api/v1/world/chunks/populate?x=${kcx}&y=${kcy}&biome=${biome}`, { method: 'POST' });
+                        } catch(e) {}
+                        res = await safeFetch<any[]>(`/api/v1/world/objects?chunk_x=${kcx}&chunk_y=${kcy}`);
+                    }
+                    if (res.data && Array.isArray(res.data)) {
+                        res.data.forEach((obj: any) => {
+                            if (!terrainRef.current) return;
+                            const mesh = terrainRef.current.spawnWorldObjectMesh(obj.type, obj.subtype, obj.rarity);
+                            mesh.position.set(obj.x, sampleHeight(obj.x, obj.y) + (obj.z || 0), obj.y);
+                            mesh.userData = { id: obj.id, ...obj };
+                            dynamicObjects.add(mesh);
+                            
+                            if (obj.type === 'creature') faunaMeshes.current[obj.id] = mesh;
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to load chunk objects", e);
+                }
+            })();
         }
     };
 
@@ -198,6 +240,39 @@ const SceneContent = ({
         });
         existing.forEach(did => { const m = agentMeshes.current[did]; if (m) { scene.remove(m.mesh); disposeObject(m.mesh); delete agentMeshes.current[did]; } });
     }, [wsAgents, scene]);
+
+    // ── Object sync ──
+    useEffect(() => {
+        if (!wsEvent) return;
+        const msg = wsEvent;
+        if (msg.type === 'OBJECT_SPAWNED' && msg.object) {
+            const obj = msg.object;
+            const kcx = Math.round(obj.x / CHUNK_SIZE);
+            const kcy = Math.round(obj.y / CHUNK_SIZE);
+            const key = `${kcx},${kcy}`;
+            if (chunks.current.has(key)) {
+                const objs = chunks.current.get(key)!;
+                const dynamicObjects = objs[2] as THREE.Group;
+                const mesh = terrainRef.current!.spawnWorldObjectMesh(obj.type, obj.subtype, obj.rarity);
+                mesh.position.set(obj.x, sampleHeight(obj.x, obj.y) + (obj.z || 0), obj.y);
+                mesh.userData = { id: obj.id, ...obj };
+                dynamicObjects.add(mesh);
+                if (obj.type === 'creature') faunaMeshes.current[obj.id] = mesh;
+            }
+        }
+        else if (msg.type === 'OBJECT_REMOVED' && msg.id) {
+             for (const [key, objs] of chunks.current) {
+                 const dynamicObjects = objs[2] as THREE.Group;
+                 const child = dynamicObjects.children.find(c => c.userData.id === msg.id);
+                 if (child) {
+                     dynamicObjects.remove(child);
+                     disposeObject(child);
+                     delete faunaMeshes.current[msg.id];
+                     break;
+                 }
+             }
+        }
+    }, [wsEvent]);
 
     // ── Per-frame loop ──
     useFrame(({ clock }, delta) => {
@@ -286,6 +361,25 @@ const SceneContent = ({
 
             a.playAnimation(isMoving ? 'walk' : 'idle', elapsed);
         });
+
+        // 6. Fauna movement
+        Object.values(faunaMeshes.current).forEach((m: any) => {
+            const data = m.userData;
+            if (!m.userData.initialX) {
+                m.userData.initialX = m.position.x;
+                m.userData.initialZ = m.position.z;
+                m.userData.randomOffset = Math.random() * 100;
+            }
+            if (data.behavior !== 'passive' && data.behavior !== 'passive_flee') {
+               const r = 2.0;
+               m.position.x = m.userData.initialX + Math.sin(elapsed * 0.5 + m.userData.randomOffset) * r;
+               m.position.z = m.userData.initialZ + Math.cos(elapsed * 0.3 + m.userData.randomOffset) * r;
+               m.position.y = sampleHeight(m.position.x, m.position.z);
+               m.rotation.y = Math.atan2(Math.sin(elapsed*0.5+m.userData.randomOffset), Math.cos(elapsed*0.3+m.userData.randomOffset));
+            } else {
+               m.position.y = sampleHeight(m.position.x, m.position.z) + Math.sin(elapsed * 2 + m.userData.randomOffset) * 0.05;
+            }
+        });
     });
 
     return (
@@ -305,7 +399,7 @@ const SceneContent = ({
             ))}
 
             {/* Post-processing Bloom & Effects */}
-            <EffectComposer disableNormalPass>
+            <EffectComposer>
                 <Bloom luminanceThreshold={1.2} mipmapBlur intensity={0.5} />
                 <DepthOfField target={[0, 0, 0]} focalLength={0.02} bokehScale={2} height={480} />
                 <Vignette eskil={false} offset={0.1} darkness={1.1} />
@@ -337,6 +431,7 @@ export const WorldCanvas = () => {
 
     const [isSpectator, setIsSpectator] = useState(false);
     const [isFirstPerson, setIsFirstPerson] = useState(false);
+    const [wsEvent, setWsEvent]       = useState<any>(null);
 
     const wsRef          = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -373,6 +468,9 @@ export const WorldCanvas = () => {
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
+                    else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED') {
+                        setWsEvent(msg);
+                    }
                 } catch { }
             };
             ws.onclose = () => { setWsStatus('disconnected'); reconnectTimer.current = setTimeout(connect, 3000); };
@@ -415,6 +513,7 @@ export const WorldCanvas = () => {
                     isFirstPerson={isFirstPerson}
                     setIsFirstPerson={setIsFirstPerson}
                     onAgentSelect={setSelectedAgent}
+                    wsEvent={wsEvent}
                 />
             </Canvas>
 

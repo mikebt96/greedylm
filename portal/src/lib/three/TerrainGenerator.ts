@@ -603,4 +603,17 @@ export class TerrainGenerator {
             return ((s ^ (s >>> 14)) >>> 0) / 4294967296;
         };
     }
+
+    // ── API-driven object rendering helper ────────────────────────────────────
+    public spawnWorldObjectMesh(type: string, subtype: string, rarity: number = 0.5): THREE.Group {
+        if (type === 'creature') {
+            return this.makeFaunaMesh(subtype);
+        } else if (type === 'mineral_deposit') {
+            const m = MINERALS.find(x => x.subtype === subtype) || MINERALS[0];
+            return this.makeMineralDeposit({ ...m, rarity });
+        } else if (type === 'cave_entrance') {
+            return this.makeCaveEntrance();
+        }
+        return new THREE.Group();
+    }
 }
