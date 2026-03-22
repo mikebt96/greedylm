@@ -115,9 +115,10 @@ export class GodController {
     /**
      * @param delta         seconds since last frame
      * @param cameraAzimuth horizontal angle of camera (radians) for WASD-relative movement
+     * @param gravityMult   multiplier for gravity (e.g. 0.35 in low-grav biomes)
      * @returns             true if moving this frame
      */
-    public update(delta: number, cameraAzimuth: number): boolean {
+    public update(delta: number, cameraAzimuth: number, gravityMult = 1.0): boolean {
         // ── Horizontal movement ──
         const fwd   = new THREE.Vector3(-Math.sin(cameraAzimuth), 0, -Math.cos(cameraAzimuth));
         const right = new THREE.Vector3( Math.cos(cameraAzimuth), 0, -Math.sin(cameraAzimuth));
@@ -151,7 +152,7 @@ export class GodController {
             if (this._keys.has('shift')) this.position.y -= this._flySpeed * delta;
         } else {
             // Walk mode: gravity + jump
-            this._velY -= this._gravity * delta;
+            this._velY -= this._gravity * gravityMult * delta;
             this.position.y += this._velY * delta;
 
             // Terrain collision
