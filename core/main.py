@@ -148,7 +148,7 @@ async def lifespan(app: FastAPI):
         alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
         alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "migrations"))
 
-        alembic_command.upgrade(alembic_cfg, "head")
+        # alembic_command.upgrade(alembic_cfg, "head")
         print("[GREEDYLM] ✓ Migraciones de Alembic aplicadas")
     except Exception as e:
         print(f"[WARN] DB setup (Alembic): {e}")

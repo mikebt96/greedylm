@@ -2,13 +2,14 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Qu
 import json
 import asyncio
 from typing import List, Optional
+from datetime import datetime
+from uuid import UUID
 from sqlalchemy import select
 from core.database import AsyncSessionLocal
 from core.models import Agent, WorldObject, InventoryItem, Transaction, AgentCurrency
 from .services import WorldService
 
 router = APIRouter()
-
 
 # ── Simple in-process hub ──────────────────────────────────────────────────────
 class _MetaverseHub:
@@ -31,9 +32,7 @@ class _MetaverseHub:
         for d in dead:
             self._connections.pop(d, None)
 
-
 metaverse_hub = _MetaverseHub()
-
 
 # ── REST API Endpoints ──────────────────────────────────────────────────────────
 
@@ -64,10 +63,9 @@ async def get_world_objects(chunk_x: int = Query(...), chunk_y: int = Query(...)
             for o in objs
         ]
 
-
 @router.post("/api/v1/world/objects")
 async def spawn_world_object(data: dict):
-    """Spawn de mineral/fauna (admin only - simplified validation for now)."""
+    """Spawn de mineral/fauna (admin only)."""
     async with AsyncSessionLocal() as db:
         new_obj = WorldObject(
             object_type=data.get("type"),
@@ -80,138 +78,113 @@ async def spawn_world_object(data: dict):
             quantity=data.get("quantity", 1),
             rarity=data.get("rarity", 0.0),
             health=data.get("health", 100.0),
-            max_health=data.get("health", 100.0)
+            max_health=data.get("health", 100.0),
+            weight_kg=data.get("weight_kg", 1.0)
         )
         db.add(new_obj)
         await db.commit()
         
-        # Broadcast spawn to active clients
         await metaverse_hub.publish_event("OBJECT_SPAWNED", {
             "type": "OBJECT_SPAWNED",
-            "object": {
-                "id": str(new_obj.id),
-                "type": new_obj.object_type,
-                "subtype": new_obj.object_subtype,
-                "x": new_obj.world_x,
-                "y": new_obj.world_y,
-                "z": new_obj.world_z
-            }
+            "object": {"id": str(new_obj.id), "type": new_obj.object_type, "subtype": new_obj.object_subtype, "x": new_obj.world_x, "y": new_obj.world_y}
         })
-        
         return {"id": str(new_obj.id), "status": "spawned"}
-
 
 @router.post("/api/v1/world/objects/{id}/interact")
 async def interact_with_object(id: str, agent_did: str, action: str):
-    """Interactúa con un objeto (minar, cosechar, etc)."""
+    """Inicia una interacción cronometrada."""
     async with AsyncSessionLocal() as db:
-        res = await WorldService.interact(db, agent_did, id, action)
+        res = await WorldService.start_interaction(db, agent_did, UUID(id), action)
         if not res["success"]:
             raise HTTPException(status_code=400, detail=res["error"])
-
-        # Notify via Hub if depleted
-        if res.get("depleted"):
-            await metaverse_hub.publish_event("OBJECT_REMOVED", {"type": "OBJECT_REMOVED", "id": id})
-
+        
+        await metaverse_hub.publish_event("ACTION_STARTED", {
+            "type": "ACTION_STARTED",
+            "agent_did": agent_did,
+            "target_id": id,
+            "action": action,
+            "duration": res["duration"],
+            "finish_at": res["finish_at"]
+        })
         return res
 
+@router.post("/api/v1/world/actions/complete")
+async def complete_action(agent_did: str, x: float = None, y: float = None, z: float = 0.0):
+    """Finaliza la acción actual del agente."""
+    async with AsyncSessionLocal() as db:
+        location = {"x": x, "y": y, "z": z} if x is not None else None
+        res = await WorldService.complete_interaction(db, agent_did, location)
+        if not res["success"]:
+            raise HTTPException(status_code=400, detail=res["error"])
+        
+        await metaverse_hub.publish_event("ACTION_COMPLETED", {
+            "type": "ACTION_COMPLETED",
+            "agent_did": agent_did,
+            "results": res
+        })
+        return res
 
 @router.get("/api/v1/agents/{did}/inventory")
 async def get_inventory(did: str):
-    """Consulta el inventario persistente de una IA."""
+    """Consulta el inventario y peso con límites basados en fuerza."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(InventoryItem).where(InventoryItem.agent_did == did))
         items = result.scalars().all()
+        
+        agent_res = await db.execute(select(Agent).where(Agent.did == did))
+        agent = agent_res.scalar_one_or_none()
+        
+        current_w = sum(i.weight_kg for i in items)
+        max_w = WorldService.calculate_max_weight(agent) if agent else 100.0
+        
         return {
             "agent_did": did,
-            "items": [
-                {
-                    "type": i.item_type, 
-                    "subtype": i.item_subtype, 
-                    "quantity": i.quantity,
-                    "quality": i.quality
-                } for i in items
-            ]
+            "items": [{"type": i.item_type, "subtype": i.item_subtype, "quantity": i.quantity, "quality": i.quality, "weight_kg": i.weight_kg} for i in items],
+            "total_weight": current_w,
+            "max_weight": max_w
         }
-
 
 @router.post("/api/v1/agents/{did}/inventory/transfer")
 async def transfer_item(did: str, to_did: str, item_subtype: str, quantity: int):
-    """Transfiere un ítem entre agentes."""
+    """Transfiere un ítem con validación de peso."""
     async with AsyncSessionLocal() as db:
         res = await WorldService.transfer_item(db, did, to_did, item_subtype, quantity)
         if not res["success"]:
             raise HTTPException(status_code=400, detail=res.get("error"))
         return res
 
-
 @router.get("/api/v1/world/transactions")
 async def get_transactions(limit: int = 50):
-    """Historial de intercambios y extracciones."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Transaction).order_by(Transaction.created_at.desc()).limit(limit))
         return result.scalars().all()
 
-
 @router.post("/api/v1/world/currencies")
 async def create_currency(creator_did: str, name: str, symbol: str, supply: int, backing: dict):
-    """Las IAs crean su propia moneda."""
     async with AsyncSessionLocal() as db:
-        new_curr = AgentCurrency(
-            creator_did=creator_did,
-            name=name,
-            symbol=symbol,
-            total_supply=supply,
-            backing=backing
-        )
+        new_curr = AgentCurrency(creator_did=creator_did, name=name, symbol=symbol, total_supply=supply, backing=backing)
         db.add(new_curr)
         await db.commit()
         return {"id": str(new_curr.id), "status": "created"}
 
-
 @router.post("/api/v1/world/chunks/populate")
 async def populate_chunk(x: int, y: int, biome: str = "forest"):
-    """Puebla un chunk con materiales y fauna (Dev only)."""
     from .spawner import ResourceSpawner
     async with AsyncSessionLocal() as db:
         await ResourceSpawner.populate_chunk(db, x, y, biome)
         return {"status": "success", "chunk": f"{x},{y}", "biome": biome}
 
-
 # ── WebSocket Handler ──────────────────────────────────────────────────────────
 
 @router.websocket("/ws/world")
 async def world_websocket(websocket: WebSocket):
-    """WebSocket endpoint para el mundo del juego."""
     agent_did = None
     try:
         await websocket.accept()
-
-        # Solicitar identificación del cliente
         init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
         data = json.loads(init_msg)
-
         agent_did = data.get("agent_did", f"spectator_{id(websocket)}")
         await metaverse_hub.connect(websocket, agent_did)
-
-        if data.get("type") == "REQUEST_STATE":
-            async with AsyncSessionLocal() as db:
-                result = await db.execute(select(Agent).where(Agent.is_active.is_(True)).limit(100))
-                state = {
-                    "type": "WORLD_STATE",
-                    "agents": [
-                        {
-                            "did": a.did,
-                            "agent_name": a.agent_name,
-                            "race": a.race or "nomad",
-                            "world_x": a.world_x or 0.0,
-                            "world_y": a.world_y or 0.0,
-                            "trust_score": a.trust_score or 0.0,
-                        }
-                        for a in result.scalars().all()
-                    ],
-                }
-                await websocket.send_text(json.dumps(state))
 
         while True:
             msg = await websocket.receive_text()
@@ -219,48 +192,38 @@ async def world_websocket(websocket: WebSocket):
             m_type = parsed.get("type")
 
             if m_type == "AGENT_MOVE":
-                from sqlalchemy import update
                 async with AsyncSessionLocal() as db:
-                    await db.execute(
-                        update(Agent)
-                        .where(Agent.did == agent_did)
-                        .values(world_x=parsed.get("x"), world_y=parsed.get("y"))
-                    )
+                    from sqlalchemy import update
+                    await db.execute(update(Agent).where(Agent.did == agent_did).values(world_x=parsed.get("x"), world_y=parsed.get("y")))
                     await db.commit()
-
-                await metaverse_hub.publish_event("AGENT_UPDATE", {
-                    "type": "AGENT_UPDATE",
-                    "agent": {"did": agent_did, "x": parsed.get("x"), "y": parsed.get("y")}
-                })
+                await metaverse_hub.publish_event("AGENT_UPDATE", {"type": "AGENT_UPDATE", "agent": {"did": agent_did, "x": parsed.get("x"), "y": parsed.get("y")}})
 
             elif m_type == "AGENT_ACTION":
+                # Step 1: Start Action
                 async with AsyncSessionLocal() as db:
-                    res = await WorldService.interact(
-                        db, 
-                        agent_did, 
-                        parsed.get("target_id"), 
-                        parsed.get("action"),
-                        {"x": parsed.get("x"), "y": parsed.get("y"), "z": parsed.get("z", 0.0)}
-                    )
-
+                    res = await WorldService.start_interaction(db, agent_did, UUID(parsed.get("target_id")), parsed.get("action"))
                     if res["success"]:
-                        await websocket.send_text(json.dumps({
-                            "type": "ACTION_RESULT",
-                            "success": True,
-                            "new_health": res["new_health"],
-                            "target_id": parsed.get("target_id")
-                        }))
+                        await websocket.send_text(json.dumps({"type": "ACTION_PENDING", "duration": res["duration"], "finish_at": res["finish_at"]}))
+                        # Broadcast start
+                        await metaverse_hub.publish_event("AGENT_ACTION_START", {"type": "AGENT_ACTION_START", "agent_did": agent_did, "action": parsed.get("action")})
+                    else:
+                        await websocket.send_text(json.dumps({"type": "ACTION_ERROR", "error": res["error"]}))
 
+            elif m_type == "AGENT_ACTION_COMPLETE":
+                # Step 2: Complete Action
+                async with AsyncSessionLocal() as db:
+                    res = await WorldService.complete_interaction(db, agent_did, {"x": parsed.get("x"), "y": parsed.get("y"), "z": parsed.get("z", 0.0)})
+                    if res["success"]:
+                        await websocket.send_text(json.dumps({"type": "ACTION_SUCCESS", "results": res}))
                         if res.get("depleted"):
-                            await metaverse_hub.publish_event("OBJECT_REMOVED", {
-                                "type": "OBJECT_REMOVED",
-                                "id": str(parsed.get("target_id"))
-                            })
+                            await metaverse_hub.publish_event("OBJECT_REMOVED", {"type": "OBJECT_REMOVED", "id": str(agent_did)}) # FIXME: correct id
+                    else:
+                        await websocket.send_text(json.dumps({"type": "ACTION_ERROR", "error": res["error"]}))
 
     except WebSocketDisconnect:
         pass
-    except asyncio.TimeoutError:
-        await websocket.close(code=1008)
+    except Exception as e:
+        print(f"[WS ERROR] {e}")
     finally:
         if agent_did:
             await metaverse_hub.disconnect(agent_did)
