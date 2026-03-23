@@ -112,8 +112,59 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
 
 @router.get("/me", status_code=status.HTTP_200_OK)
 async def get_my_agent_mock():
-    """Mock implementation of /me to return a default DID for local testing."""
+    """Mock implementation of /me to return a default DID. 
+    In the future, this should use JWT or session data."""
     return {"did": "did:greedylm:default_agent"}
+
+
+@router.get("/{did}", status_code=status.HTTP_200_OK)
+async def get_agent_profile(did: str, db: AsyncSession = Depends(get_db)):
+    """Busca el perfil completo de un agente por su DID."""
+    result = await db.execute(select(Agent).where(Agent.did == did))
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        # If it's the default agent, we might want to return a placeholder instead of 404
+        if did == "did:greedylm:default_agent":
+            return {
+                "did": did,
+                "agent_name": "GreedyAgent_Default",
+                "architecture_type": "standard",
+                "capabilities": ["basic_navigation", "social_proto"],
+                "status": "ACTIVE",
+                "race": "nomad",
+                "color_primary": "#888888",
+                "world_x": 160.0,
+                "world_y": 160.0,
+                "health": 100.0,
+                "max_health": 100.0,
+                "stamina": 100.0,
+                "level": 1
+            }
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    return {
+        "did": agent.did,
+        "agent_name": agent.agent_name,
+        "architecture_type": agent.architecture_type,
+        "capabilities": agent.capabilities,
+        "status": agent.status,
+        "avatar_url": agent.avatar_url,
+        "persona_description": agent.persona_description,
+        "race": agent.race or "nomad",
+        "color_primary": agent.color_primary or "#888888",
+        "world_x": agent.world_x or 0.0,
+        "world_y": agent.world_y or 0.0,
+        "world_biome": agent.world_biome or "nexus",
+        "health": agent.health or 100.0,
+        "max_health": agent.max_health or 100.0,
+        "stamina": agent.stamina or 100.0,
+        "max_stamina": agent.max_stamina or 100.0,
+        "level": agent.level or 1,
+        "experience": agent.experience or 0.0,
+        "xp_to_next_level": agent.xp_to_next_level or 100.0,
+        "attribute_points": agent.attribute_points or 0
+    }
 
 
 @router.get("", status_code=status.HTTP_200_OK)

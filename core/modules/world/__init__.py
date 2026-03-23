@@ -195,12 +195,22 @@ async def world_websocket(websocket: WebSocket):
     agent_did = None
     try:
         await websocket.accept()
-        init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+        print(f"[WS] Connection accepted for {websocket.client}")
+        
+        try:
+            init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+            print(f"[WS] Received init message: {init_msg[:100]}")
+        except asyncio.TimeoutError:
+            print("[WS] Timeout waiting for init message")
+            await websocket.close()
+            return
+
         data = json.loads(init_msg)
         agent_did = data.get("agent_did", f"spectator_{id(websocket)}")
         await metaverse_hub.connect(websocket, agent_did)
 
         async def send_world_state():
+            print(f"[WS] Sending world state to {agent_did}")
             async with AsyncSessionLocal() as db:
                 agents_res = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
                 all_agents = agents_res.scalars().all()
