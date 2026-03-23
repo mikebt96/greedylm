@@ -196,7 +196,7 @@ async def world_websocket(websocket: WebSocket):
     try:
         await websocket.accept()
         print(f"[WS] Connection accepted for {websocket.client}")
-        
+
         try:
             init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=15.0)
             print(f"[WS] Received init message: {init_msg[:100]}")

@@ -281,7 +281,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
     # Siempre loguear el error real en la consola del servidor
     print(f"GLOBAL ERROR: {type(exc).__name__}: {exc}")
-    import traceback
     traceback.print_exc()
 
     # Si estamos en debug (ej. local), mostramos el detalle
