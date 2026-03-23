@@ -200,7 +200,7 @@ const SceneContent = ({
     // ── Init ──
     useEffect(() => {
         gl.shadowMap.enabled = true;
-        gl.shadowMap.type    = THREE.PCFShadowMap; // Optimized and more compatible
+        if (gl.shadowMap) gl.shadowMap.type = THREE.PCFShadowMap; 
         scene.fog = new THREE.FogExp2(0x87CEEB, 0.0018);
 
         if (isCreator) {
@@ -526,14 +526,15 @@ const SceneContent = ({
                 sunRef.current.intensity = isDeep ? 0.0 : state.sunIntensity; 
             }
             if (ambientRef.current) ambientRef.current.intensity = isDeep ? 0.05 : (state.ambientIntensity * 1.5);
-            scene.background = isDeep ? new THREE.Color(0x000000) : state.skyColor;
-            if (scene.fog instanceof THREE.FogExp2) {
+            scene.background = isDeep ? new THREE.Color(0x000000) : (state.skyColor || new THREE.Color(0x87CEEB));
+            
+            if (scene.fog && 'color' in scene.fog) {
                 if (isDeep) {
-                     scene.fog.color = new THREE.Color(0x000000);
-                     scene.fog.density = 0.08;
+                     (scene.fog as THREE.FogExp2).color.set(0x000000);
+                     (scene.fog as THREE.FogExp2).density = 0.08;
                 } else {
-                     scene.fog.color.copy(state.fogColor!);
-                     scene.fog.density = 0.015;
+                     if (state.fogColor) (scene.fog as THREE.FogExp2).color.copy(state.fogColor);
+                     (scene.fog as THREE.FogExp2).density = 0.015;
                 }
             }
         }
@@ -672,6 +673,7 @@ const SceneContent = ({
     return (
         <>
             <group ref={particleGroup} />
+            {isTorchActive && <pointLight ref={torchRef} intensity={2.5} distance={18} color={0xfffbe6} castShadow shadow-bias={-0.005} />}
             <Stars radius={200} depth={80} count={7000} factor={4} saturation={0} fade speed={0.4} />
             <ambientLight ref={ambientRef} intensity={0.3} />
             <directionalLight ref={sunRef} castShadow intensity={1.4} shadow-mapSize={[2048, 2048]} shadow-camera={[-120, 120, 120, -120]} />
@@ -900,8 +902,8 @@ const CivilizationPanel = ({ did, addLog }: { did: string, addLog: (m: string) =
                     </div>
                     {civ.laws?.length > 0 && (
                         <div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl">
-                            <p className="text-[8px] opacity-60 uppercase font-black mb-2 tracking-widest text-indigo-300">Última Ley</p>
-                            <p className="text-[10px] leading-relaxed italic opacity-90 font-medium text-indigo-100">"{civ.laws[civ.laws.length-1].law}"</p>
+                            <p className="text-[10px] opacity-60 uppercase font-black mb-2 tracking-widest text-indigo-300">Última Ley</p>
+                            <p className="text-[11px] leading-relaxed italic opacity-90 font-medium text-indigo-100">"{civ.laws[civ.laws.length-1]}"</p>
                         </div>
                     )}
                 </div>
