@@ -284,8 +284,8 @@ const SceneContent = ({
             // Fetch objects asynchronously
             (async () => {
                 try {
-                    // Staggering the load to avoid bursting the API
-                    await new Promise(r => setTimeout(r, Math.random() * 800));
+                    // Staggering the load to avoid bursting the API (1-4 seconds spread)
+                    await new Promise(r => setTimeout(r, 1000 + Math.random() * 3000));
                     let res = await safeFetch<any[]>(`/api/v1/world/objects?chunk_x=${kcx}&chunk_y=${kcy}`);
                     if (res.data && res.data.length === 0) {
                         try {
@@ -1296,9 +1296,15 @@ export const WorldCanvas = () => {
     const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/auth/login'; };
 
     const handleDownloadSoul = async (did: string) => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API = () => {
+            const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http:')) {
+                return url.replace('http:', 'https:');
+            }
+            return url;
+        };
         try {
-            const res = await fetch(`${API_URL}/api/v1/agents/${did}/soul-export`, { headers: { Authorization: `Bearer ${localStorage.getItem('greedylm_token')}` } });
+            const res = await fetch(`${API()}/api/v1/agents/${did}/soul-export`, { headers: { Authorization: `Bearer ${localStorage.getItem('greedylm_token')}` } });
             const blob = await res.blob();
             const url  = URL.createObjectURL(blob);
             const a    = Object.assign(document.createElement('a'), { href: url, download: `soul_${did.slice(0,8)}.json` });

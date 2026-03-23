@@ -41,8 +41,7 @@ class GovernanceService:
 
         return {
             "success": True, 
-            "civilization_id": str(new_civ.id),
-            "name": name
+            "civilization": {"id": new_civ.id, "name": name}
         }
 
     @staticmethod

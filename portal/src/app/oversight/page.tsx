@@ -50,7 +50,13 @@ interface Memory { content?: string; type?: string; timestamp?: string; similari
 // ── Tab enum ──────────────────────────────────────────────────────────────────
 type Tab = 'agents' | 'sentinel' | 'psyche';
 
-const API = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http:')) {
+    return url.replace('http:', 'https:');
+  }
+  return url;
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE

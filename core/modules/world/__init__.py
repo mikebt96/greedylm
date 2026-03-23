@@ -11,6 +11,11 @@ from .services import WorldService
 
 router = APIRouter()
 
+@router.get("/recipes")
+async def get_recipes():
+    # Placeholder for now to avoid 404s
+    return {"recipes": []}
+
 # ── Simple in-process hub ──────────────────────────────────────────────────────
 class _MetaverseHub:
     def __init__(self):

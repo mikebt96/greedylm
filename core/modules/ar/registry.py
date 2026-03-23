@@ -323,6 +323,16 @@ async def save_agent_soul_inventory(did: str, db: AsyncSession = Depends(get_db)
     return {"message": "Soul status synchronized. Inventory is now persistent."}
 
 
+@router.get("/{did}/aging")
+async def get_agent_aging(did: str):
+    # Placeholder to avoid 404
+    return {
+        "age_ticks": 0,
+        "generation": 1,
+        "life_expectancy": 1000000
+    }
+
+
 @router.get("/{did}/soul-export")
 async def export_agent_soul(did: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # 1. Fetch Agent with Civilization
