@@ -5,6 +5,9 @@ from fastapi import APIRouter, Query, Depends, HTTPException
 from pydantic import BaseModel
 from core.modules.collective.governance import GovernanceService
 from sqlalchemy.ext.asyncio import AsyncSession
+from core.models import Civilization
+from core.modules.collective.civilization import civilization_engine
+from core.modules.collective.social_analytics import social_analytics
 
 router = APIRouter()
 

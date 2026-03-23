@@ -20,7 +20,7 @@ class GovernanceService:
         agent = agent_res.scalar_one_or_none()
         if not agent:
             return {"success": False, "error": f"Agent {creator_did} not found"}
-        
+
         # Create civilization
         new_civ = Civilization(
             name=name,
@@ -34,11 +34,11 @@ class GovernanceService:
         )
         db.add(new_civ)
         await db.flush() # Get ID
-        
+
         # Enroll creator
         agent.civilization_id = new_civ.id
         await db.commit()
-        
+
         return {
             "success": True, 
             "civilization_id": str(new_civ.id),
@@ -56,12 +56,12 @@ class GovernanceService:
         agent = agent_res.scalar_one_or_none()
         civ_res = await db.execute(select(Civilization).where(Civilization.id == civilization_id))
         civ = civ_res.scalar_one_or_none()
-        
+
         if not agent:
             return {"success": False, "error": "Agent not found"}
         if not civ:
             return {"success": False, "error": "Civilization not found"}
-            
+
         if agent.civilization_id == civilization_id:
             return {"success": False, "error": "Already a member"}
 
@@ -89,7 +89,7 @@ class GovernanceService:
             select(WorldChunk).where(WorldChunk.chunk_x == chunk_x, WorldChunk.chunk_y == chunk_y)
         )
         chunk = chunk_res.scalar_one_or_none()
-        
+
         if not chunk:
             chunk = WorldChunk(
                 chunk_x=chunk_x, 
@@ -103,14 +103,14 @@ class GovernanceService:
             if chunk.claimed_by:
                 if chunk.claimed_by == civilization_id:
                     return {"success": False, "error": "Already claimed by your civilization"}
-                return {"success": False, "error": f"Territory already claimed by another civilization"}
+                return {"success": False, "error": "Territory already claimed by another civilization"}
             chunk.claimed_by = civilization_id
 
         # Update civ territory list
         territory = list(civ.territory or [])
         territory.append({"chunk_x": chunk_x, "chunk_y": chunk_y})
         civ.territory = territory
-            
+
         await db.commit()
         return {"success": True, "chunk": f"{chunk_x},{chunk_y}"}
 
@@ -135,6 +135,6 @@ class GovernanceService:
         }
         laws.append(new_law)
         civ.laws = laws
-        
+
         await db.commit()
         return {"success": True, "law": new_law}
