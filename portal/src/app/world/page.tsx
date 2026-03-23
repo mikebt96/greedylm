@@ -9,7 +9,7 @@ import { useState } from 'react';
 // crash during SSR. The ssr:false flag ensures the Canvas only renders
 // in the browser where WebGL context is available.
 const WorldCanvas = dynamic(
-  () => import('@/components/world3d/WorldCanvas').then(mod => mod.WorldCanvas),
+  () => import('@/components/world3d/WorldCanvas').then(mod => mod.default),
   {
     ssr: false,
     loading: () => (

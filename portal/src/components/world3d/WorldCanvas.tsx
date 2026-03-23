@@ -199,14 +199,16 @@ const SceneContent = ({
 
     // ── Init ──
     useEffect(() => {
-        gl.shadowMap.enabled = true;
-        if (gl.shadowMap) gl.shadowMap.type = THREE.PCFShadowMap; 
+        if (gl.shadowMap) {
+            gl.shadowMap.enabled = true;
+            gl.shadowMap.type = THREE.PCFShadowMap; 
+        }
         scene.fog = new THREE.FogExp2(0x87CEEB, 0.0018);
 
         if (isCreator) {
             const god = new GodController(new THREE.Vector3(0, 3, 0));
             godRef.current = god;
-            scene.add(god.mesh);
+            if (scene) scene.add(god.mesh);
         }
 
         streamChunks(0, 0, true);
@@ -515,12 +517,13 @@ const SceneContent = ({
 
     // ── Per-frame loop ──
     useFrame(({ clock }, delta) => {
+        if (!camera || !scene) return; // Super safety
         const elapsed = clock.getElapsedTime();
 
         // 1. World State (Day/Night & Verticality)
         const state = engineRef.current?.update(elapsed * 1000);
         if (state) {
-            const isDeep = camera.position.y < -30;
+            const isDeep = (camera.position?.y ?? 0) < -30;
             if (sunRef.current) { 
                 sunRef.current.position.set(Math.cos(state.sunAngle) * 160, Math.sin(state.sunAngle) * 160, 60); 
                 sunRef.current.intensity = isDeep ? 0.0 : state.sunIntensity; 
@@ -632,7 +635,7 @@ const SceneContent = ({
         });
 
         // 7. Torch follows camera
-        if (torchRef.current) {
+        if (torchRef.current && camera.position && torchRef.current.position) {
             torchRef.current.position.copy(camera.position);
         }
 
@@ -676,7 +679,14 @@ const SceneContent = ({
             {isTorchActive && <pointLight ref={torchRef} intensity={2.5} distance={18} color={0xfffbe6} castShadow shadow-bias={-0.005} />}
             <Stars radius={200} depth={80} count={7000} factor={4} saturation={0} fade speed={0.4} />
             <ambientLight ref={ambientRef} intensity={0.3} />
-            <directionalLight ref={sunRef} castShadow intensity={1.4} shadow-mapSize={[2048, 2048]} shadow-camera={[-120, 120, 120, -120]} />
+            <directionalLight 
+                ref={sunRef} 
+                castShadow 
+                intensity={1.4} 
+                shadow-mapSize={[2048, 2048]}
+            >
+                <orthographicCamera attach="shadow-camera" args={[-120, 120, 120, -120, 0.1, 1000]} />
+            </directionalLight>
             <hemisphereLight args={[0x87CEEB, 0x3A5A2A, 0.45]} />
 
             {/* Pillar of Souls */}
