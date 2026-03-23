@@ -101,7 +101,7 @@ const BuildingPreview = ({ type }: { type: string }) => {
     const { camera, raycaster, mouse, scene } = useThree();
     const meshRef = useRef<THREE.Group>(null);
     useFrame(() => {
-        if (!meshRef.current) return;
+        if (!meshRef.current || !camera || !scene) return;
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(scene.children, true).filter(i => i.object.name.includes('chunk'));
         if (intersects.length > 0) {
@@ -284,6 +284,8 @@ const SceneContent = ({
             // Fetch objects asynchronously
             (async () => {
                 try {
+                    // Staggering the load to avoid bursting the API
+                    await new Promise(r => setTimeout(r, Math.random() * 800));
                     let res = await safeFetch<any[]>(`/api/v1/world/objects?chunk_x=${kcx}&chunk_y=${kcy}`);
                     if (res.data && res.data.length === 0) {
                         try {
@@ -748,11 +750,11 @@ const SceneContent = ({
             {/* Agent Nameplates */}
             {Object.values(agentMeshes.current).map((agent, i) => (
                 <Billboard key={agent.mesh.userData.did || i} position={[agent.mesh.position.x, agent.mesh.position.y + 2.5, agent.mesh.position.z]}>
-                    <Text fontSize={0.28} color="white" anchorX="center" anchorY="middle" font="https://fonts.gstatic.com/s/outfit/v11/Q_3K9mGO_m0L_S6C9A.woff">
+                    <Text fontSize={0.28} color="white" anchorX="center" anchorY="middle">
                         {agent.name}
                     </Text>
                     {agent.mesh.userData.age !== undefined && (
-                        <Text fontSize={0.18} color="white" anchorX="center" anchorY="top" position={[0, -0.3, 0]} font="https://fonts.gstatic.com/s/outfit/v11/Q_3K9mGO_m0L_S6C9A.woff">
+                        <Text fontSize={0.18} color="white" anchorX="center" anchorY="top" position={[0, -0.3, 0]}>
                             Age: {Math.floor(agent.mesh.userData.age)}
                         </Text>
                     )}
@@ -1330,7 +1332,7 @@ export const WorldCanvas = () => {
                     </button>
                 </div>
             )}
-            <Canvas shadows gl={{ antialias: true }} dpr={[1, 2]}>
+            <Canvas shadows={{ type: THREE.PCFShadowMap }} gl={{ antialias: true }} dpr={[1, 2]}>
                 <PerspectiveCamera makeDefault position={[0, 15, 30]} fov={50} near={0.1} far={1000} />
                 <SceneContent
                     isCreator={isCreator}
