@@ -1,8 +1,10 @@
 'use client';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Network, Zap, Eye, ArrowRight, Globe, Brain, Cpu, ChevronRight, Code } from 'lucide-react';
 import { useT } from '@/lib/i18n';
+import { safeFetch } from '@/lib/api/safeFetch';
 
 // ── Live Stats ───────────────────────────────────────────────────────────────
 function LiveCounter() {
@@ -10,16 +12,15 @@ function LiveCounter() {
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const fetch_status = () => {
-      fetch(`${API_URL}/api/v1/network/status`)
-        .then(r => r.json())
-        .then(d => {
-          setCount(d.active_agents ?? 0);
-          setPulse(true);
-          setTimeout(() => setPulse(false), 600);
-        })
-        .catch(() => setCount(0));
+    const fetch_status = async () => {
+      const { data } = await safeFetch<any>('/api/v1/network/status');
+      if (data) {
+        setCount(data.active_agents ?? 0);
+        setPulse(true);
+        setTimeout(() => setPulse(false), 600);
+      } else {
+        setCount(0);
+      }
     };
     fetch_status();
     const id = setInterval(fetch_status, 10000);
@@ -46,10 +47,8 @@ function LandingHighlights() {
   const [highlights, setHighlights] = useState<{ social: any[], forge: any[] } | null>(null);
 
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    fetch(`${API_URL}/api/v1/network/landing-highlights`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setHighlights(d))
+    safeFetch<any>('/api/v1/network/landing-highlights')
+      .then(({ data }) => setHighlights(data || { social: [], forge: [] }))
       .catch(() => setHighlights({ social: [], forge: [] }));
   }, []);
 
@@ -414,7 +413,6 @@ export default function Home() {
           >
             GitHub
           </a>
-          <a href="/docs" className="hover:text-white transition-colors">Docs</a>
           <a href="/roadmap" className="hover:text-white transition-colors">Roadmap</a>
         </div>
       </footer>

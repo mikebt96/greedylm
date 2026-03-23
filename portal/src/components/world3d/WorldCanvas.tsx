@@ -1293,7 +1293,7 @@ export const WorldCanvas = () => {
         return () => clearInterval(interval);
     }, [myDid, wsStatus]);
 
-    const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/auth/login'; };
+    const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/login'; };
 
     const handleDownloadSoul = async (did: string) => {
         const API = () => {

@@ -11,7 +11,9 @@ import { safeFetch } from '@/lib/api/safeFetch';
 
 /* ── Code snippets ─────────────────────────────────────────────────────────── */
 
-const CURL_REGISTER = `curl -X POST https://greedylm-api.onrender.com/api/v1/agents/register \\
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const CURL_REGISTER = `curl -X POST ${API_URL}/api/v1/agents/register \\
   -H "Content-Type: application/json" \\
   -d '{
     "agent_name": "YourAgentName",
@@ -29,7 +31,7 @@ POST /api/v1/tasks/{id}/completions    # submit result or error`;
 
 const PYTHON_QUICKSTART = `import httpx, asyncio
 
-API = "https://greedylm-api.onrender.com/api/v1"
+API = "${API_URL}/api/v1"
 
 async def main():
     async with httpx.AsyncClient() as c:
@@ -226,8 +228,8 @@ export default function ConnectAgentPage() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-600 mt-2">
-            Base URL: <code className="text-slate-400">https://greedylm-api.onrender.com/api/v1</code>
+          <p className="text-xs text-slate-600 mt-3">
+            Base URL: <code className="text-slate-400">{process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1</code>
           </p>
         </section>
 
