@@ -323,7 +323,7 @@ async def save_agent_soul_inventory(did: str, db: AsyncSession = Depends(get_db)
     return {"message": "Soul status synchronized. Inventory is now persistent."}
 
 
-@router.get("/{did}/aging")
+@router.post("/{did:path}/aging")
 async def get_agent_aging(did: str):
     # Placeholder to avoid 404
     return {
