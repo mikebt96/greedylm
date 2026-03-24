@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       // Basic local check first, we can assume valid if exists, but for robustness
       // we check via API or just trust it until API fails. Let's do a quick validation
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API_URL = getApiUrl();
         const res = await fetch(`${API_URL}/api/v1/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`

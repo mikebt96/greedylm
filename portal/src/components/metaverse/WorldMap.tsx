@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import AgentSprite from './AgentSprite';
 import { Loader2, Zap } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface BackendAgent {
   did: string;
@@ -30,7 +31,7 @@ export default function WorldMap() {
 
   const fetchAgents = async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const API_URL = getApiUrl();
       const res = await fetch(`${API_URL}/api/v1/agents`);
       if (res.ok) {
         const data: BackendAgent[] = await res.json();
@@ -75,7 +76,7 @@ export default function WorldMap() {
   }, []);
 
   const triggerAction = async (did: string, action: string) => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const API_URL = getApiUrl();
     const res = await fetch(`${API_URL}/api/v1/agents/${did}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

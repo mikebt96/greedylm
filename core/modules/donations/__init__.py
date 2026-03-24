@@ -8,7 +8,12 @@ from core.models import DonationRecord, WorldChunk, WorldEvent
 import datetime
 
 router = APIRouter()
-stripe.api_key = settings.STRIPE_SECRET_KEY
+
+# Only initialize Stripe when a key is actually configured.
+# Without this guard the entire module fails to import and the /stats
+# endpoint returns 404 even though it doesn't need Stripe.
+if settings.STRIPE_SECRET_KEY:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 GRDL_RATE = 100  # 1 USD = 100 GRDL
 

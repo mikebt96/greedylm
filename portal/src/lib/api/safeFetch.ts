@@ -1,3 +1,5 @@
+import { getApiUrl } from './apiUrl';
+
 export type SafeFetchResult<T> = {
   data: T | null;
   error: string | null;
@@ -13,13 +15,8 @@ export async function safeFetch<T>(
   options: RequestInit = {},
   retryCount = 0
 ): Promise<SafeFetchResult<T>> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  let url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
-  
-  // Force HTTPS in production to avoid Mixed Content errors
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http:')) {
-    url = url.replace('http:', 'https:');
-  }
+  const API_URL = getApiUrl();
+  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
 
   const maxRetries = 3;
 

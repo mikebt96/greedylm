@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Coins, Heart, ArrowUpRight, ShieldCheck, Globe } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface DonationStats {
   total_usd: number;
@@ -9,7 +10,7 @@ interface DonationStats {
 }
 
 export default function DonatePage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = getApiUrl();
 
   const [stats, setStats] = useState<DonationStats>({
     total_usd: 0,

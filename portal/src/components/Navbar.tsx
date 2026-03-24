@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Network, Activity, Brain, Code, Swords, Menu, X, Zap, Eye, Map, BarChart3, LogIn, User } from 'lucide-react';
 import { useT, LANGUAGES, Lang } from '@/lib/i18n';
 import { FLAG_COMPONENTS } from '@/components/FlagIcons';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 // ── Language picker ───────────────────────────────────────────────────────────
 function LanguagePicker({ compact = false }: { compact?: boolean }) {
@@ -46,7 +47,7 @@ export default function Navbar() {
 
   // Fetch live agents count
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const API_URL = getApiUrl();
     fetch(`${API_URL}/api/v1/network/status`)
       .then(r => r.json())
       .then(d => setAgentCount(d.active_agents ?? 0))
@@ -60,7 +61,7 @@ export default function Navbar() {
       setUser(null);
       return;
     }
-    const hasattrUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const hasattrUrl = getApiUrl();
     fetch(`${hasattrUrl}/api/v1/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })

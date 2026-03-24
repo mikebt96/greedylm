@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { User, Activity, Shield, Download, BrainCircuit, Loader2, Network } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface UserProfile {
   id: string;
@@ -19,7 +20,7 @@ interface AgentProfile {
 }
 
 export default function ProfilePage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = getApiUrl();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [agents, setAgents] = useState<AgentProfile[]>([]);
   const [loading, setLoading] = useState(true);

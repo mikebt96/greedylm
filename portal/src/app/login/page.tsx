@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   Eye, EyeOff, AlertCircle, Loader2, ArrowRight, LogIn
 } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 /* ── SVG icons for social providers ──────────────────────────────────────── */
 
@@ -39,7 +40,7 @@ function LoginContent() {
   const [formState, setFormState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = getApiUrl();
 
   // Handle OAuth callback token
   useEffect(() => {

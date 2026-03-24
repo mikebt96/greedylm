@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { Globe, Zap, Shield, Coins } from 'lucide-react';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface Axiom {
   title: string;
@@ -46,7 +47,7 @@ export default function StatsPage() {
 
   useEffect(() => {
     async function fetchStats() {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const API_URL = getApiUrl();
 
       const safeFetch = async <T,>(url: string, fallback: T): Promise<T> => {
         try {

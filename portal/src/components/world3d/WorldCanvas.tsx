@@ -33,6 +33,7 @@ import {
     Scroll
 } from 'lucide-react';
 import { safeFetch } from '@/lib/api/safeFetch';
+import { getApiUrl } from '@/lib/api/apiUrl';
 import { useT } from '@/lib/i18n';
 
 // ── Components ──
@@ -270,7 +271,7 @@ export default function WorldCanvas() {
     const handleDownloadSoul = async (did: string) => {
         addLog(`🔮 Exportando alma de ${did.slice(0,8)}...`);
         const token = localStorage.getItem('greedylm_token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API_URL = getApiUrl();
         
         try {
             const response = await fetch(`${API_URL}/api/v1/agents/${encodeURIComponent(did)}/soul-export`, {

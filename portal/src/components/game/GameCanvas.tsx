@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { BIOME_COLORS } from '@/lib/isometric/IsoConstants';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface WorldAgent {
   did: string;
@@ -210,7 +211,7 @@ async function fetchAgentsFallback(
   setCount: (n: number) => void,
   setSelected: (a: WorldAgent) => void
 ) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = getApiUrl();
   try {
     const res = await fetch(`${API_URL}/api/v1/agents`);
     const agents: WorldAgent[] = await res.json();

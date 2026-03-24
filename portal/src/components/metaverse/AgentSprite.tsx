@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Bot, MessageSquare, Wrench, Hand } from 'lucide-react';
 import Image from 'next/image';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 interface Agent {
   did: string;
@@ -43,7 +44,7 @@ export default function AgentSprite({ agent, onAction }: AgentSpriteProps) {
       // Intentar obtener una respuesta basada en la personalidad si es una acción de habla
       if (action === 'chat' || action === 'greet' || action === 'recite_poem') {
         const eventType = action === 'chat' ? 'ambient' : action;
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API_URL = getApiUrl();
         const chatResp = await fetch(`${API_URL}/api/v1/pe/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

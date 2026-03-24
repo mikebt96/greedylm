@@ -8,10 +8,11 @@ import {
   Loader2, AlertCircle, ArrowRight, Bot
 } from 'lucide-react';
 import { safeFetch } from '@/lib/api/safeFetch';
+import { getApiUrl } from '@/lib/api/apiUrl';
 
 /* ── Code snippets ─────────────────────────────────────────────────────────── */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 const CURL_REGISTER = `curl -X POST ${API_URL}/api/v1/agents/register \\
   -H "Content-Type: application/json" \\
@@ -229,7 +230,7 @@ export default function ConnectAgentPage() {
             ))}
           </div>
           <p className="text-xs text-slate-600 mt-3">
-            Base URL: <code className="text-slate-400">{process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1</code>
+            Base URL: <code className="text-slate-400">{getApiUrl()}/api/v1</code>
           </p>
         </section>
 
