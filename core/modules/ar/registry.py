@@ -111,10 +111,48 @@ async def register_agent(profile: AgentProfile, db: AsyncSession = Depends(get_d
 
 
 @router.get("/me", status_code=status.HTTP_200_OK)
-async def get_my_agent_mock():
-    """Mock implementation of /me to return a default DID. 
-    In the future, this should use JWT or session data."""
-    return {"did": "did:greedylm:default_agent"}
+async def get_my_agent(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Returns the agent linked to the authenticated user, creating one if needed."""
+    import random
+
+    result = await db.execute(
+        select(Agent).where(Agent.operator_email == current_user.email)
+    )
+    agent = result.scalar_one_or_none()
+
+    if not agent:
+        from core.constants.races import RACES
+
+        race_data = RACES["nomad"]
+        agent = Agent(
+            did=f"did:greedylm:{uuid.uuid4().hex[:12]}",
+            agent_name=current_user.email.split("@")[0],
+            architecture_type="human_avatar",
+            capabilities=["basic_navigation", "social_proto"],
+            operator_email=current_user.email,
+            api_key_hash="",
+            status="ACTIVE",
+            capability_vector=[0.0] * 2048,
+            trust_score=0.0,
+            race="nomad",
+            color_primary=race_data["color"],
+            color_secondary="#ffffff",
+            race_stats=race_data["stats"],
+            world_x=random.uniform(100, 900),
+            world_y=random.uniform(100, 700),
+            world_biome="nexus",
+        )
+        db.add(agent)
+        await db.commit()
+
+    return {
+        "did": agent.did,
+        "agent_name": agent.agent_name,
+        "email": current_user.email,
+        "race": agent.race or "nomad",
+        "world_x": agent.world_x or 200.0,
+        "world_y": agent.world_y or 200.0,
+    }
 
 
 @router.get("/{did}", status_code=status.HTTP_200_OK)

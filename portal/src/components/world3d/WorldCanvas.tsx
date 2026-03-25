@@ -166,6 +166,7 @@ export default function WorldCanvas() {
     
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<any>(null);
+    const keysRef = useRef<Set<string>>(new Set());
 
     const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 10));
@@ -202,6 +203,8 @@ export default function WorldCanvas() {
                     if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) setWsAgents(msg.agents);
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience, age: msg.age, currency: msg.currency } : a));
+                    else if (msg.type === 'AGENT_UPDATE' && msg.agent)
+                        setWsAgents(p => p.map(a => a.did === msg.agent.did ? { ...a, x: msg.agent.x, y: msg.agent.y } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
                     else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
                         setWsEvent(msg);
@@ -224,6 +227,53 @@ export default function WorldCanvas() {
     }, [myDid]);
 
     useEffect(() => { connect(); return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); }; }, [connect]);
+
+    // ── WASD Movement ──
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+                keysRef.current.add(e.key.toLowerCase());
+            }
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            keysRef.current.delete(e.key.toLowerCase());
+        };
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
+    }, []);
+
+    useEffect(() => {
+        if (!myDid || wsStatus !== 'connected') return;
+        const SPEED = 3;
+        const interval = setInterval(() => {
+            const keys = keysRef.current;
+            if (keys.size === 0) return;
+            let dx = 0, dy = 0;
+            if (keys.has('w') || keys.has('arrowup')) dy -= SPEED;
+            if (keys.has('s') || keys.has('arrowdown')) dy += SPEED;
+            if (keys.has('a') || keys.has('arrowleft')) dx -= SPEED;
+            if (keys.has('d') || keys.has('arrowright')) dx += SPEED;
+            if (dx === 0 && dy === 0) return;
+
+            // Optimistic local update
+            setWsAgents(prev => prev.map(a => {
+                if (a.did !== myDid) return a;
+                return { ...a, x: Math.max(0, Math.min(16000, a.x + dx)), y: Math.max(0, Math.min(13000, a.y + dy)) };
+            }));
+
+            // Send to server
+            const me = wsAgents.find(a => a.did === myDid);
+            if (me && wsRef.current?.readyState === WebSocket.OPEN) {
+                wsRef.current.send(JSON.stringify({
+                    type: 'AGENT_MOVE',
+                    x: Math.max(0, Math.min(16000, me.x + dx)),
+                    y: Math.max(0, Math.min(13000, me.y + dy))
+                }));
+            }
+        }, 100);
+        return () => clearInterval(interval);
+    }, [myDid, wsStatus, wsAgents]);
 
     const handleSaveSoul = async () => {
         if (!myDid) return;

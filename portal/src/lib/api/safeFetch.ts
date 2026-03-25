@@ -21,10 +21,20 @@ export async function safeFetch<T>(
   const maxRetries = 3;
 
   try {
+    // Auto-inject auth token if available
+    const authHeaders: Record<string, string> = {};
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('greedylm_token');
+      if (token) {
+        authHeaders['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
     const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...authHeaders,
         ...options.headers,
       },
     });
