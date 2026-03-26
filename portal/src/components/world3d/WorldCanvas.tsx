@@ -340,19 +340,23 @@ export default function WorldCanvas() {
                 try {
                     const msg = JSON.parse(evt.data);
                     if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) {
-                        setWsAgents(msg.agents);
+                        setWsAgents(prev => {
+                            const newOthers = msg.agents.filter((a: WsAgent) => a.did !== myDid);
+                            const me = prev.find(a => a.did === myDid) || msg.agents.find((a: WsAgent) => a.did === myDid);
+                            return me ? [me as WsAgent, ...newOthers] : newOthers;
+                        });
                         if (Array.isArray(msg.objects)) setWsObjects(msg.objects);
                         if (Array.isArray(msg.constructions)) setWsConstructions(msg.constructions);
                         
                         // Sync position ref for WASD movement
-                        const me = msg.agents.find((a: WsAgent) => a.did === myDid);
-                        if (me) myPosRef.current = { x: me.x, y: me.y };
+                        const meSync = msg.agents.find((a: WsAgent) => a.did === myDid);
+                        if (meSync) myPosRef.current = { x: meSync.x, y: meSync.y };
                     }
                     else if (msg.type === 'AGENT_MOVE' && msg.did && msg.did !== myDid)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience, age: msg.age, currency: msg.currency } : a));
                     else if (msg.type === 'AGENT_UPDATE' && msg.agent && msg.agent.did !== myDid)
                         setWsAgents(p => p.map(a => a.did === msg.agent.did ? { ...a, x: msg.agent.x, y: msg.agent.y } : a));
-                    else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
+                    else if (msg.type === 'AGENT_DISCONNECT' && msg.did && msg.did !== myDid) setWsAgents(p => p.filter(a => a.did !== msg.did));
                     else if (msg.type === 'OBJECT_SPAWNED') {
                         setWsObjects(prev => [...prev.filter(o => o.id !== msg.object.id), msg.object]);
                     }
