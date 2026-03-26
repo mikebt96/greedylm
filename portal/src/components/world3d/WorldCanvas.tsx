@@ -246,8 +246,8 @@ function Scene({
             <Stars radius={300} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
             
             {/* Terreno base */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-                <planeGeometry args={[2000, 2000]} />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[8000, 0, 6500]}>
+                <planeGeometry args={[32000, 32000]} />
                 <meshStandardMaterial color="#020617" roughness={1} metalness={0} />
             </mesh>
 
@@ -340,6 +340,9 @@ export default function WorldCanvas() {
                     const msg = JSON.parse(evt.data);
                     if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) {
                         setWsAgents(msg.agents);
+                        if (Array.isArray(msg.objects)) setWsObjects(msg.objects);
+                        if (Array.isArray(msg.constructions)) setWsConstructions(msg.constructions);
+                        
                         // Sync position ref for WASD movement
                         const me = msg.agents.find((a: WsAgent) => a.did === myDid);
                         if (me) myPosRef.current = { x: me.x, y: me.y };
@@ -349,8 +352,11 @@ export default function WorldCanvas() {
                     else if (msg.type === 'AGENT_UPDATE' && msg.agent && msg.agent.did !== myDid)
                         setWsAgents(p => p.map(a => a.did === msg.agent.did ? { ...a, x: msg.agent.x, y: msg.agent.y } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
-                    else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
-                        setWsEvent(msg);
+                    else if (msg.type === 'OBJECT_SPAWNED') {
+                        setWsObjects(prev => [...prev.filter(o => o.id !== msg.object.id), msg.object]);
+                    }
+                    else if (msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
+                        setWsObjects(prev => prev.filter(o => o.id !== msg.id));
                     }
                     else if (msg.type === 'ACTION_PENDING') {
                         setActionPending({ finish_at: msg.finish_at, duration: msg.duration });

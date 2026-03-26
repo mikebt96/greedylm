@@ -217,10 +217,28 @@ async def world_websocket(websocket: WebSocket):
         async def send_world_state():
             print(f"[WS] Sending world state to {agent_did}")
             async with AsyncSessionLocal() as db:
+                # 1. Agents
                 agents_res = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
                 all_agents = agents_res.scalars().all()
-                agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": a.world_x, "y": a.world_y, "race": a.race, "color_primary": a.color_primary} for a in all_agents]
-            await websocket.send_text(json.dumps({"type": "WORLD_STATE", "agents": agent_list}))
+                agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": a.world_x, "y": a.world_y, "race": a.race, "color_primary": a.color_primary, "health": a.health, "stamina": a.stamina, "level": a.level, "age": a.age} for a in all_agents]
+                
+                # 2. Objects (Minerals, Flora, Fauna)
+                obj_res = await db.execute(select(WorldObject).where(WorldObject.health > 0))
+                all_objs = obj_res.scalars().all()
+                obj_list = [{"id": str(o.id), "type": o.object_type, "subtype": o.object_subtype, "x": o.world_x, "y": o.world_y, "health": o.health} for o in all_objs]
+                
+                # 3. Constructions
+                from core.models import Construction
+                const_res = await db.execute(select(Construction))
+                all_consts = const_res.scalars().all()
+                const_list = [{"id": str(c.id), "type": c.construction_type, "position": c.position, "owner": c.owner_did, "name": c.name} for c in all_consts]
+
+            await websocket.send_text(json.dumps({
+                "type": "WORLD_STATE", 
+                "agents": agent_list,
+                "objects": obj_list,
+                "constructions": const_list
+            }))
 
         if data.get("type") == "REQUEST_STATE":
             await send_world_state()
