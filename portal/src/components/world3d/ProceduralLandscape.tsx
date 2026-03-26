@@ -187,11 +187,11 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
 
     return (
         <group>
-            <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]} castShadow>
+            <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]}>
                 <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
                 <meshLambertMaterial color="#4a2c0a" />
             </instancedMesh>
-            <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]} castShadow>
+            <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]}>
                 <icosahedronGeometry args={[2, 1]} />
                 <meshLambertMaterial color="#1b4332" />
             </instancedMesh>
@@ -217,7 +217,7 @@ function InstancedRocks({ features }: { features: TerrainFeature[] }) {
     }, [features, temp]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 1000]} castShadow>
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 1000]}>
             <dodecahedronGeometry args={[1, 0]} />
             <meshLambertMaterial color="#4b5563" />
         </instancedMesh>

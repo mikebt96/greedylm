@@ -254,7 +254,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 intensity={1.2} 
                 color="#e0e7ff"
                 castShadow 
-                shadow-mapSize={[2048, 2048]}
+                shadow-mapSize={[512, 512]}
             />
             
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
@@ -311,7 +311,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 <ConstructionMesh key={c.id} construction={c} />
             ))}
 
-            <ContactShadows opacity={0.4} scale={2000} blur={2.4} far={10} color="#000000" />
         </>
     );
 }
@@ -334,6 +333,7 @@ function Ground() {
             <planeGeometry args={[32000, 32000, 1, 1]} />
             <meshStandardMaterial 
                 {...textures}
+                color="#ffffff"
                 roughness={0.9}
                 normalScale={new THREE.Vector2(0.8, 0.8)}
             />
