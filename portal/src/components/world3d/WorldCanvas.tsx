@@ -331,7 +331,7 @@ function Ground() {
             <planeGeometry args={[32000, 32000, 1, 1]} />
             <meshStandardMaterial 
                 {...textures}
-                color="#ffffff"
+                color="#3a5a3a"
                 roughness={0.9}
                 normalScale={new THREE.Vector2(0.8, 0.8)}
             />
