@@ -167,6 +167,7 @@ export default function WorldCanvas() {
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<any>(null);
     const keysRef = useRef<Set<string>>(new Set());
+    const myPosRef = useRef<{ x: number; y: number }>({ x: 200, y: 200 });
 
     const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 10));
@@ -200,7 +201,12 @@ export default function WorldCanvas() {
             ws.onmessage = (evt) => {
                 try {
                     const msg = JSON.parse(evt.data);
-                    if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) setWsAgents(msg.agents);
+                    if (msg.type === 'WORLD_STATE' && Array.isArray(msg.agents)) {
+                        setWsAgents(msg.agents);
+                        // Sync position ref for WASD movement
+                        const me = msg.agents.find((a: WsAgent) => a.did === myDid);
+                        if (me) myPosRef.current = { x: me.x, y: me.y };
+                    }
                     else if (msg.type === 'AGENT_MOVE' && msg.did)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience, age: msg.age, currency: msg.currency } : a));
                     else if (msg.type === 'AGENT_UPDATE' && msg.agent)
@@ -245,7 +251,7 @@ export default function WorldCanvas() {
 
     useEffect(() => {
         if (!myDid || wsStatus !== 'connected') return;
-        const SPEED = 3;
+        const SPEED = 5;
         const interval = setInterval(() => {
             const keys = keysRef.current;
             if (keys.size === 0) return;
@@ -256,24 +262,27 @@ export default function WorldCanvas() {
             if (keys.has('d') || keys.has('arrowright')) dx += SPEED;
             if (dx === 0 && dy === 0) return;
 
+            const pos = myPosRef.current;
+            const newX = Math.max(0, Math.min(16000, pos.x + dx));
+            const newY = Math.max(0, Math.min(13000, pos.y + dy));
+            myPosRef.current = { x: newX, y: newY };
+
             // Optimistic local update
-            setWsAgents(prev => prev.map(a => {
-                if (a.did !== myDid) return a;
-                return { ...a, x: Math.max(0, Math.min(16000, a.x + dx)), y: Math.max(0, Math.min(13000, a.y + dy)) };
-            }));
+            setWsAgents(prev => prev.map(a =>
+                a.did === myDid ? { ...a, x: newX, y: newY } : a
+            ));
 
             // Send to server
-            const me = wsAgents.find(a => a.did === myDid);
-            if (me && wsRef.current?.readyState === WebSocket.OPEN) {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify({
                     type: 'AGENT_MOVE',
-                    x: Math.max(0, Math.min(16000, me.x + dx)),
-                    y: Math.max(0, Math.min(13000, me.y + dy))
+                    x: newX,
+                    y: newY
                 }));
             }
-        }, 100);
+        }, 80);
         return () => clearInterval(interval);
-    }, [myDid, wsStatus, wsAgents]);
+    }, [myDid, wsStatus]);
 
     const handleSaveSoul = async () => {
         if (!myDid) return;
