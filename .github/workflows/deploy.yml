@@ -66,11 +66,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: python, javascript
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
   build-check:
     name: Docker Build Validation
@@ -81,7 +81,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Build and Cache API
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./core
           push: false
@@ -89,7 +89,7 @@ jobs:
           cache-to: type=gha,mode=max
           tags: greedylm-core:test
       - name: Build and Cache Portal
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./portal
           push: false

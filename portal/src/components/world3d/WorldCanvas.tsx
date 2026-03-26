@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber';
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { 
     OrbitControls, 
     Stats, 
@@ -246,14 +245,15 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
             {/* Lighting (Night Palette - High Visibility) */}
-            <ambientLight intensity={0.4} />
-            <hemisphereLight args={['#b0c4de', '#111b27', 0.5]} />
-            <fog attach="fog" args={['#070b14', 200, 3000]} />
+            <ambientLight intensity={0.5} />
+            <hemisphereLight args={['#b0c4de', '#1b263b', 0.6]} />
+            <fog attach="fog" args={['#070b14', 100, 4000]} />
             <directionalLight 
                 position={[500, 300, 500]} 
-                intensity={1.2} 
+                intensity={1.5} 
                 color="#e0e7ff"
             />
+            <Environment preset="night" />
             
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
@@ -261,8 +261,8 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             
             {/* Ground (Suspended) */}
             <React.Suspense fallback={
-                <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.05, 0]}>
-                    <planeGeometry args={[32000, 32000]} />
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+                    <planeGeometry args={[4000, 4000]} />
                     <meshStandardMaterial color="#0f2419" roughness={0.9} />
                 </mesh>
             }>
@@ -327,8 +327,8 @@ function Ground() {
     });
 
     return (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000, 1, 1]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+            <planeGeometry args={[4000, 4000, 1, 1]} />
             <meshStandardMaterial 
                 {...textures}
                 color="#3a5a3a"
@@ -577,10 +577,10 @@ export default function WorldCanvas() {
                 gl={{ 
                     antialias: true, 
                     toneMapping: THREE.ACESFilmicToneMapping,
-                    toneMappingExposure: 0.6 
+                    toneMappingExposure: 0.8 
                 }}
             >
-                <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
+                <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} far={5000} />
                 <CameraFollower myPosRef={myPosRef} isSpectator={isSpectator} />
                 <PlayerController
                     myDid={myDid}

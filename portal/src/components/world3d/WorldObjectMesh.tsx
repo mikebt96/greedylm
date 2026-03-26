@@ -50,9 +50,17 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
 
     const wanderRef = useRef({ ox: 0, oz: 0, targetX: 0, targetZ: 0, timer: 0 });
 
+    const [distVisible, setDistVisible] = React.useState(false);
+
     useFrame((state, delta) => {
         if (!groupRef.current || !meshRef.current) return;
         const t = state.elapsedTime;
+        
+        // Performance: Only check distance every ~10 frames
+        const camDist = state.camera.position.distanceTo(groupRef.current.position);
+        if (state.clock.elapsedTime % 0.2 < 0.02) {
+            setDistVisible(camDist < 50);
+        }
 
         if (obj.type === 'creature') {
             const w = wanderRef.current;
@@ -86,7 +94,7 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
         <group ref={groupRef} position={[obj.x, 0, obj.y]}
             onClick={(e) => { e.stopPropagation(); onClick(); }}>
 
-            {/* MINERAL — crystal pillars, meshBasicMaterial */}
+            {/* MINERAL — crystal pillars */}
             {isMineral && (
                 <group ref={meshRef as any}>
                     <mesh position={[0, 0.8, 0]}>
@@ -104,7 +112,7 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
                 </group>
             )}
 
-            {/* CREATURE — quadruped, meshBasicMaterial */}
+            {/* CREATURE — quadruped */}
             {isCreature && (
                 <group ref={meshRef as any}>
                     <mesh position={[0, 0, 0]}>
@@ -115,7 +123,6 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
                         <sphereGeometry args={[0.28, 8, 8]} />
                         <meshBasicMaterial color={mainColor} />
                     </mesh>
-                    {/* Eyes — white emissive via basic white */}
                     <mesh position={[0.12, 0.25, 0.7]}>
                         <sphereGeometry args={[0.06, 6, 6]} />
                         <meshBasicMaterial color="#ffffff" />
@@ -124,7 +131,6 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
                         <sphereGeometry args={[0.06, 6, 6]} />
                         <meshBasicMaterial color="#ffffff" />
                     </mesh>
-                    {/* Legs */}
                     {([[-0.25,-0.3,0.25],[0.25,-0.3,0.25],[-0.25,-0.3,-0.25],[0.25,-0.3,-0.25]] as [number,number,number][]).map((p, i) => (
                         <mesh key={i} position={p}>
                             <cylinderGeometry args={[0.06, 0.08, 0.4, 6]} />
@@ -170,17 +176,21 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
                 </mesh>
             )}
 
-            <Html position={[0, 2.5, 0]} center distanceFactor={30}>
-                <div style={{
-                    background: 'rgba(2,6,23,0.8)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap',
-                    fontSize: 10, color: '#cbd5e1', fontWeight: 600,
-                    backdropFilter: 'blur(4px)',
-                }}>
-                    {cfg.label} {obj.subtype?.replace(/_/g, ' ') || obj.name || obj.type.replace(/_/g, ' ')}
-                </div>
-            </Html>
+            {distVisible && (
+                <Html position={[0, 2.5, 0]} center distanceFactor={24}>
+                    <div style={{
+                        background: 'rgba(2,6,23,0.85)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 8, padding: '4px 10px', whiteSpace: 'nowrap',
+                        fontSize: 11, color: '#f8fafc', fontWeight: 700,
+                        backdropFilter: 'blur(8px)',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}>
+                        <span style={{ marginRight: 6 }}>{cfg.label}</span>
+                        {obj.subtype?.replace(/_/g, ' ') || obj.name || obj.type.replace(/_/g, ' ')}
+                    </div>
+                </Html>
+            )}
         </group>
     );
 }
