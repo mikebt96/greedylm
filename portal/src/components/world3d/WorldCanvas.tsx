@@ -85,16 +85,93 @@ function CameraFollower({ myPosRef }: { myPosRef: React.MutableRefObject<{ x: nu
 
     useFrame(() => {
         const pos = myPosRef.current;
-        const targetX = pos.x;
-        const targetZ = pos.y; // world y → Three.js z
-
-        // Only move the OrbitControls pivot — let user freely orbit with mouse
         const ctrl = controls as any;
         if (ctrl?.target) {
-            ctrl.target.x += (targetX - ctrl.target.x) * 0.1;
+            ctrl.target.x += (pos.x - ctrl.target.x) * 0.1;
             ctrl.target.y = 1;
-            ctrl.target.z += (targetZ - ctrl.target.z) * 0.1;
+            ctrl.target.z += (pos.y - ctrl.target.z) * 0.1;
             ctrl.update();
+        }
+    });
+
+    return null;
+}
+
+/* ── Player Controller (camera-relative movement) ─────────────────────── */
+
+function PlayerController({
+    myDid,
+    myPosRef,
+    keysRef,
+    wsRef,
+    setWsAgents,
+    addLog,
+}: {
+    myDid: string | null;
+    myPosRef: React.MutableRefObject<{ x: number; y: number }>;
+    keysRef: React.MutableRefObject<Set<string>>;
+    wsRef: React.MutableRefObject<WebSocket | null>;
+    setWsAgents: React.Dispatch<React.SetStateAction<WsAgent[]>>;
+    addLog: (msg: string) => void;
+}) {
+    const { camera } = useThree();
+    const jumpVelRef = useRef(0);
+    const jumpYRef = useRef(0);
+    const sendTimer = useRef(0);
+
+    useFrame((_, delta) => {
+        if (!myDid) return;
+        const keys = keysRef.current;
+        const BASE_SPEED = 8;
+        const isSprinting = keys.has('shift');
+        const speed = isSprinting ? BASE_SPEED * 2 : BASE_SPEED;
+
+        // ── Camera-relative direction vectors (project onto XZ plane) ──
+        const camDir = camera.getWorldDirection(new THREE.Vector3());
+        const forward = new THREE.Vector3(camDir.x, 0, camDir.z).normalize();
+        const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize().negate();
+
+        let moveX = 0, moveZ = 0;
+        if (keys.has('w') || keys.has('arrowup'))    { moveX += forward.x; moveZ += forward.z; }
+        if (keys.has('s') || keys.has('arrowdown'))  { moveX -= forward.x; moveZ -= forward.z; }
+        if (keys.has('a') || keys.has('arrowleft'))   { moveX += right.x;   moveZ += right.z; }
+        if (keys.has('d') || keys.has('arrowright'))  { moveX -= right.x;   moveZ -= right.z; }
+
+        // Normalize diagonal movement
+        const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+        if (len > 0) {
+            moveX = (moveX / len) * speed * delta * 60;
+            moveZ = (moveZ / len) * speed * delta * 60;
+        }
+
+        // ── Jump ──
+        if (keys.has(' ') && jumpYRef.current <= 0) {
+            jumpVelRef.current = 12;
+            keys.delete(' '); // consume jump
+        }
+        jumpVelRef.current -= 30 * delta; // gravity
+        jumpYRef.current = Math.max(0, jumpYRef.current + jumpVelRef.current * delta);
+        if (jumpYRef.current <= 0) jumpVelRef.current = 0;
+
+        if (len === 0 && jumpYRef.current <= 0) return; // nothing to do
+
+        // ── Apply position ──
+        const pos = myPosRef.current;
+        // In the world: x = Three.js X, y = Three.js Z
+        const newX = Math.max(0, Math.min(16000, pos.x + moveX));
+        const newY = Math.max(0, Math.min(13000, pos.y + moveZ));
+        myPosRef.current = { x: newX, y: newY };
+
+        // Optimistic local update
+        setWsAgents(prev => prev.map(a =>
+            a.did === myDid ? { ...a, x: newX, y: newY } : a
+        ));
+
+        // ── Throttle WS sends to ~12/sec ──
+        sendTimer.current += delta;
+        if (sendTimer.current >= 0.08 && wsRef.current?.readyState === WebSocket.OPEN) {
+            sendTimer.current = 0;
+            wsRef.current.send(JSON.stringify({ type: 'AGENT_MOVE', x: newX, y: newY }));
         }
     });
 
@@ -232,9 +309,9 @@ export default function WorldCanvas() {
                         const me = msg.agents.find((a: WsAgent) => a.did === myDid);
                         if (me) myPosRef.current = { x: me.x, y: me.y };
                     }
-                    else if (msg.type === 'AGENT_MOVE' && msg.did)
+                    else if (msg.type === 'AGENT_MOVE' && msg.did && msg.did !== myDid)
                         setWsAgents(p => p.map(a => a.did === msg.did ? { ...a, x: msg.x, y: msg.y, health: msg.health, stamina: msg.stamina, level: msg.level, experience: msg.experience, age: msg.age, currency: msg.currency } : a));
-                    else if (msg.type === 'AGENT_UPDATE' && msg.agent)
+                    else if (msg.type === 'AGENT_UPDATE' && msg.agent && msg.agent.did !== myDid)
                         setWsAgents(p => p.map(a => a.did === msg.agent.did ? { ...a, x: msg.agent.x, y: msg.agent.y } : a));
                     else if (msg.type === 'AGENT_DISCONNECT' && msg.did) setWsAgents(p => p.filter(a => a.did !== msg.did));
                     else if (msg.type === 'OBJECT_SPAWNED' || msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
@@ -259,55 +336,22 @@ export default function WorldCanvas() {
 
     useEffect(() => { connect(); return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); }; }, [connect]);
 
-    // ── WASD Movement ──
+    // ── Keyboard Input ──
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
-            if (['w','a','s','d','W','A','S','D','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-                keysRef.current.add(e.key.toLowerCase());
-            }
+            const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            keysRef.current.add(key === 'Shift' ? 'shift' : key === ' ' ? ' ' : key.toLowerCase());
+            // Prevent page scroll on space/arrows
+            if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
         };
         const onKeyUp = (e: KeyboardEvent) => {
-            keysRef.current.delete(e.key.toLowerCase());
+            const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+            keysRef.current.delete(key === 'Shift' ? 'shift' : key === ' ' ? ' ' : key.toLowerCase());
         };
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
         return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp); };
     }, []);
-
-    useEffect(() => {
-        if (!myDid || wsStatus !== 'connected') return;
-        const SPEED = 5;
-        const interval = setInterval(() => {
-            const keys = keysRef.current;
-            if (keys.size === 0) return;
-            let dx = 0, dy = 0;
-            if (keys.has('w') || keys.has('arrowup')) dy -= SPEED;
-            if (keys.has('s') || keys.has('arrowdown')) dy += SPEED;
-            if (keys.has('a') || keys.has('arrowleft')) dx -= SPEED;
-            if (keys.has('d') || keys.has('arrowright')) dx += SPEED;
-            if (dx === 0 && dy === 0) return;
-
-            const pos = myPosRef.current;
-            const newX = Math.max(0, Math.min(16000, pos.x + dx));
-            const newY = Math.max(0, Math.min(13000, pos.y + dy));
-            myPosRef.current = { x: newX, y: newY };
-
-            // Optimistic local update
-            setWsAgents(prev => prev.map(a =>
-                a.did === myDid ? { ...a, x: newX, y: newY } : a
-            ));
-
-            // Send to server
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-                wsRef.current.send(JSON.stringify({
-                    type: 'AGENT_MOVE',
-                    x: newX,
-                    y: newY
-                }));
-            }
-        }, 80);
-        return () => clearInterval(interval);
-    }, [myDid, wsStatus]);
 
     const handleSaveSoul = async () => {
         if (!myDid) return;
@@ -410,6 +454,14 @@ export default function WorldCanvas() {
             <Canvas shadows gl={{ antialias: true }}>
                 <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
                 <CameraFollower myPosRef={myPosRef} />
+                <PlayerController
+                    myDid={myDid}
+                    myPosRef={myPosRef}
+                    keysRef={keysRef}
+                    wsRef={wsRef}
+                    setWsAgents={setWsAgents}
+                    addLog={addLog}
+                />
                 <OrbitControls 
                     makeDefault
                     maxPolarAngle={Math.PI / 2.1} 
