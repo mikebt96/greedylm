@@ -141,13 +141,13 @@ function PlayerController({
         // ── Camera-relative direction vectors (project onto XZ plane) ──
         const camDir = camera.getWorldDirection(new THREE.Vector3());
         const forward = new THREE.Vector3(camDir.x, 0, camDir.z).normalize();
-        const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize().negate();
+        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
         let moveX = 0, moveZ = 0;
         if (keys.has(keybinds.forward))    { moveX += forward.x; moveZ += forward.z; }
         if (keys.has(keybinds.backward))   { moveX -= forward.x; moveZ -= forward.z; }
-        if (keys.has(keybinds.left))       { moveX += right.x;   moveZ += right.z; }
-        if (keys.has(keybinds.right))      { moveX -= right.x;   moveZ -= right.z; }
+        if (keys.has(keybinds.left))       { moveX -= right.x;   moveZ -= right.z; }
+        if (keys.has(keybinds.right))      { moveX += right.x;   moveZ += right.z; }
 
         // Normalize diagonal movement
         const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
