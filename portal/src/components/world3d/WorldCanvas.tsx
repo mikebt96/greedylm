@@ -43,6 +43,7 @@ import { ConstructionMesh } from './ConstructionMesh';
 import { BiomeEffects } from './BiomeEffects';
 import HUD from './HUD';
 import SettingsPanel, { Keybinds } from './SettingsPanel';
+import { ProceduralLandscape } from './ProceduralLandscape';
 
 // ── Types ──
 interface WsAgent {
@@ -91,9 +92,9 @@ function CameraFollower({ myPosRef, isSpectator }: { myPosRef: React.RefObject<{
         if (!pos) return;
         const ctrl = controls as any;
         if (ctrl?.target) {
-            ctrl.target.x += (pos.x - ctrl.target.x) * 0.1;
+            ctrl.target.x += (pos.x - ctrl.target.x) * 0.15;
             ctrl.target.y = 1;
-            ctrl.target.z += (pos.y - ctrl.target.z) * 0.1;
+            ctrl.target.z += (pos.y - ctrl.target.z) * 0.15;
             ctrl.update();
         }
     });
@@ -134,7 +135,7 @@ function PlayerController({
     useFrame((_, delta) => {
         if (!myDid) return;
         const keys = keysRef.current;
-        const BASE_SPEED = 8;
+        const BASE_SPEED = 3;
         const isSprinting = keys.has(keybinds.sprint);
         const speed = isSprinting ? BASE_SPEED * 2 : BASE_SPEED;
 
@@ -152,8 +153,8 @@ function PlayerController({
         // Normalize diagonal movement
         const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
         if (len > 0) {
-            moveX = (moveX / len) * speed * delta * 60;
-            moveZ = (moveZ / len) * speed * delta * 60;
+            moveX = (moveX / len) * speed * delta;
+            moveZ = (moveZ / len) * speed * delta;
         }
 
         // ── Jump ──
@@ -278,6 +279,9 @@ function Scene({
 
             {/* Efectos de Bioma (Nieve, Arena, etc) */}
             <BiomeEffects currentBiome="nexus" />
+
+            {/* Procedural landscape: mountains, trees, rocks, grass, mushrooms */}
+            <ProceduralLandscape />
 
             {/* Agentes */}
             {agents.map(agent => (
