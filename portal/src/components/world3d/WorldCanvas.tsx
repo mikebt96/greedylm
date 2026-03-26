@@ -249,13 +249,13 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             />
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
-            {/* Lighting (Night Palette) */}
-            <ambientLight intensity={0.15} />
-            <hemisphereLight args={['#b0c4de', '#1b263b', 0.3]} />
-            <fog attach="fog" args={['#070b14', 100, 2500]} />
+            {/* Lighting (Night Palette - High Visibility) */}
+            <ambientLight intensity={0.4} />
+            <hemisphereLight args={['#b0c4de', '#111b27', 0.5]} />
+            <fog attach="fog" args={['#070b14', 200, 3000]} />
             <directionalLight 
                 position={[500, 300, 500]} 
-                intensity={0.6} 
+                intensity={1.2} 
                 color="#e0e7ff"
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
@@ -321,12 +321,8 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 }
 
 function Ground() {
-    // 1. Load standard JPG/PNG maps
-    const { diffuse, disp, spec } = useTexture({
-        diffuse: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
-        disp: '/textures/ground/textures/rocky_terrain_02_disp_2k.png',
-        spec: '/textures/ground/textures/rocky_terrain_02_spec_2k.png',
-    });
+    // 1. Load standard JPG diffuse map
+    const diffuse = useTexture('/textures/ground/textures/rocky_terrain_02_diff_2k.jpg');
     
     // 2. Load EXR PBR maps
     const [normal, roughness] = useLoader(EXRLoader, [
@@ -335,7 +331,7 @@ function Ground() {
     ]);
 
     // Apply tiling to all
-    [diffuse, disp, spec, normal, roughness].forEach(t => {
+    [diffuse, normal, roughness].forEach(t => {
         if (t) {
             t.wrapS = t.wrapT = THREE.RepeatWrapping;
             t.repeat.set(500, 500);
@@ -344,18 +340,15 @@ function Ground() {
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000, 256, 256]} />
+            <planeGeometry args={[32000, 32000]} />
             <meshStandardMaterial 
                 map={diffuse}
                 normalMap={normal}
                 roughnessMap={roughness}
-                displacementMap={disp}
-                displacementScale={0.4}
-                displacementBias={-0.2}
-                metalnessMap={spec}
                 color="#2d3a3f"
-                normalScale={new THREE.Vector2(1.2, 1.2)}
-                roughness={1}
+                normalScale={new THREE.Vector2(1.5, 1.5)}
+                roughness={0.9}
+                metalness={0.1}
             />
         </mesh>
     );
