@@ -578,6 +578,7 @@ export default function WorldCanvas() {
         loadWorld();
     }, []);
 
+    return (
         <div className="w-full h-screen bg-black relative">
             <Canvas 
                 shadows={{ type: THREE.PCFSoftShadowMap }} 
