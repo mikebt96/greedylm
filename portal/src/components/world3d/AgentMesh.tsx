@@ -19,6 +19,7 @@ interface AgentData {
     experience: number;
     age: number;
     currency: number;
+    jumpY?: number;
 }
 
 const RACE_COLORS: Record<string, string> = {
@@ -37,8 +38,9 @@ export function AgentMesh({ agent, isMe, onClick }: { agent: AgentData; isMe: bo
         // Smooth position interpolation
         groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, agent.x, 0.08);
         groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, agent.y, 0.08);
-        // Bobbing
-        groupRef.current.position.y = Math.sin(t * 1.4 + agent.x) * 0.04;
+        // Bobbing + Jump
+        const jumpY = agent.jumpY || 0;
+        groupRef.current.position.y = jumpY + Math.sin(t * 1.4 + agent.x) * 0.04;
         // Orb orbit
         if (orbRef.current) {
             orbRef.current.position.x = Math.sin(t * 1.1) * 0.18;

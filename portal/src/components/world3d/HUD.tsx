@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Activity, LogOut, Save, Compass } from 'lucide-react';
+import { Activity, LogOut, Save, Compass, Settings } from 'lucide-react';
 
 interface WsAgent {
     did: string;
@@ -27,6 +27,7 @@ interface HUDProps {
     onLogout: () => void;
     onSaveSoul: () => void;
     actionPending: { finish_at: string; duration: number } | null;
+    onOpenSettings: () => void;
 }
 
 const STATUS_COLORS = {
@@ -36,7 +37,7 @@ const STATUS_COLORS = {
     error: 'text-red-400',
 };
 
-export default function HUD({ status, agents, myDid, logs, onLogout, onSaveSoul, actionPending }: HUDProps) {
+export default function HUD({ status, agents, myDid, logs, onLogout, onSaveSoul, actionPending, onOpenSettings }: HUDProps) {
     const me = agents.find(a => a.did === myDid);
 
     return (
@@ -48,6 +49,13 @@ export default function HUD({ status, agents, myDid, logs, onLogout, onSaveSoul,
                     <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                     <span className={`text-[10px] font-bold uppercase tracking-widest ${STATUS_COLORS[status]}`}>{status}</span>
                     <span className="text-[10px] text-slate-500 ml-auto">{agents.length} online</span>
+                    <button 
+                        onClick={onOpenSettings}
+                        className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        title="Settings"
+                    >
+                        <Settings className="w-3 h-3" />
+                    </button>
                 </div>
 
                 {/* My stats */}

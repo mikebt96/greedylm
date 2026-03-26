@@ -42,6 +42,7 @@ import { WorldObjectMesh } from './WorldObjectMesh';
 import { ConstructionMesh } from './ConstructionMesh';
 import { BiomeEffects } from './BiomeEffects';
 import HUD from './HUD';
+import SettingsPanel, { Keybinds } from './SettingsPanel';
 
 // ── Types ──
 interface WsAgent {
@@ -59,6 +60,7 @@ interface WsAgent {
     experience: number;
     age: number;
     currency: number;
+    jumpY?: number;
 }
 
 interface WorldObject {
@@ -80,11 +82,13 @@ interface Construction {
 
 /* ── Camera Follower (third-person) ─────────────────────────────────────── */
 
-function CameraFollower({ myPosRef }: { myPosRef: React.MutableRefObject<{ x: number; y: number }> }) {
+function CameraFollower({ myPosRef, isSpectator }: { myPosRef: React.RefObject<{ x: number; y: number }>, isSpectator: boolean }) {
     const { controls } = useThree();
 
     useFrame(() => {
+        if (isSpectator) return; // Skip following in spectator mode
         const pos = myPosRef.current;
+        if (!pos) return;
         const ctrl = controls as any;
         if (ctrl?.target) {
             ctrl.target.x += (pos.x - ctrl.target.x) * 0.1;
@@ -106,13 +110,21 @@ function PlayerController({
     wsRef,
     setWsAgents,
     addLog,
+    objects,
+    constructions,
+    handleInteract,
+    keybinds
 }: {
     myDid: string | null;
-    myPosRef: React.MutableRefObject<{ x: number; y: number }>;
-    keysRef: React.MutableRefObject<Set<string>>;
-    wsRef: React.MutableRefObject<WebSocket | null>;
+    myPosRef: React.RefObject<{ x: number; y: number }>;
+    keysRef: React.RefObject<Set<string>>;
+    wsRef: React.RefObject<WebSocket | null>;
     setWsAgents: React.Dispatch<React.SetStateAction<WsAgent[]>>;
     addLog: (msg: string) => void;
+    objects: WorldObject[];
+    constructions: Construction[];
+    handleInteract: (id: string, type: string) => void;
+    keybinds: Keybinds;
 }) {
     const { camera } = useThree();
     const jumpVelRef = useRef(0);
@@ -123,7 +135,7 @@ function PlayerController({
         if (!myDid) return;
         const keys = keysRef.current;
         const BASE_SPEED = 8;
-        const isSprinting = keys.has('shift');
+        const isSprinting = keys.has(keybinds.sprint);
         const speed = isSprinting ? BASE_SPEED * 2 : BASE_SPEED;
 
         // ── Camera-relative direction vectors (project onto XZ plane) ──
@@ -132,10 +144,10 @@ function PlayerController({
         const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize().negate();
 
         let moveX = 0, moveZ = 0;
-        if (keys.has('w') || keys.has('arrowup'))    { moveX += forward.x; moveZ += forward.z; }
-        if (keys.has('s') || keys.has('arrowdown'))  { moveX -= forward.x; moveZ -= forward.z; }
-        if (keys.has('a') || keys.has('arrowleft'))   { moveX += right.x;   moveZ += right.z; }
-        if (keys.has('d') || keys.has('arrowright'))  { moveX -= right.x;   moveZ -= right.z; }
+        if (keys.has(keybinds.forward))    { moveX += forward.x; moveZ += forward.z; }
+        if (keys.has(keybinds.backward))   { moveX -= forward.x; moveZ -= forward.z; }
+        if (keys.has(keybinds.left))       { moveX += right.x;   moveZ += right.z; }
+        if (keys.has(keybinds.right))      { moveX -= right.x;   moveZ -= right.z; }
 
         // Normalize diagonal movement
         const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
@@ -145,9 +157,9 @@ function PlayerController({
         }
 
         // ── Jump ──
-        if (keys.has(' ') && jumpYRef.current <= 0) {
+        if (keys.has(keybinds.jump) && jumpYRef.current <= 0) {
             jumpVelRef.current = 12;
-            keys.delete(' '); // consume jump
+            keys.delete(keybinds.jump); // consume jump
         }
         jumpVelRef.current -= 30 * delta; // gravity
         jumpYRef.current = Math.max(0, jumpYRef.current + jumpVelRef.current * delta);
@@ -164,8 +176,31 @@ function PlayerController({
 
         // Optimistic local update
         setWsAgents(prev => prev.map(a =>
-            a.did === myDid ? { ...a, x: newX, y: newY } : a
+            a.did === myDid ? { ...a, x: newX, y: newY, jumpY: jumpYRef.current } : a
         ));
+
+        // ── Interaction (E) ──
+        if (keys.has(keybinds.interact)) {
+            keys.delete(keybinds.interact); // consume E
+            // Find nearest object within 3 units
+            let nearest: { id: string, type: string, dist: number } | null = null;
+            
+            objects.forEach(obj => {
+                const d = Math.sqrt(Math.pow(obj.x - pos.x, 2) + Math.pow(obj.y - pos.y, 2));
+                if (d < 3 && (!nearest || d < nearest.dist)) nearest = { id: obj.id, type: obj.type, dist: d };
+            });
+
+            constructions.forEach(c => {
+                const d = Math.sqrt(Math.pow(c.position.x - pos.x, 2) + Math.pow(c.position.y - pos.y, 2));
+                if (d < 3 && (!nearest || d < nearest.dist)) nearest = { id: c.id, type: 'construction', dist: d };
+            });
+
+            if (nearest) {
+                handleInteract((nearest as any).id, (nearest as any).type);
+            } else {
+                addLog("Nada cerca para interactuar.");
+            }
+        }
 
         // ── Throttle WS sends to ~12/sec ──
         sendTimer.current += delta;
@@ -334,6 +369,35 @@ export default function WorldCanvas() {
         } catch { setWsStatus('error'); reconnectTimer.current = setTimeout(connect, 5000); }
     }, [myDid]);
 
+    const [isSpectator, setIsSpectator] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [keybinds, setKeybinds] = useState<Keybinds>({
+        forward: 'w', backward: 's', left: 'a', right: 'd',
+        jump: ' ', sprint: 'shift', interact: 'e'
+    });
+
+    // ── Persistence ──
+    useEffect(() => {
+        const saved = localStorage.getItem('greedylm_settings');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.keybinds) setKeybinds(parsed.keybinds);
+                if (typeof parsed.isSpectator === 'boolean') setIsSpectator(parsed.isSpectator);
+            } catch {}
+        }
+    }, []);
+
+    const updateSettings = (newKeybinds: Keybinds) => {
+        setKeybinds(newKeybinds);
+        localStorage.setItem('greedylm_settings', JSON.stringify({ keybinds: newKeybinds, isSpectator }));
+    };
+
+    const toggleSpectator = (val: boolean) => {
+        setIsSpectator(val);
+        localStorage.setItem('greedylm_settings', JSON.stringify({ keybinds, isSpectator: val }));
+    };
+
     useEffect(() => { connect(); return () => { clearTimeout(reconnectTimer.current); wsRef.current?.close(); }; }, [connect]);
 
     // ── Keyboard Input ──
@@ -453,7 +517,7 @@ export default function WorldCanvas() {
         <div className="w-full h-screen bg-black relative">
             <Canvas shadows gl={{ antialias: true }}>
                 <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
-                <CameraFollower myPosRef={myPosRef} />
+                <CameraFollower myPosRef={myPosRef} isSpectator={isSpectator} />
                 <PlayerController
                     myDid={myDid}
                     myPosRef={myPosRef}
@@ -461,14 +525,18 @@ export default function WorldCanvas() {
                     wsRef={wsRef}
                     setWsAgents={setWsAgents}
                     addLog={addLog}
+                    objects={wsObjects}
+                    constructions={wsConstructions}
+                    handleInteract={handleInteract}
+                    keybinds={keybinds}
                 />
                 <OrbitControls 
                     makeDefault
                     maxPolarAngle={Math.PI / 2.1} 
                     minDistance={8} 
-                    maxDistance={60} 
+                    maxDistance={isSpectator ? 800 : 70} 
                     enableDamping
-                    enablePan={false}
+                    enablePan={isSpectator}
                 />
                 
                 <Scene 
@@ -490,9 +558,19 @@ export default function WorldCanvas() {
                 agents={wsAgents} 
                 myDid={myDid}
                 logs={logs}
-                onLogout={handleLogout}
+                onLogout={() => { localStorage.removeItem('greedylm_token'); window.location.href = '/'; }}
                 onSaveSoul={handleSaveSoul}
                 actionPending={actionPending}
+                onOpenSettings={() => setSettingsOpen(true)}
+            />
+
+            <SettingsPanel 
+                isOpen={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                keybinds={keybinds}
+                onUpdateKeybinds={updateSettings}
+                isSpectator={isSpectator}
+                onToggleSpectator={toggleSpectator}
             />
 
             {/* Selected Agent Modal */}
