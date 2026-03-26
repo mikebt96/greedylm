@@ -1,11 +1,11 @@
 'use client';
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
 /**
  * ProceduralLandscape — generates decorative 3D terrain features in chunks.
- * These are purely visual: mountains, rock clusters, trees, grass, and caves.
+ * Uses InstancedMesh for performance.
  */
 
 // Simple seeded RNG
@@ -17,7 +17,6 @@ function seededRandom(seed: number) {
     };
 }
 
-// Generate a seed from chunk coordinates
 function getChunkSeed(cx: number, cz: number, globalSeed: number) {
     return (cx * 73856093) ^ (cz * 19349663) ^ globalSeed;
 }
@@ -37,16 +36,11 @@ const CHUNK_SIZE = 500;
 function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[] {
     const rng = seededRandom(seed);
     const features: TerrainFeature[] = [];
-    
-    // Offset for the chunk's world position
     const offsetX = cx * CHUNK_SIZE;
     const offsetZ = cz * CHUNK_SIZE;
 
-    // Density settings (scaled by CHUNK_SIZE/800 relative to previous setup)
-    // 800 was the previous RANGE. So we scale counts by (500/800)^2 ≈ 0.4
-    
-    // Mountains — 15 per chunk
-    for (let i = 0; i < 15; i++) {
+    // Mountains — 12 per chunk
+    for (let i = 0; i < 12; i++) {
         features.push({
             type: 'mountain',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -57,8 +51,8 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
         });
     }
 
-    // Rock clusters — 40 per chunk
-    for (let i = 0; i < 40; i++) {
+    // Rock clusters — 30 per chunk
+    for (let i = 0; i < 30; i++) {
         features.push({
             type: 'rock',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -69,8 +63,8 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
         });
     }
 
-    // Trees — 100 per chunk
-    for (let i = 0; i < 100; i++) {
+    // Trees — 80 per chunk
+    for (let i = 0; i < 80; i++) {
         features.push({
             type: 'tree',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -82,8 +76,8 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
         });
     }
 
-    // Grass patches — 60 per chunk
-    for (let i = 0; i < 60; i++) {
+    // Grass patches — 50 per chunk
+    for (let i = 0; i < 50; i++) {
         features.push({
             type: 'grass',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -94,8 +88,8 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
         });
     }
 
-    // Glowing mushrooms — 15 per chunk
-    for (let i = 0; i < 15; i++) {
+    // Glowing mushrooms — 4 per chunk
+    for (let i = 0; i < 4; i++) {
         features.push({
             type: 'glow_mushroom',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -106,8 +100,8 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
         });
     }
 
-    // Cave entrances — 4 per chunk
-    for (let i = 0; i < 4; i++) {
+    // Cave entrances — 2 per chunk
+    for (let i = 0; i < 2; i++) {
         features.push({
             type: 'cave',
             x: offsetX + rng() * CHUNK_SIZE,
@@ -121,100 +115,36 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
     return features;
 }
 
-function ProceduralChunk({ cx, cz, globalSeed }: { cx: number, cz: number, globalSeed: number }) {
-    const features = useMemo(() => {
-        const seed = getChunkSeed(cx, cz, globalSeed);
-        return generateFeatures(cx, cz, seed);
-    }, [cx, cz, globalSeed]);
-
-    return (
-        <group>
-            {features.map((f, i) => {
-                switch (f.type) {
-                    case 'mountain':     return <Mountain key={i} f={f} />;
-                    case 'rock':         return <Rock key={i} f={f} />;
-                    case 'tree':         return <Tree key={i} f={f} />;
-                    case 'grass':        return <GrassPatch key={i} f={f} />;
-                    case 'glow_mushroom': return <GlowMushroom key={i} f={f} />;
-                    case 'cave':          return <Cave key={i} f={f} />;
-                    default:             return null;
-                }
-            })}
-        </group>
-    );
-}
-
-// ── Feature Components (Mountain, Rock, Tree, etc.) ──
+// ── Feature Components ──
 
 function Mountain({ f }: { f: TerrainFeature }) {
     return (
         <group position={[f.x, 0, f.z]}>
             <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
                 <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
-                <meshStandardMaterial color={f.color} roughness={0.9} metalness={0.1} flatShading />
+                <meshStandardMaterial color={f.color} roughness={0.9} flatShading />
             </mesh>
             {f.scale > 15 && (
                 <mesh position={[0, f.scale * 0.85, 0]}>
                     <coneGeometry args={[f.scale * 0.25, f.scale * 0.3, 6]} />
-                    <meshStandardMaterial color="#94a3b8" roughness={0.8} />
+                    <meshStandardMaterial color="#94a3b8" />
                 </mesh>
             )}
         </group>
     );
 }
 
-function Rock({ f }: { f: TerrainFeature }) {
-    return (
-        <group position={[f.x, 0, f.z]} rotation={[0, f.rotY, 0]}>
-            <mesh position={[0, f.scale * 0.3, 0]} castShadow>
-                <dodecahedronGeometry args={[f.scale, 0]} />
-                <meshStandardMaterial color={f.color} roughness={0.85} metalness={0.15} flatShading />
-            </mesh>
-        </group>
-    );
-}
-
-function Tree({ f }: { f: TerrainFeature }) {
-    return (
-        <group position={[f.x, 0, f.z]}>
-            <mesh position={[0, f.scale * 0.5, 0]} castShadow>
-                <cylinderGeometry args={[f.scale * 0.06, f.scale * 0.1, f.scale * 1.0, 6]} />
-                <meshStandardMaterial color={f.color2 || '#4a2c0a'} roughness={0.9} />
-            </mesh>
-            <mesh position={[0, f.scale * 1.1, 0]} castShadow>
-                <icosahedronGeometry args={[f.scale * 0.5, 1]} />
-                <meshStandardMaterial color={f.color} roughness={0.8} metalness={0} flatShading />
-            </mesh>
-            <mesh position={[f.scale * 0.2, f.scale * 0.9, f.scale * 0.15]} castShadow>
-                <icosahedronGeometry args={[f.scale * 0.35, 1]} />
-                <meshStandardMaterial color={f.color} roughness={0.8} flatShading />
-            </mesh>
-        </group>
-    );
-}
-
-function GrassPatch({ f }: { f: TerrainFeature }) {
-    return (
-        <mesh rotation={[-Math.PI / 2, 0, f.rotY]} position={[f.x, 0.04, f.z]} receiveShadow>
-            <circleGeometry args={[f.scale, 16]} />
-            <meshStandardMaterial color={f.color} roughness={1} metalness={0} transparent opacity={0.8} />
-        </mesh>
-    );
-}
-
 function Cave({ f }: { f: TerrainFeature }) {
     return (
         <group position={[f.x, 0, f.z]} rotation={[0, f.rotY, 0]}>
-            <mesh position={[0, f.scale * 0.5, 0]} castShadow>
+            <mesh position={[0, f.scale * 0.5, 0]}>
                 <torusGeometry args={[f.scale, f.scale * 0.2, 8, 12, Math.PI]} />
-                <meshStandardMaterial color="#2c3e50" roughness={0.9} />
+                <meshStandardMaterial color="#2c3e50" />
             </mesh>
             <mesh position={[0, f.scale * 0.45, 0.05]}>
                 <planeGeometry args={[f.scale * 1.8, f.scale * 1.2]} />
                 <meshStandardMaterial color="#000000" />
             </mesh>
-            {/* Reduced distance for performance */}
-            <pointLight position={[0, f.scale * 0.5, f.scale * 0.5]} intensity={0.5} distance={8} color="#34495e" />
         </group>
     );
 }
@@ -222,24 +152,115 @@ function Cave({ f }: { f: TerrainFeature }) {
 function GlowMushroom({ f }: { f: TerrainFeature }) {
     return (
         <group position={[f.x, 0, f.z]}>
-            <mesh position={[0, f.scale * 0.3, 0]} castShadow>
+            <mesh position={[0, f.scale * 0.3, 0]}>
                 <cylinderGeometry args={[f.scale * 0.08, f.scale * 0.12, f.scale * 0.6, 6]} />
-                <meshStandardMaterial color="#e0e0e0" roughness={0.7} />
+                <meshStandardMaterial color="#e0e0e0" />
             </mesh>
             <mesh position={[0, f.scale * 0.65, 0]}>
                 <sphereGeometry args={[f.scale * 0.3, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2]} />
-                <meshStandardMaterial color={f.color} emissive={f.color} emissiveIntensity={1.5} roughness={0.3} transparent opacity={0.85} />
+                <meshStandardMaterial color={f.color} emissive={f.color} emissiveIntensity={1.5} transparent opacity={0.8} />
             </mesh>
-            <pointLight position={[0, f.scale * 0.5, 0]} intensity={0.6} distance={4} color={f.color} />
+            <pointLight position={[0, f.scale * 0.5, 0]} intensity={0.5} distance={5} color={f.color} />
         </group>
+    );
+}
+
+// ── Instanced Components ──
+
+function InstancedTrees({ features }: { features: TerrainFeature[] }) {
+    const trunkRef = useRef<THREE.InstancedMesh>(null);
+    const canopyRef = useRef<THREE.InstancedMesh>(null);
+    const temp = new THREE.Object3D();
+
+    useEffect(() => {
+        if (!trunkRef.current || !canopyRef.current) return;
+        features.forEach((f, i) => {
+            // Trunk
+            temp.position.set(f.x, f.scale * 0.5, f.z);
+            temp.scale.set(f.scale * 0.1, f.scale * 1.0, f.scale * 0.1);
+            temp.updateMatrix();
+            trunkRef.current!.setMatrixAt(i, temp.matrix);
+            
+            // Canopy
+            temp.position.set(f.x, f.scale * 1.1, f.z);
+            temp.scale.set(f.scale * 0.5, f.scale * 0.5, f.scale * 0.5);
+            temp.updateMatrix();
+            canopyRef.current!.setMatrixAt(i, temp.matrix);
+        });
+        trunkRef.current.instanceMatrix.needsUpdate = true;
+        canopyRef.current.instanceMatrix.needsUpdate = true;
+        trunkRef.current.count = features.length;
+        canopyRef.current.count = features.length;
+    }, [features]);
+
+    return (
+        <group>
+            <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]} castShadow>
+                <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
+                <meshStandardMaterial color="#4a2c0a" />
+            </instancedMesh>
+            <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]} castShadow>
+                <icosahedronGeometry args={[2, 1]} />
+                <meshStandardMaterial color="#1b4332" flatShading />
+            </instancedMesh>
+        </group>
+    );
+}
+
+function InstancedRocks({ features }: { features: TerrainFeature[] }) {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const temp = new THREE.Object3D();
+
+    useEffect(() => {
+        if (!meshRef.current) return;
+        features.forEach((f, i) => {
+            temp.position.set(f.x, f.scale * 0.3, f.z);
+            temp.rotation.set(0, f.rotY, 0);
+            temp.scale.set(f.scale, f.scale, f.scale);
+            temp.updateMatrix();
+            meshRef.current!.setMatrixAt(i, temp.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+        meshRef.current.count = features.length;
+    }, [features]);
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 1000]} castShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial color="#4b5563" flatShading />
+        </instancedMesh>
+    );
+}
+
+function InstancedGrass({ features }: { features: TerrainFeature[] }) {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const temp = new THREE.Object3D();
+
+    useEffect(() => {
+        if (!meshRef.current) return;
+        features.forEach((f, i) => {
+            temp.position.set(f.x, 0.05, f.z);
+            temp.rotation.set(-Math.PI / 2, 0, f.rotY);
+            temp.scale.set(f.scale, f.scale, 1);
+            temp.updateMatrix();
+            meshRef.current!.setMatrixAt(i, temp.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+        meshRef.current.count = features.length;
+    }, [features]);
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 2000]} receiveShadow>
+            <circleGeometry args={[1, 16]} />
+            <meshStandardMaterial color="#1a3a2a" transparent opacity={0.6} />
+        </instancedMesh>
     );
 }
 
 // ── Main Controller ──
 
 export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: number; y: number } } }) {
-    // Initialize with 3x3 grid around origin for immediate spawn rendering
-    const [chunks, setChunks] = useState<{cx: number, cz: number}[]>(() => {
+    const [chunkCoords, setChunkCoords] = useState<{cx: number, cz: number}[]>(() => {
         const initial = [];
         for (let dx = -1; dx <= 1; dx++) {
             for (let dz = -1; dz <= 1; dz++) {
@@ -252,29 +273,44 @@ export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: nu
 
     useFrame(() => {
         if (!myPosRef.current) return;
-        
         const cx = Math.floor(myPosRef.current.x / CHUNK_SIZE);
         const cz = Math.floor(myPosRef.current.y / CHUNK_SIZE);
 
-        if (!lastChunk.current || lastChunk.current.cx !== cx || lastChunk.current.cz !== cz) {
+        if (lastChunk.current.cx !== cx || lastChunk.current.cz !== cz) {
             lastChunk.current = { cx, cz };
-            
-            // Generate a 3x3 grid around the current chunk
             const newChunks = [];
             for (let dx = -1; dx <= 1; dx++) {
                 for (let dz = -1; dz <= 1; dz++) {
                     newChunks.push({ cx: cx + dx, cz: cz + dz });
                 }
             }
-            setChunks(newChunks);
+            setChunkCoords(newChunks);
         }
     });
 
+    const allFeatures = useMemo(() => {
+        return chunkCoords.flatMap(c => {
+            const seed = getChunkSeed(c.cx, c.cz, 42);
+            return generateFeatures(c.cx, c.cz, seed);
+        });
+    }, [chunkCoords]);
+
+    const trees = useMemo(() => allFeatures.filter(f => f.type === 'tree'), [allFeatures]);
+    const rocks = useMemo(() => allFeatures.filter(f => f.type === 'rock'), [allFeatures]);
+    const grass = useMemo(() => allFeatures.filter(f => f.type === 'grass'), [allFeatures]);
+    const mountains = useMemo(() => allFeatures.filter(f => f.type === 'mountain'), [allFeatures]);
+    const caves = useMemo(() => allFeatures.filter(f => f.type === 'cave'), [allFeatures]);
+    const mushrooms = useMemo(() => allFeatures.filter(f => f.type === 'glow_mushroom'), [allFeatures]);
+
     return (
         <group>
-            {chunks.map(c => (
-                <ProceduralChunk key={`${c.cx}-${c.cz}`} cx={c.cx} cz={c.cz} globalSeed={42} />
-            ))}
+            {mountains.map((f, i) => <Mountain key={`m-${i}`} f={f} />)}
+            {caves.map((f, i) => <Cave key={`c-${i}`} f={f} />)}
+            {mushrooms.map((f, i) => <GlowMushroom key={`sh-${i}`} f={f} />)}
+
+            <InstancedTrees features={trees} />
+            <InstancedRocks features={rocks} />
+            <InstancedGrass features={grass} />
         </group>
     );
 }

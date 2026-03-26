@@ -217,43 +217,42 @@ function PlayerController({
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-function Scene({ 
-    agents, 
-    objects, 
-    constructions,
-    onObjectInteract, 
-    onAgentInteract,
-    myDid,
-    myPosRef
-}: { 
-    agents: WsAgent[], 
-    objects: WorldObject[], 
-    constructions: Construction[],
-    onObjectInteract: (id: string, type: string) => void,
-    onAgentInteract: (did: string) => void,
-    myDid: string | null,
-    myPosRef: React.MutableRefObject<{ x: number; y: number }>
-}) {
-    const { scene } = useThree();
+interface SceneProps {
+    agents: WsAgent[];
+    objects: WorldObject[];
+    constructions: Construction[];
+    onObjectInteract: (id: string, type: string) => void;
+    onAgentInteract: (did: string) => void;
+    myDid: string | null;
+    myPosRef: React.MutableRefObject<{ x: number; y: number }>;
+}
+
+function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef }: SceneProps) {
+    const gridRef = useRef<THREE.GridHelper>(null);
+
+    useFrame(() => {
+        if (!myPosRef.current || !gridRef.current) return;
+        // Snap grid to player position in 500u steps to keep it centered
+        const gx = Math.floor(myPosRef.current.x / 500) * 500;
+        const gz = Math.floor(myPosRef.current.y / 500) * 500;
+        gridRef.current.position.set(gx, 0.01, gz);
+    });
 
     return (
         <>
             {/* Lighting */}
             <ambientLight intensity={0.6} />
+            <hemisphereLight args={['#ffffff', '#446644', 0.8]} />
+            <fog attach="fog" args={['#0a0e1a', 100, 1500]} />
             <directionalLight 
-                position={[200, 150, 100]} 
-                intensity={1.4} 
+                position={[500, 500, 500]} 
+                intensity={1.2} 
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
-                shadow-camera-far={500}
-                shadow-camera-left={-200}
-                shadow-camera-right={200}
-                shadow-camera-top={200}
-                shadow-camera-bottom={-200}
             />
-            <hemisphereLight args={['#1a237e', '#2d6a4f', 0.5]} />
-            <fog attach="fog" args={['#0a0e1a', 80, 800]} />
-            <Stars radius={300} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
+            <Stars radius={400} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
+            
+            <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#0d1b2a']} />
             
             {/* Ground with Tiled PBR Textures (Suspended to prevent world block) */}
             <React.Suspense fallback={
@@ -264,9 +263,6 @@ function Scene({
             }>
                 <Ground />
             </React.Suspense>
-
-            {/* Grid for orientation */}
-            <gridHelper args={[2000, 200, '#1e3a5f', '#0d1b2a']} position={[0, 0.01, 0]} />
 
             {/* Biome terrain patches — larger, visible green/brown zones */}
             {[
@@ -326,25 +322,20 @@ function Scene({
 function Ground() {
     const textures = useTexture({
         map: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
-        displacementMap: '/textures/ground/textures/rocky_terrain_02_disp_2k.png',
-        // spec_2k can be used as roughness Map (though it's technically specular)
-        roughnessMap: '/textures/ground/textures/rocky_terrain_02_spec_2k.png',
     });
 
-    // Configure tiling for the massive 32000x32000 plane
-    Object.values(textures).forEach((t) => {
-        t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.repeat.set(500, 500); // Tile every ~64 units
-    });
+    if (textures.map) {
+        textures.map.wrapS = textures.map.wrapT = THREE.RepeatWrapping;
+        textures.map.repeat.set(500, 500);
+    }
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000, 128, 128]} />
+            <planeGeometry args={[32000, 32000]} />
             <meshStandardMaterial 
-                {...textures}
-                displacementScale={5} // Subtle relief
-                color="#2d3a30" // Tint for a greener dark landscape
-                roughness={0.9}
+                map={textures.map}
+                color="#2d4a35"
+                roughness={1}
             />
         </mesh>
     );
