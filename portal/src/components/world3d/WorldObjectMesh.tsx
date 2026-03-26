@@ -16,26 +16,39 @@ interface WorldObj {
 }
 
 const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
-    mineral_deposit: { color: '#cfd8dc', label: '⛏️' },
-    creature:        { color: '#81c784', label: '🐾' },
-    herb:            { color: '#a5d6a7', label: '🌿' },
-    cave_entrance:   { color: '#37474f', label: '🕳️' },
+    mineral_deposit: { color: '#b0bec5', label: '⛏️' },
+    creature:        { color: '#66bb6a', label: '🐾' },
+    herb:            { color: '#81c784', label: '🌿' },
+    cave_entrance:   { color: '#455a64', label: '🕳️' },
+    // Tipos directos que podrían venir del servidor
+    tree:            { color: '#2d6a4f', label: '🌲' },
+    mineral:         { color: '#b0bec5', label: '⛏️' },
+    iron:            { color: '#78909c', label: '⛏️' },
+    gold:            { color: '#ffd54f', label: '⛏️' },
+    copper:          { color: '#b87333', label: '⛏️' },
 };
 
 const SUBTYPE_COLORS: Record<string, string> = {
-    iron_ore:       '#78909c',
-    copper_ore:     '#ffab91',
-    silver_ore:     '#cfd8dc',
-    gold_ore:       '#ffd54f',
-    luminos_gem:    '#ce93d8',
-    void_crystal:   '#7e57c2',
-    greedystone:    '#00e5ff',
-    luminos_beast:  '#fff176',
-    duskfox:        '#7c4dff',
-    ashcrawler:     '#ff7043',
-    grubmole:       '#8d6e63',
-    sandscuttler:   '#d4e157',
-    frosthorn:      '#e1f5fe',
+    // Minerales reales del backend
+    iron_ore:      '#78909c',
+    copper_ore:    '#b87333',
+    silver_ore:    '#cfd8dc',
+    gold_ore:      '#ffd54f',
+    luminos_gem:   '#ce93d8',
+    void_crystal:  '#7c4dff',
+    greedystone:   '#00e5ff',
+    // Fauna
+    luminos_beast: '#ffeb3b',
+    grubmole:      '#8d6e63',
+    duskfox:       '#ff7043',
+    sandscuttler:  '#ffcc80',
+    frosthorn:     '#b3e5fc',
+    ashcrawler:    '#ef5350',
+    // Legacy (por si acaso)
+    iron_vein:     '#78909c',
+    gold_vein:     '#ffd54f',
+    silver_vein:   '#cfd8dc',
+    crystal_node:  '#ce93d8',
 };
 
 export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () => void }) {
@@ -92,10 +105,12 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
 
     const cfg = TYPE_CONFIG[obj.type] || TYPE_CONFIG.mineral_deposit;
     const mainColor = (obj.subtype ? SUBTYPE_COLORS[obj.subtype] : undefined) || cfg.color;
-    const isCreature = obj.type === 'creature';
-    const isMineral  = obj.type === 'mineral_deposit';
-    const isHerb     = obj.type === 'herb';
-    const isCave     = obj.type === 'cave_entrance';
+    
+    // Categorías inclusivas para evitar cubos fallback
+    const isMineral  = cfg.label === '⛏️';
+    const isCreature = cfg.label === '🐾';
+    const isHerb     = cfg.label === '🌿' || obj.type === 'tree'; // 'tree' usa el modelo de herb/flora por ahora
+    const isCave     = cfg.label === '🕳️';
 
     return (
         <group ref={groupRef} position={[obj.x, 0, obj.y]}
