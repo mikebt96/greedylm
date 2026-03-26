@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber';
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js';
 import { 
     OrbitControls, 
     Stats, 
