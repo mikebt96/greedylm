@@ -255,8 +255,15 @@ function Scene({
             <fog attach="fog" args={['#0a0e1a', 80, 800]} />
             <Stars radius={300} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
             
-            {/* Ground with Tiled PBR Textures */}
-            <Ground />
+            {/* Ground with Tiled PBR Textures (Suspended to prevent world block) */}
+            <React.Suspense fallback={
+                <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.05, 0]}>
+                    <planeGeometry args={[32000, 32000]} />
+                    <meshStandardMaterial color="#0f2419" roughness={0.9} />
+                </mesh>
+            }>
+                <Ground />
+            </React.Suspense>
 
             {/* Grid for orientation */}
             <gridHelper args={[2000, 200, '#1e3a5f', '#0d1b2a']} position={[0, 0.01, 0]} />
@@ -282,7 +289,7 @@ function Scene({
             <BiomeEffects currentBiome="nexus" />
 
             {/* Procedural landscape: mountains, trees, rocks, grass, mushrooms */}
-            <ProceduralLandscape />
+            <ProceduralLandscape myPosRef={myPosRef} />
 
             {/* Agentes */}
             {agents.map(agent => (
