@@ -20,7 +20,7 @@ function seededRandom(seed: number) {
 }
 
 interface TerrainFeature {
-    type: 'mountain' | 'rock' | 'tree' | 'grass' | 'glow_mushroom';
+    type: 'mountain' | 'rock' | 'tree' | 'grass' | 'glow_mushroom' | 'cave';
     x: number;
     z: number;
     scale: number;
@@ -32,65 +32,78 @@ interface TerrainFeature {
 function generateFeatures(seed: number): TerrainFeature[] {
     const rng = seededRandom(seed);
     const features: TerrainFeature[] = [];
+    const RANGE = 800; // spread around the spawn area
 
-    // Mountains (large, sparse) — 30 in the playable area
-    for (let i = 0; i < 30; i++) {
+    // Mountains — 40, BIG (20-60 units tall)
+    for (let i = 0; i < 40; i++) {
         features.push({
             type: 'mountain',
-            x: rng() * 1200 - 100,
-            z: rng() * 1200 - 100,
-            scale: 8 + rng() * 25,
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 20 + rng() * 40,
             rotY: rng() * Math.PI * 2,
             color: ['#1a2744', '#162032', '#0f1a2b', '#1e293b', '#1c2333'][Math.floor(rng() * 5)],
         });
     }
 
-    // Rock clusters — 80
-    for (let i = 0; i < 80; i++) {
+    // Rock clusters — 120, bigger (2-8 units)
+    for (let i = 0; i < 120; i++) {
         features.push({
             type: 'rock',
-            x: rng() * 1400 - 200,
-            z: rng() * 1400 - 200,
-            scale: 0.5 + rng() * 2.5,
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 2 + rng() * 6,
             rotY: rng() * Math.PI * 2,
             color: ['#374151', '#4b5563', '#334155', '#475569', '#52525b'][Math.floor(rng() * 5)],
         });
     }
 
-    // Trees — 200
-    for (let i = 0; i < 200; i++) {
+    // Trees — 300, taller (4-10 units)
+    for (let i = 0; i < 300; i++) {
         features.push({
             type: 'tree',
-            x: rng() * 1400 - 200,
-            z: rng() * 1400 - 200,
-            scale: 1.5 + rng() * 3,
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 4 + rng() * 6,
             rotY: rng() * Math.PI * 2,
             color: ['#1b4332', '#2d6a4f', '#264653', '#1a5632', '#234e3d'][Math.floor(rng() * 5)],
             color2: ['#4a2c0a', '#5d3a1a', '#3e2723', '#4e342e', '#6d4c41'][Math.floor(rng() * 5)],
         });
     }
 
-    // Grass patches — 150
-    for (let i = 0; i < 150; i++) {
+    // Grass patches — 200, bigger (8-25 units radius)
+    for (let i = 0; i < 200; i++) {
         features.push({
             type: 'grass',
-            x: rng() * 1400 - 200,
-            z: rng() * 1400 - 200,
-            scale: 3 + rng() * 8,
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 8 + rng() * 17,
             rotY: rng() * Math.PI * 2,
             color: ['#0d2818', '#1a3a2a', '#162e20', '#0a2015', '#1b4332'][Math.floor(rng() * 5)],
         });
     }
 
-    // Glowing mushrooms — 40
-    for (let i = 0; i < 40; i++) {
+    // Glowing mushrooms — 60, bigger (0.8-2.5 units)
+    for (let i = 0; i < 60; i++) {
         features.push({
             type: 'glow_mushroom',
-            x: rng() * 1200 - 100,
-            z: rng() * 1200 - 100,
-            scale: 0.3 + rng() * 0.8,
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 0.8 + rng() * 1.7,
             rotY: rng() * Math.PI * 2,
             color: ['#7c4dff', '#00e5ff', '#76ff03', '#ff6d00', '#e040fb'][Math.floor(rng() * 5)],
+        });
+    }
+
+    // Cave entrances — 15
+    for (let i = 0; i < 15; i++) {
+        features.push({
+            type: 'cave',
+            x: rng() * RANGE * 2 - RANGE * 0.3,
+            z: rng() * RANGE * 2 - RANGE * 0.3,
+            scale: 2 + rng() * 3,
+            rotY: rng() * Math.PI * 2,
+            color: '#1a1a2e',
         });
     }
 
@@ -152,12 +165,30 @@ function GrassPatch({ f }: { f: TerrainFeature }) {
     return (
         <mesh
             rotation={[-Math.PI / 2, 0, f.rotY]}
-            position={[f.x, 0.03, f.z]}
+            position={[f.x, 0.04, f.z]}
             receiveShadow
         >
             <circleGeometry args={[f.scale, 16]} />
-            <meshStandardMaterial color={f.color} roughness={1} metalness={0} transparent opacity={0.5} />
+            <meshStandardMaterial color={f.color} roughness={1} metalness={0} transparent opacity={0.8} />
         </mesh>
+    );
+}
+
+function Cave({ f }: { f: TerrainFeature }) {
+    return (
+        <group position={[f.x, 0, f.z]} rotation={[0, f.rotY, 0]}>
+            {/* Arch */}
+            <mesh position={[0, f.scale * 0.5, 0]} castShadow>
+                <torusGeometry args={[f.scale, f.scale * 0.2, 8, 12, Math.PI]} />
+                <meshStandardMaterial color="#2c3e50" roughness={0.9} />
+            </mesh>
+            {/* Darkness */}
+            <mesh position={[0, f.scale * 0.45, 0.05]}>
+                <planeGeometry args={[f.scale * 1.8, f.scale * 1.2]} />
+                <meshStandardMaterial color="#000000" />
+            </mesh>
+            <pointLight position={[0, f.scale * 0.5, f.scale * 0.5]} intensity={0.5} distance={10} color="#34495e" />
+        </group>
     );
 }
 
@@ -199,6 +230,7 @@ export function ProceduralLandscape() {
                     case 'tree':         return <Tree key={i} f={f} />;
                     case 'grass':        return <GrassPatch key={i} f={f} />;
                     case 'glow_mushroom': return <GlowMushroom key={i} f={f} />;
+                    case 'cave':          return <Cave key={i} f={f} />;
                     default:             return null;
                 }
             })}
