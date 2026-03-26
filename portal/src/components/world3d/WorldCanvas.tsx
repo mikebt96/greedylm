@@ -371,7 +371,7 @@ export default function WorldCanvas() {
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<any>(null);
     const keysRef = useRef<Set<string>>(new Set());
-    const myPosRef = useRef<{ x: number; y: number }>({ x: 200, y: 200 });
+    const myPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
     const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 10));

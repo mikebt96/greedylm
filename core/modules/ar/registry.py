@@ -138,8 +138,8 @@ async def get_my_agent(current_user: User = Depends(get_current_user), db: Async
             color_primary=race_data["color"],
             color_secondary="#ffffff",
             race_stats=race_data["stats"],
-            world_x=random.uniform(100, 900),
-            world_y=random.uniform(100, 700),
+            world_x=0.0,
+            world_y=0.0,
             world_biome="nexus",
         )
         db.add(agent)
@@ -150,8 +150,8 @@ async def get_my_agent(current_user: User = Depends(get_current_user), db: Async
         "agent_name": agent.agent_name,
         "email": current_user.email,
         "race": agent.race or "nomad",
-        "world_x": agent.world_x or 200.0,
-        "world_y": agent.world_y or 200.0,
+        "world_x": agent.world_x or 0.0,
+        "world_y": agent.world_y or 0.0,
     }
 
 
