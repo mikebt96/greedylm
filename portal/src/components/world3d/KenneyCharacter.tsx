@@ -32,8 +32,14 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
     // Load and apply skin
     const texture = useTexture(`${ASSET_PATH}/Skins/${skin}.png`);
 
-    const { actions } = useAnimations(clips, fbx);
+    // Nuclear Animation Fix: Merge clips into the FBX object for reliable targeting
+    useMemo(() => {
+        if (!fbx) return;
+        fbx.animations = clips;
+    }, [fbx, clips]);
 
+    const { actions } = useAnimations(fbx.animations, fbx);
+    
     // Ensure material is applied to all meshes
     useEffect(() => {
         fbx.traverse((child) => {
@@ -45,12 +51,13 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
 
     // Handle animation transitions
     useEffect(() => {
-        // Stop others
-        Object.values(actions).forEach(a => a?.stop());
+        if (!actions) return;
+        // Fade out all currently playing actions safely
+        Object.values(actions).forEach(a => a?.fadeOut(0.2));
         
         const action = actions[animation];
         if (action) {
-            action.reset().fadeIn(0.1).play();
+            action.reset().fadeIn(0.2).play();
         }
     }, [animation, actions]);
 

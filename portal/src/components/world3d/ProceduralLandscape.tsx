@@ -218,7 +218,7 @@ function InstancedRocks({ features }: { features: TerrainFeature[] }) {
     }, [features, temp]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 1000]}>
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 300]}>
             <dodecahedronGeometry args={[1, 0]} />
             <meshLambertMaterial color="#4b5563" />
         </instancedMesh>
@@ -232,6 +232,7 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
+            if (i >= 500) return; // Cap at 500 for perf
             const y = getTerrainHeight(f.x, f.z);
             // Grass bottom at y + epsilon
             temp.position.set(f.x, y + f.scale * 0.45, f.z);
@@ -241,11 +242,11 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
             meshRef.current!.setMatrixAt(i, temp.matrix);
         });
         meshRef.current.instanceMatrix.needsUpdate = true;
-        meshRef.current.count = features.length;
+        meshRef.current.count = Math.min(features.length, 500);
     }, [features, temp]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 2000]}>
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 500]}>
             <planeGeometry args={[0.4, 0.4]} />
             <meshBasicMaterial
                 color="#2d6a4f"

@@ -249,16 +249,10 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
             {/* Lighting (Night Palette - High Visibility) */}
-            <ambientLight intensity={0.5} />
-            <hemisphereLight args={['#b0c4de', '#1b263b', 0.6]} />
-            <fogExp2 attach="fog" args={['#070b14', 0.0018]} />
-            <directionalLight 
-                position={[500, 300, 500]} 
-                intensity={1.5} 
-                color="#e0e7ff"
-            />
-            <Environment preset="night" />
-            
+            {/* Simplified Lighting for 140+ FPS performance */}
+            <ambientLight intensity={0.7} />
+            <fogExp2 attach="fog" args={['#070b14', 0.002]} />
+            <directionalLight position={[10, 20, 10]} intensity={1.2} color="#e0e7ff" />
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
