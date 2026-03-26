@@ -515,7 +515,7 @@ export default function WorldCanvas() {
 
     return (
         <div className="w-full h-screen bg-black relative">
-            <Canvas shadows gl={{ antialias: true }}>
+            <Canvas shadows={{ type: THREE.PCFShadowMap }} gl={{ antialias: true }}>
                 <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
                 <CameraFollower myPosRef={myPosRef} isSpectator={isSpectator} />
                 <PlayerController
