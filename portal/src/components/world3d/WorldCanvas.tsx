@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber';
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader';
 import { 
     OrbitControls, 
     Stats, 
@@ -320,22 +321,33 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 }
 
 function Ground() {
-    const textures = useTexture({
-        map: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
-    });
+    // 1. Load standard JPG diffuse map
+    const diffuse = useTexture('/textures/ground/textures/rocky_terrain_02_diff_2k.jpg');
+    
+    // 2. Load EXR PBR maps (using specialized loader)
+    const [normal, roughness] = useLoader(EXRLoader, [
+        '/textures/ground/textures/rocky_terrain_02_nor_gl_2k.exr',
+        '/textures/ground/textures/rocky_terrain_02_rough_2k.exr'
+    ]);
 
-    if (textures.map) {
-        textures.map.wrapS = textures.map.wrapT = THREE.RepeatWrapping;
-        textures.map.repeat.set(500, 500);
-    }
+    // Apply tiling to all
+    [diffuse, normal, roughness].forEach(t => {
+        if (t) {
+            t.wrapS = t.wrapT = THREE.RepeatWrapping;
+            t.repeat.set(500, 500);
+        }
+    });
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
             <planeGeometry args={[32000, 32000]} />
             <meshStandardMaterial 
-                map={textures.map}
+                map={diffuse}
+                normalMap={normal}
+                roughnessMap={roughness}
                 color="#2d4a35"
-                roughness={0.8}
+                normalScale={new THREE.Vector2(0.8, 0.8)}
+                roughness={1}
             />
         </mesh>
     );

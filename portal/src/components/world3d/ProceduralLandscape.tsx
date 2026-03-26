@@ -158,9 +158,15 @@ function GlowMushroom({ f }: { f: TerrainFeature }) {
             </mesh>
             <mesh position={[0, f.scale * 0.65, 0]}>
                 <sphereGeometry args={[f.scale * 0.3, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2]} />
-                <meshStandardMaterial color={f.color} emissive={f.color} emissiveIntensity={1.5} transparent opacity={0.8} />
+                <meshStandardMaterial 
+                    color={f.color} 
+                    emissive={f.color} 
+                    emissiveIntensity={4} 
+                    transparent 
+                    opacity={0.8} 
+                    toneMapped={false}
+                />
             </mesh>
-            <pointLight position={[0, f.scale * 0.5, 0]} intensity={0.5} distance={5} color={f.color} />
         </group>
     );
 }
