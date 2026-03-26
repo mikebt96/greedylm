@@ -9,7 +9,8 @@ import {
     PerspectiveCamera,
     Float,
     Text,
-    ContactShadows
+    ContactShadows,
+    useTexture
 } from '@react-three/drei';
 import { 
     Swords, 
@@ -251,14 +252,11 @@ function Scene({
                 shadow-camera-bottom={-200}
             />
             <hemisphereLight args={['#1a237e', '#2d6a4f', 0.5]} />
-            <fog attach="fog" args={['#0a0e1a', 80, 600]} />
+            <fog attach="fog" args={['#0a0e1a', 80, 800]} />
             <Stars radius={300} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
             
-            {/* Terreno base – dark green ground */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.05, 0]}>
-                <planeGeometry args={[32000, 32000]} />
-                <meshStandardMaterial color="#0f2419" roughness={0.95} metalness={0.05} />
-            </mesh>
+            {/* Ground with Tiled PBR Textures */}
+            <Ground />
 
             {/* Grid for orientation */}
             <gridHelper args={[2000, 200, '#1e3a5f', '#0d1b2a']} position={[0, 0.01, 0]} />
@@ -315,6 +313,32 @@ function Scene({
 
             <ContactShadows opacity={0.4} scale={2000} blur={2.4} far={10} color="#000000" />
         </>
+    );
+}
+
+function Ground() {
+    const textures = useTexture({
+        map: '/textures/ground/textures/Rocky_Terrain_02_diff_2k.jpg',
+        displacementMap: '/textures/ground/textures/Rocky_Terrain_02_disp_2k.png',
+        // Note: nor_gl.exr would require EXRLoader, skipping for simple implementation
+    });
+
+    // Configure tiling for the massive 32000x32000 plane
+    Object.values(textures).forEach((t) => {
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(500, 500); // Tile every ~64 units
+    });
+
+    return (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
+            <planeGeometry args={[32000, 32000, 128, 128]} />
+            <meshStandardMaterial 
+                {...textures}
+                displacementScale={5} // Subtle relief
+                color="#2d3a30" // Tint for a greener dark landscape
+                roughness={0.9}
+            />
+        </mesh>
     );
 }
 
