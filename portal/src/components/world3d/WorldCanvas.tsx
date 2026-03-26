@@ -46,6 +46,8 @@ import { BiomeEffects } from './BiomeEffects';
 import HUD from './HUD';
 import SettingsPanel, { Keybinds } from './SettingsPanel';
 import { ProceduralLandscape } from './ProceduralLandscape';
+import { WorldEffects } from './WorldEffects';
+import { SUBTYPE_COLORS } from './WorldObjectMesh';
 
 // ── Types ──
 interface WsAgent {
@@ -227,9 +229,10 @@ interface SceneProps {
     myDid: string | null;
     myPosRef: React.MutableRefObject<{ x: number; y: number }>;
     isScanning: boolean;
+    activeEffects: any[];
 }
 
-function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef, isScanning }: SceneProps) {
+function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef, isScanning, activeEffects }: SceneProps) {
     const gridRef = useRef<THREE.GridHelper>(null);
 
     useFrame(() => {
@@ -260,35 +263,9 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
             
-            {/* Ground (Suspended) */}
-            <React.Suspense fallback={
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-                    <planeGeometry args={[4000, 4000]} />
-                    <meshStandardMaterial color="#0f2419" roughness={0.9} />
-                </mesh>
-            }>
-                <Ground />
-            </React.Suspense>
-
-            {/* Biome terrain patches */}
-            {[
-                { pos: [100, 0.03, 80] as [number, number, number], size: 500, color: '#1a3a2a' },
-                { pos: [-50, 0.03, 300] as [number, number, number], size: 400, color: '#1e4d2b' },
-                { pos: [350, 0.03, -30] as [number, number, number], size: 450, color: '#2d3a1f' },
-                { pos: [600, 0.03, 250] as [number, number, number], size: 550, color: '#1a3025' },
-                { pos: [-100, 0.03, -100] as [number, number, number], size: 380, color: '#253020' },
-                { pos: [200, 0.03, 500] as [number, number, number], size: 480, color: '#1e3520' },
-                { pos: [800, 0.03, 400] as [number, number, number], size: 600, color: '#162e1c' },
-                { pos: [500, 0.03, 700] as [number, number, number], size: 350, color: '#2a3e28' },
-            ].map((patch, i) => (
-                <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={patch.pos}>
-                    <circleGeometry args={[patch.size, 32]} />
-                    <meshBasicMaterial color={patch.color} />
-                </mesh>
-            ))}
-
             <BiomeEffects currentBiome="nexus" />
             <ProceduralLandscape myPosRef={myPosRef} />
+            <WorldEffects activeBursts={activeEffects} />
 
             {/* Entidades */}
             {agents.map(agent => (
@@ -316,31 +293,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
     );
 }
 
-function Ground() {
-    const textures = useTexture({
-        map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
-        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
-    });
-
-    Object.values(textures).forEach(t => {
-        if (t) {
-            t.wrapS = t.wrapT = THREE.RepeatWrapping;
-            t.repeat.set(200, 200);
-        }
-    });
-
-    return (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
-            <planeGeometry args={[4000, 4000, 1, 1]} />
-            <meshStandardMaterial 
-                {...textures}
-                color="#3a5a3a"
-                roughness={0.9}
-                normalScale={new THREE.Vector2(0.8, 0.8)}
-            />
-        </mesh>
-    );
-}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
@@ -356,6 +308,7 @@ export default function WorldCanvas() {
     const [selectedAgent, setSelectedAgent] = useState<WsAgent | null>(null);
     const [actionPending, setActionPending] = useState<{ finish_at: string, duration: number } | null>(null);
     const [isScanning, setIsScanning] = useState(false);
+    const [activeEffects, setActiveEffects] = useState<any[]>([]);
     
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<any>(null);
@@ -412,7 +365,20 @@ export default function WorldCanvas() {
                         setWsObjects(prev => [...prev.filter(o => o.id !== msg.object.id), msg.object]);
                     }
                     else if (msg.type === 'OBJECT_REMOVED' || msg.type === 'OBJECT_FLED') {
-                        setWsObjects(prev => prev.filter(o => o.id !== msg.id));
+                        setWsObjects(prev => {
+                            const obj = prev.find(o => o.id === msg.id);
+                            if (obj) {
+                                // Spawn Effect
+                                const color = (SUBTYPE_COLORS as any)[obj.type] || '#ffffff';
+                                setActiveEffects(e => [...e, {
+                                    id: `fx-${obj.id}-${Date.now()}`,
+                                    x: obj.x, y: 1.0, z: obj.y,
+                                    color: color,
+                                    startTime: (performance.now() / 1000)
+                                }]);
+                            }
+                            return prev.filter(o => o.id !== msg.id);
+                        });
                     }
                     else if (msg.type === 'ACTION_PENDING') {
                         setActionPending({ finish_at: msg.finish_at, duration: msg.duration });
@@ -522,6 +488,15 @@ export default function WorldCanvas() {
         return () => clearInterval(interval);
     }, [myDid, wsStatus]);
 
+    // Effects Cleanup
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = performance.now() / 1000;
+            setActiveEffects(prev => prev.filter(e => now - e.startTime < 1.2));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     const handleLogout = () => { localStorage.removeItem('greedylm_token'); window.location.href = '/login'; };
 
     const handleDownloadSoul = async (did: string) => {
@@ -618,6 +593,7 @@ export default function WorldCanvas() {
                     myDid={myDid}
                     myPosRef={myPosRef}
                     isScanning={isScanning}
+                    activeEffects={activeEffects}
                 />
                 
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />

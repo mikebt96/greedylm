@@ -3,6 +3,8 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+// Import animated character
+import KenneyCharacter from './KenneyCharacter';
 
 interface AgentData {
     did: string;
@@ -28,12 +30,17 @@ const RACE_COLORS: Record<string, string> = {
     warrior: '#EF5350', oracle: '#26C6DA', druid: '#9CCC65', builder: '#795548',
 };
 
+// Import topography engine
+import { getTerrainHeight } from './ProceduralLandscape';
+
 export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentData; isMe: boolean; isScanning: boolean; onClick: () => void }) {
     const groupRef = useRef<THREE.Group>(null);
     const orbRef = useRef<THREE.Mesh>(null);
     const [hovered, setHovered] = React.useState(false);
 
     const timeRef = useRef(0);
+    const [anim, setAnim] = React.useState<'idle' | 'run' | 'jump'>('idle');
+    const lastPos = useRef({ x: agent.x, z: agent.y });
 
     useFrame((state, delta) => {
         if (!groupRef.current) return;
@@ -42,44 +49,60 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         
         const targetX = agent.x || 0;
         const targetZ = agent.y || 0;
+        const terrainH = getTerrainHeight(targetX, targetZ);
         
         groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
         groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.08);
         const jumpY = agent.jumpY || 0;
-        groupRef.current.position.y = jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
-        
-        if (orbRef.current) {
-            orbRef.current.position.x = Math.sin(t * 1.1) * 0.18;
-            orbRef.current.position.z = Math.cos(t * 1.1) * 0.18;
+        groupRef.current.position.y = terrainH + jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
+
+        // Animation State Logic
+        const dx = targetX - lastPos.current.x;
+        const dz = targetZ - lastPos.current.z;
+        const speed = Math.sqrt(dx * dx + dz * dz) / delta;
+        lastPos.current = { x: targetX, z: targetZ };
+
+        if (jumpY > 0.1) {
+            if (anim !== 'jump') setAnim('jump');
+        } else if (speed > 0.5) {
+            if (anim !== 'run') setAnim('run');
+        } else {
+            if (anim !== 'idle') setAnim('idle');
+        }
+
+        // Face movement direction
+        if (speed > 0.5) {
+            const angle = Math.atan2(dx, dz);
+            groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, angle, 0.1);
         }
     });
 
     const accent = RACE_COLORS[agent.race] || agent.color_primary || '#78909C';
 
-    // Pre-lighten the accent color slightly for BasicMaterial (no lighting)
-    const bodyColor = accent;
+    const skinMap: Record<string, string> = {
+        zombie: 'zombieMaleA',
+        beast: 'zombieMaleA',
+        specter: 'zombieFemaleA',
+        elf: 'humanFemaleA',
+        mage: 'humanFemaleA',
+        oracle: 'humanFemaleA',
+    };
+    const skin = skinMap[agent.race] || 'humanMaleA';
 
     return (
         <group ref={groupRef} position={[agent.x, 0, agent.y]} 
             onClick={(e) => { e.stopPropagation(); onClick(); }}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
-            {/* Body — meshBasicMaterial: zero uniforms, no lighting needed */}
-            <mesh position={[0, 0.55, 0]}>
-                <cylinderGeometry args={[0.28, 0.38, 1.1, 6]} />
-                <meshBasicMaterial color={bodyColor} />
-            </mesh>
-            {/* Head */}
-            <mesh position={[0, 1.35, 0]}>
-                <icosahedronGeometry args={[0.33, 0]} />
-                <meshBasicMaterial color={bodyColor} />
-            </mesh>
-            {/* Emotional Orb — emissive color via meshBasicMaterial, no pointLight */}
-            <mesh ref={orbRef} position={[0, 1.95, 0]}>
-                <sphereGeometry args={[0.10, 8, 8]} />
-                <meshBasicMaterial color="#ffffff" />
-            </mesh>
-            {/* ❌ pointLight eliminado — era la causa del uniform overflow */}
+            
+            <React.Suspense fallback={
+                <mesh position={[0, 0.5, 0]}>
+                    <cylinderGeometry args={[0.2, 0.2, 1, 6]} />
+                    <meshBasicMaterial color={accent} />
+                </mesh>
+            }>
+                <KenneyCharacter animation={anim} skin={skin} />
+            </React.Suspense>
 
             {/* "Me" ring */}
             {isMe && (

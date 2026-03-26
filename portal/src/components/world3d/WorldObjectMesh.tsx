@@ -3,6 +3,8 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+// Import topography engine
+import { getTerrainHeight } from './ProceduralLandscape';
 
 interface WorldObj {
     id: string;
@@ -28,7 +30,7 @@ const TYPE_CONFIG: Record<string, { color: string; label: string }> = {
     copper:          { color: '#b87333', label: '⛏️' },
 };
 
-const SUBTYPE_COLORS: Record<string, string> = {
+export const SUBTYPE_COLORS: Record<string, string> = {
     // Minerales reales del backend
     iron_ore:      '#78909c',
     copper_ore:    '#b87333',
@@ -75,6 +77,7 @@ export function WorldObjectMesh({ obj, isScanning, onClick }: { obj: WorldObj; i
 
         const objX = obj.x || 0;
         const objY = obj.y || 0;
+        const terrainH = getTerrainHeight(objX, objY);
 
         // Performance LOD: Check distance every ~0.2s using local time
         if (t % 0.2 < 0.02) {
@@ -92,13 +95,20 @@ export function WorldObjectMesh({ obj, isScanning, onClick }: { obj: WorldObj; i
             }
             w.ox += (w.targetX - w.ox) * 0.01;
             w.oz += (w.targetZ - w.oz) * 0.01;
-            groupRef.current.position.x = objX + w.ox;
-            groupRef.current.position.z = objY + w.oz;
+            
+            const curX = objX + w.ox;
+            const curZ = objY + w.oz;
+            const curH = getTerrainHeight(curX, curZ);
+
+            groupRef.current.position.x = curX;
+            groupRef.current.position.z = curZ;
+            groupRef.current.position.y = curH;
+
             meshRef.current.position.y = 0.6 + Math.abs(Math.sin(t * 3 + seed * 10)) * 0.15;
             const dx = w.targetX - w.ox, dz = w.targetZ - w.oz;
             if (Math.abs(dx) + Math.abs(dz) > 0.1) meshRef.current.rotation.y = Math.atan2(dx, dz);
         } else {
-            groupRef.current.position.set(objX, 0, objY);
+            groupRef.current.position.set(objX, terrainH, objY);
             meshRef.current.position.y = 0.5 + Math.sin(t * 0.6 + seed * 20) * 0.1;
             meshRef.current.rotation.y = t * 0.2;
         }

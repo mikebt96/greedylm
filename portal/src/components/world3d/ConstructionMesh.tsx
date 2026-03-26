@@ -1,6 +1,8 @@
 'use client';
 import React from 'react';
 import { Html } from '@react-three/drei';
+// Import topography engine
+import { getTerrainHeight } from './ProceduralLandscape';
 
 interface ConstructionData {
     id: string;
@@ -19,9 +21,10 @@ export function ConstructionMesh({ construction, isScanning }: { construction: C
     const [hovered, setHovered] = React.useState(false);
     const color = TYPE_COLORS[construction.type] || '#607d8b';
     const p = construction.position;
+    const y = getTerrainHeight(p.x, p.y);
 
     return (
-        <group position={[p.x, 0, p.y]}
+        <group position={[p.x, y, p.y]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
             <mesh position={[0, 0.5, 0]} castShadow>

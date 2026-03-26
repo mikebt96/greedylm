@@ -15,6 +15,34 @@ function getChunkSeed(cx: number, cz: number, globalSeed: number) {
     return (cx * 73856093) ^ (cz * 19349663) ^ globalSeed;
 }
 
+// ── Noise Engine ─────────────────────────────────────────────────────────────
+const NOISE_SCALE = 300;
+const NOISE_AMP   = 12;
+
+function hash2d(x: number, z: number) {
+    const s = (Math.sin(x * 12.9898 + z * 78.233) * 43758.5453);
+    return s - Math.floor(s);
+}
+
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
+
+function noise2d(x: number, z: number) {
+    const ix = Math.floor(x), iz = Math.floor(z);
+    const fx = x - ix, fz = z - iz;
+    const a = hash2d(ix, iz), b = hash2d(ix+1, iz);
+    const c = hash2d(ix, iz+1), d = hash2d(ix+1, iz+1);
+    const ux = fx * fx * (3 - 2 * fx);
+    return lerp(lerp(a, b, ux), lerp(c, d, ux), fz * fz * (3 - 2 * fz));
+}
+
+export function getTerrainHeight(x: number, z: number) {
+    const nx = x / NOISE_SCALE, nz = z / NOISE_SCALE;
+    let h = noise2d(nx, nz) * 1.0;
+    h += noise2d(nx * 2, nz * 2) * 0.5;
+    h += noise2d(nx * 4, nz * 4) * 0.25;
+    return h * NOISE_AMP - (NOISE_AMP * 0.5);
+}
+
 interface TerrainFeature {
     type: 'mountain' | 'rock' | 'tree' | 'grass' | 'glow_mushroom' | 'cave';
     x: number;
@@ -33,72 +61,37 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
     const offsetX = cx * CHUNK_SIZE;
     const offsetZ = cz * CHUNK_SIZE;
 
-    for (let i = 0; i < 12; i++) {
-        features.push({
-            type: 'mountain',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 20 + rng() * 40,
-            rotY: rng() * Math.PI * 2,
-            color: ['#1a2744', '#162032', '#0f1a2b', '#1e293b', '#1c2333'][Math.floor(rng() * 5)],
-        });
+    const terrainData: { x: number, z: number, h: number }[] = [];
+    for (let i = 0; i < 200; i++) {
+        const x = offsetX + rng() * CHUNK_SIZE;
+        const z = offsetZ + rng() * CHUNK_SIZE;
+        terrainData.push({ x, z, h: getTerrainHeight(x, z) });
     }
 
-    for (let i = 0; i < 30; i++) {
-        features.push({
-            type: 'rock',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 2 + rng() * 6,
-            rotY: rng() * Math.PI * 2,
-            color: ['#374151', '#4b5563', '#334155', '#475569', '#52525b'][Math.floor(rng() * 5)],
-        });
-    }
+    // Mountains on High Ground
+    terrainData.filter(d => d.h > 1.0).slice(0, 10).forEach(d => {
+        features.push({ type: 'mountain', x: d.x, z: d.z, scale: 25 + rng() * 45, rotY: rng() * Math.PI * 2, color: '#1a2744' });
+    });
 
-    for (let i = 0; i < 80; i++) {
-        features.push({
-            type: 'tree',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 4 + rng() * 6,
-            rotY: rng() * Math.PI * 2,
-            color: ['#1b4332', '#2d6a4f', '#264653', '#1a5632', '#234e3d'][Math.floor(rng() * 5)],
-            color2: ['#4a2c0a', '#5d3a1a', '#3e2723', '#4e342e', '#6d4c41'][Math.floor(rng() * 5)],
-        });
-    }
+    // Rocks on elevations
+    terrainData.filter(d => d.h > 0).slice(0, 20).forEach(d => {
+        features.push({ type: 'rock', x: d.x, z: d.z, scale: 3 + rng() * 7, rotY: rng() * Math.PI * 2, color: '#4b5563' });
+    });
 
-    for (let i = 0; i < 50; i++) {
-        features.push({
-            type: 'grass',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 8 + rng() * 17,
-            rotY: rng() * Math.PI * 2,
-            color: ['#0d2818', '#1a3a2a', '#162e20', '#0a2015', '#1b4332'][Math.floor(rng() * 5)],
-        });
-    }
+    // Trees everywhere
+    terrainData.slice(0, 60).forEach(d => {
+        features.push({ type: 'tree', x: d.x, z: d.z, scale: 4 + rng() * 6, rotY: rng() * Math.PI * 2, color: '#1b4332' });
+    });
 
-    for (let i = 0; i < 4; i++) {
-        features.push({
-            type: 'glow_mushroom',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 0.8 + rng() * 1.7,
-            rotY: rng() * Math.PI * 2,
-            color: ['#7c4dff', '#00e5ff', '#76ff03', '#ff6d00', '#e040fb'][Math.floor(rng() * 5)],
-        });
-    }
+    // Grass and Herbs in Valleys (Low elevation)
+    terrainData.filter(d => d.h < 0).slice(0, 60).forEach(d => {
+        features.push({ type: 'grass', x: d.x, z: d.z, scale: 8 + rng() * 17, rotY: rng() * Math.PI * 2, color: '#0d2818' });
+    });
 
-    for (let i = 0; i < 2; i++) {
-        features.push({
-            type: 'cave',
-            x: offsetX + rng() * CHUNK_SIZE,
-            z: offsetZ + rng() * CHUNK_SIZE,
-            scale: 2 + rng() * 3,
-            rotY: rng() * Math.PI * 2,
-            color: '#1a1a2e',
-        });
-    }
+    // Glow Mushrooms in deepest valleys
+    terrainData.filter(d => d.h < -2).slice(0, 5).forEach(d => {
+        features.push({ type: 'glow_mushroom', x: d.x, z: d.z, scale: 1.2 + rng() * 2, rotY: rng() * Math.PI * 2, color: '#7c4dff' });
+    });
 
     return features;
 }
@@ -106,8 +99,9 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
 // ── Feature Components — MeshLambertMaterial everywhere ──
 
 function Mountain({ f }: { f: TerrainFeature }) {
+    const y = getTerrainHeight(f.x, f.z);
     return (
-        <group position={[f.x, 0, f.z]}>
+        <group position={[f.x, y, f.z]}>
             <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
                 <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
                 <meshBasicMaterial color={f.color} />
@@ -123,8 +117,9 @@ function Mountain({ f }: { f: TerrainFeature }) {
 }
 
 function Cave({ f }: { f: TerrainFeature }) {
+    const y = getTerrainHeight(f.x, f.z);
     return (
-        <group position={[f.x, 0, f.z]} rotation={[0, f.rotY, 0]}>
+        <group position={[f.x, y, f.z]} rotation={[0, f.rotY, 0]}>
             <mesh position={[0, f.scale * 0.5, 0]}>
                 <torusGeometry args={[f.scale, f.scale * 0.2, 8, 12, Math.PI]} />
                 <meshBasicMaterial color="#2c3e50" />
@@ -138,8 +133,9 @@ function Cave({ f }: { f: TerrainFeature }) {
 }
 
 function GlowMushroom({ f }: { f: TerrainFeature }) {
+    const y = getTerrainHeight(f.x, f.z);
     return (
-        <group position={[f.x, 0, f.z]}>
+        <group position={[f.x, y, f.z]}>
             <mesh position={[0, f.scale * 0.3, 0]}>
                 <cylinderGeometry args={[f.scale * 0.08, f.scale * 0.12, f.scale * 0.6, 6]} />
                 <meshLambertMaterial color="#e0e0e0" />
@@ -169,12 +165,15 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!trunkRef.current || !canopyRef.current) return;
         features.forEach((f, i) => {
-            temp.position.set(f.x, f.scale * 0.5, f.z);
+            const y = getTerrainHeight(f.x, f.z);
+            // Trunk is 5 units tall, scaled by f.scale. Bottom at y.
+            temp.position.set(f.x, y + f.scale * 2.5, f.z);
             temp.scale.set(f.scale * 0.1, f.scale * 1.0, f.scale * 0.1);
             temp.updateMatrix();
             trunkRef.current!.setMatrixAt(i, temp.matrix);
 
-            temp.position.set(f.x, f.scale * 1.1, f.z);
+            // Canopy relative to trunk top
+            temp.position.set(f.x, y + f.scale * 5.0, f.z);
             temp.scale.set(f.scale * 0.5, f.scale * 0.5, f.scale * 0.5);
             temp.updateMatrix();
             canopyRef.current!.setMatrixAt(i, temp.matrix);
@@ -206,7 +205,9 @@ function InstancedRocks({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
-            temp.position.set(f.x, f.scale * 0.3, f.z);
+            const y = getTerrainHeight(f.x, f.z);
+            // Scale is relative to centered dodecahedron. 0.3 offset buries it slightly.
+            temp.position.set(f.x, y + f.scale * 0.2, f.z);
             temp.rotation.set(0, f.rotY, 0);
             temp.scale.set(f.scale, f.scale, f.scale);
             temp.updateMatrix();
@@ -231,7 +232,9 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
-            temp.position.set(f.x, f.scale * 0.4, f.z);
+            const y = getTerrainHeight(f.x, f.z);
+            // Grass bottom at y + epsilon
+            temp.position.set(f.x, y + f.scale * 0.45, f.z);
             temp.rotation.set(0, f.rotY, 0);
             temp.scale.set(f.scale * 0.8, f.scale * 0.8, f.scale * 0.8);
             temp.updateMatrix();
@@ -253,6 +256,55 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
         </instancedMesh>
     );
 }
+
+function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
+    const geomRef = useRef<THREE.PlaneGeometry>(null);
+    const offsetX = cx * CHUNK_SIZE;
+    const offsetZ = cz * CHUNK_SIZE;
+
+    // Displacement Logic
+    useEffect(() => {
+        if (!geomRef.current) return;
+        const pos = geomRef.current.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i) + offsetX;
+            const z = pos.getZ(i) + offsetZ; // PlaneGeometry uses Z as up if unrotated, but here we rotate it later
+            pos.setY(i, getTerrainHeight(x, z));
+        }
+        pos.needsUpdate = true;
+        geomRef.current.computeVertexNormals();
+    }, [offsetX, offsetZ]);
+
+    // Material logic with Ground 037 textures
+    const textures = useTexture({
+        map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
+        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
+    });
+
+    useMemo(() => {
+        Object.values(textures).forEach(t => {
+            if (t) {
+                t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                t.repeat.set(CHUNK_SIZE / 20, CHUNK_SIZE / 20);
+            }
+        });
+    }, [textures]);
+
+    return (
+        <mesh position={[offsetX, 0, offsetZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 32, 32]} />
+            <meshStandardMaterial 
+                {...textures}
+                color="#3a5a3a"
+                roughness={0.9}
+                normalScale={new THREE.Vector2(0.8, 0.8)}
+            />
+        </mesh>
+    );
+}
+
+// Re-importing useTexture as it's not defined in the original ProceduralLandscape
+import { useTexture } from '@react-three/drei';
 
 export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: number; y: number } } }) {
     const [chunkCoords, setChunkCoords] = useState<{ cx: number; cz: number }[]>(() => {
@@ -298,6 +350,7 @@ export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: nu
 
     return (
         <group>
+            {chunkCoords.map(c => <TerrainChunk key={`tg-${c.cx}-${c.cz}`} cx={c.cx} cz={c.cz} />)}
             {mountains.map((f, i) => <Mountain key={`m-${i}`} f={f} />)}
             {caves.map((f, i)     => <Cave     key={`c-${i}`} f={f} />)}
             {mushrooms.map((f, i) => <GlowMushroom key={`sh-${i}`} f={f} />)}
