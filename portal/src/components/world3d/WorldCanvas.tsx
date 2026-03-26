@@ -241,28 +241,28 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 
     return (
         <>
-            {/* Environment & Sky */}
+            {/* Environment & Sky (Night) */}
             <Environment 
-                files="/textures/sky/spruit_sunrise_2k.exr" 
+                files="/textures/sky/qwantani_night_puresky_2k.exr" 
                 background 
                 blur={0} 
             />
-            <Stars radius={400} depth={60} count={2000} factor={4} saturation={0} fade speed={0.1} />
+            <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
-            {/* Lighting (Warm Sunrise) */}
-            <ambientLight intensity={0.2} />
-            <hemisphereLight args={['#ffcc80', '#2d4a35', 0.4]} />
-            <fog attach="fog" args={['#ff9e22', 100, 2500]} />
+            {/* Lighting (Night Palette) */}
+            <ambientLight intensity={0.15} />
+            <hemisphereLight args={['#b0c4de', '#1b263b', 0.3]} />
+            <fog attach="fog" args={['#070b14', 100, 2500]} />
             <directionalLight 
                 position={[500, 300, 500]} 
-                intensity={1.0} 
-                color="#fff4e6"
+                intensity={0.6} 
+                color="#e0e7ff"
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
             />
             
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
-                <lineBasicMaterial attach="material" transparent opacity={0.3} vertexColors />
+                <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
             
             {/* Ground (Suspended) */}
@@ -321,17 +321,21 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 }
 
 function Ground() {
-    // 1. Load standard JPG diffuse map
-    const diffuse = useTexture('/textures/ground/textures/rocky_terrain_02_diff_2k.jpg');
+    // 1. Load standard JPG/PNG maps
+    const { diffuse, disp, spec } = useTexture({
+        diffuse: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
+        disp: '/textures/ground/textures/rocky_terrain_02_disp_2k.png',
+        spec: '/textures/ground/textures/rocky_terrain_02_spec_2k.png',
+    });
     
-    // 2. Load EXR PBR maps (using specialized loader)
+    // 2. Load EXR PBR maps
     const [normal, roughness] = useLoader(EXRLoader, [
         '/textures/ground/textures/rocky_terrain_02_nor_gl_2k.exr',
         '/textures/ground/textures/rocky_terrain_02_rough_2k.exr'
     ]);
 
     // Apply tiling to all
-    [diffuse, normal, roughness].forEach(t => {
+    [diffuse, disp, spec, normal, roughness].forEach(t => {
         if (t) {
             t.wrapS = t.wrapT = THREE.RepeatWrapping;
             t.repeat.set(500, 500);
@@ -340,13 +344,17 @@ function Ground() {
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000]} />
+            <planeGeometry args={[32000, 32000, 256, 256]} />
             <meshStandardMaterial 
                 map={diffuse}
                 normalMap={normal}
                 roughnessMap={roughness}
-                color="#2d4a35"
-                normalScale={new THREE.Vector2(0.8, 0.8)}
+                displacementMap={disp}
+                displacementScale={0.4}
+                displacementBias={-0.2}
+                metalnessMap={spec}
+                color="#2d3a3f"
+                normalScale={new THREE.Vector2(1.2, 1.2)}
                 roughness={1}
             />
         </mesh>
