@@ -110,12 +110,12 @@ function Mountain({ f }: { f: TerrainFeature }) {
         <group position={[f.x, 0, f.z]}>
             <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
                 <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
-                <meshLambertMaterial color={f.color} />
+                <meshBasicMaterial color={f.color} />
             </mesh>
             {f.scale > 15 && (
                 <mesh position={[0, f.scale * 0.85, 0]}>
                     <coneGeometry args={[f.scale * 0.25, f.scale * 0.3, 6]} />
-                    <meshLambertMaterial color="#94a3b8" />
+                    <meshBasicMaterial color="#94a3b8" />
                 </mesh>
             )}
         </group>
@@ -127,7 +127,7 @@ function Cave({ f }: { f: TerrainFeature }) {
         <group position={[f.x, 0, f.z]} rotation={[0, f.rotY, 0]}>
             <mesh position={[0, f.scale * 0.5, 0]}>
                 <torusGeometry args={[f.scale, f.scale * 0.2, 8, 12, Math.PI]} />
-                <meshLambertMaterial color="#2c3e50" />
+                <meshBasicMaterial color="#2c3e50" />
             </mesh>
             <mesh position={[0, f.scale * 0.45, 0.05]}>
                 <planeGeometry args={[f.scale * 1.8, f.scale * 1.2]} />
@@ -189,11 +189,11 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
         <group>
             <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]}>
                 <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
-                <meshLambertMaterial color="#4a2c0a" />
+                <meshBasicMaterial color="#4a2c0a" />
             </instancedMesh>
             <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]}>
                 <icosahedronGeometry args={[2, 1]} />
-                <meshLambertMaterial color="#1b4332" />
+                <meshBasicMaterial color="#1b4332" />
             </instancedMesh>
         </group>
     );

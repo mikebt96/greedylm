@@ -35,13 +35,10 @@ export function AgentMesh({ agent, isMe, onClick }: { agent: AgentData; isMe: bo
     useFrame(({ clock }) => {
         if (!groupRef.current) return;
         const t = clock.getElapsedTime();
-        // Smooth position interpolation
         groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, agent.x, 0.08);
         groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, agent.y, 0.08);
-        // Bobbing + Jump
         const jumpY = agent.jumpY || 0;
         groupRef.current.position.y = jumpY + Math.sin(t * 1.4 + agent.x) * 0.04;
-        // Orb orbit
         if (orbRef.current) {
             orbRef.current.position.x = Math.sin(t * 1.1) * 0.18;
             orbRef.current.position.z = Math.cos(t * 1.1) * 0.18;
@@ -50,24 +47,28 @@ export function AgentMesh({ agent, isMe, onClick }: { agent: AgentData; isMe: bo
 
     const accent = RACE_COLORS[agent.race] || agent.color_primary || '#78909C';
 
+    // Pre-lighten the accent color slightly for BasicMaterial (no lighting)
+    const bodyColor = accent;
+
     return (
         <group ref={groupRef} position={[agent.x, 0, agent.y]} onClick={(e) => { e.stopPropagation(); onClick(); }}>
-            {/* Body */}
-            <mesh position={[0, 0.55, 0]} castShadow>
+            {/* Body — meshBasicMaterial: zero uniforms, no lighting needed */}
+            <mesh position={[0, 0.55, 0]}>
                 <cylinderGeometry args={[0.28, 0.38, 1.1, 6]} />
-                <meshPhongMaterial color={accent} flatShading shininess={20} />
+                <meshBasicMaterial color={bodyColor} />
             </mesh>
             {/* Head */}
-            <mesh position={[0, 1.35, 0]} castShadow>
+            <mesh position={[0, 1.35, 0]}>
                 <icosahedronGeometry args={[0.33, 0]} />
-                <meshPhongMaterial color={accent} flatShading shininess={20} />
+                <meshBasicMaterial color={bodyColor} />
             </mesh>
-            {/* Emotional Orb */}
+            {/* Emotional Orb — emissive color via meshBasicMaterial, no pointLight */}
             <mesh ref={orbRef} position={[0, 1.95, 0]}>
                 <sphereGeometry args={[0.10, 8, 8]} />
-                <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={1.2} roughness={0.1} />
+                <meshBasicMaterial color="#ffffff" />
             </mesh>
-            <pointLight position={[0, 1.95, 0]} intensity={0.6} distance={2.5} color={accent} />
+            {/* ❌ pointLight eliminado — era la causa del uniform overflow */}
+
             {/* "Me" ring */}
             {isMe && (
                 <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -78,9 +79,11 @@ export function AgentMesh({ agent, isMe, onClick }: { agent: AgentData; isMe: bo
             {/* Nameplate */}
             <Html position={[0, 2.3, 0]} center distanceFactor={20}>
                 <div style={{
-                    background: 'rgba(2,6,23,0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(2,6,23,0.8)',
+                    border: `1px solid ${isMe ? '#00e5ff44' : 'rgba(255,255,255,0.1)'}`,
                     borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap',
-                    fontSize: 10, fontWeight: 700, color: isMe ? '#00e5ff' : '#e2e8f0',
+                    fontSize: 10, fontWeight: 700,
+                    color: isMe ? '#00e5ff' : '#e2e8f0',
                     backdropFilter: 'blur(4px)',
                 }}>
                     {agent.agent_name} <span style={{ color: '#64748b', fontSize: 8 }}>Lv{agent.level}</span>
