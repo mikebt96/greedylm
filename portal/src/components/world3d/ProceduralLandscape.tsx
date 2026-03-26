@@ -269,8 +269,8 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
         const pos = geomRef.current.attributes.position;
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i) + offsetX;
-            const z = pos.getZ(i) + offsetZ;
-            pos.setY(i, getTerrainHeight(x, z));
+            const z = pos.getY(i) + offsetZ; // Local Y is world Z before rotation
+            pos.setZ(i, getTerrainHeight(x, z)); // Local Z is world Y before rotation
         }
         pos.needsUpdate = true;
         geomRef.current.computeVertexNormals();
@@ -281,7 +281,6 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
             <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 32, 32]} />
             <meshLambertMaterial 
                 color="#1a3a12"
-                wireframe={false}
             />
         </mesh>
     );
