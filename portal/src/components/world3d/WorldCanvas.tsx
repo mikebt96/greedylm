@@ -248,7 +248,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             {/* Lighting (Night Palette - High Visibility) */}
             <ambientLight intensity={0.5} />
             <hemisphereLight args={['#b0c4de', '#1b263b', 0.6]} />
-            <fog attach="fog" args={['#070b14', 100, 4000]} />
+            <fogExp2 attach="fog" args={['#070b14', 0.0018]} />
             <directionalLight 
                 position={[500, 300, 500]} 
                 intensity={1.5} 
