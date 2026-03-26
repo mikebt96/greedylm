@@ -324,7 +324,7 @@ function Ground() {
     // 1. Load Ground 037 JPG/PNG maps
     const textures = useTexture({
         map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
-        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalGL.jpg',
+        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
         roughnessMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Roughness.jpg',
         aoMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_AmbientOcclusion.jpg',
         displacementMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Displacement.jpg',

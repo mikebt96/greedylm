@@ -247,7 +247,7 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
     const foliage = useTexture({
         map: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_Color.png',
         alphaMap: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_Opacity.png',
-        normalMap: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_NormalGL.png',
+        normalMap: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_NormalDX.png',
     });
 
     useEffect(() => {
