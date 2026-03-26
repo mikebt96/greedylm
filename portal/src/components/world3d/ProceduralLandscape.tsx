@@ -269,43 +269,24 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
         const pos = geomRef.current.attributes.position;
         for (let i = 0; i < pos.count; i++) {
             const x = pos.getX(i) + offsetX;
-            const z = pos.getZ(i) + offsetZ; // PlaneGeometry uses Z as up if unrotated, but here we rotate it later
+            const z = pos.getZ(i) + offsetZ;
             pos.setY(i, getTerrainHeight(x, z));
         }
         pos.needsUpdate = true;
         geomRef.current.computeVertexNormals();
     }, [offsetX, offsetZ]);
 
-    // Material logic with Ground 037 textures
-    const textures = useTexture({
-        map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
-        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
-    });
-
-    useMemo(() => {
-        Object.values(textures).forEach(t => {
-            if (t) {
-                t.wrapS = t.wrapT = THREE.RepeatWrapping;
-                t.repeat.set(CHUNK_SIZE / 20, CHUNK_SIZE / 20);
-            }
-        });
-    }, [textures]);
-
     return (
         <mesh position={[offsetX, 0, offsetZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
             <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 32, 32]} />
-            <meshStandardMaterial 
-                {...textures}
-                color="#3a5a3a"
-                roughness={0.9}
-                normalScale={new THREE.Vector2(0.8, 0.8)}
+            <meshLambertMaterial 
+                color="#1a3a12"
+                wireframe={false}
             />
         </mesh>
     );
 }
 
-// Re-importing useTexture as it's not defined in the original ProceduralLandscape
-import { useTexture } from '@react-three/drei';
 
 export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: number; y: number } } }) {
     const [chunkCoords, setChunkCoords] = useState<{ cx: number; cz: number }[]>(() => {
