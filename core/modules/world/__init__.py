@@ -221,12 +221,12 @@ async def world_websocket(websocket: WebSocket):
                 agents_res = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
                 all_agents = agents_res.scalars().all()
                 agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": a.world_x, "y": a.world_y, "race": a.race, "color_primary": a.color_primary, "health": a.health, "stamina": a.stamina, "level": a.level, "age": a.age} for a in all_agents]
-                
+
                 # 2. Objects (Minerals, Flora, Fauna)
                 obj_res = await db.execute(select(WorldObject).where(WorldObject.health > 0))
                 all_objs = obj_res.scalars().all()
                 obj_list = [{"id": str(o.id), "type": o.object_type, "subtype": o.object_subtype, "x": o.world_x, "y": o.world_y, "health": o.health} for o in all_objs]
-                
+
                 # 3. Constructions
                 from core.models import Construction
                 const_res = await db.execute(select(Construction))

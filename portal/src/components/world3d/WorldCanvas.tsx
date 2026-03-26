@@ -236,20 +236,45 @@ function Scene({
 
     return (
         <>
-            <ambientLight intensity={0.4} />
+            {/* Lighting */}
+            <ambientLight intensity={0.6} />
             <directionalLight 
-                position={[100, 100, 50]} 
-                intensity={1.2} 
+                position={[200, 150, 100]} 
+                intensity={1.4} 
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
+                shadow-camera-far={500}
+                shadow-camera-left={-200}
+                shadow-camera-right={200}
+                shadow-camera-top={200}
+                shadow-camera-bottom={-200}
             />
+            <hemisphereLight args={['#1a237e', '#1b5e20', 0.3]} />
+            <fog attach="fog" args={['#0a0e1a', 80, 600]} />
             <Stars radius={300} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
             
-            {/* Terreno base */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[8000, 0, 6500]}>
+            {/* Terreno base – dark ground with slight blue tint */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.05, 0]}>
                 <planeGeometry args={[32000, 32000]} />
-                <meshStandardMaterial color="#020617" roughness={1} metalness={0} />
+                <meshStandardMaterial color="#0a1628" roughness={0.95} metalness={0.05} />
             </mesh>
+
+            {/* Grid for orientation */}
+            <gridHelper args={[2000, 200, '#1e3a5f', '#0d1b2a']} position={[0, 0.01, 0]} />
+
+            {/* Subtle terrain patches for visual variation */}
+            {[
+                { pos: [100, 0.02, 80] as [number, number, number], size: 300, color: '#0d2818' },
+                { pos: [-50, 0.02, 200] as [number, number, number], size: 250, color: '#1a1a2e' },
+                { pos: [250, 0.02, -30] as [number, number, number], size: 200, color: '#1b2838' },
+                { pos: [400, 0.02, 150] as [number, number, number], size: 350, color: '#0f2027' },
+                { pos: [-100, 0.02, -100] as [number, number, number], size: 280, color: '#1a0a2e' },
+            ].map((patch, i) => (
+                <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={patch.pos} receiveShadow>
+                    <circleGeometry args={[patch.size, 32]} />
+                    <meshStandardMaterial color={patch.color} roughness={1} metalness={0} transparent opacity={0.6} />
+                </mesh>
+            ))}
 
             {/* Efectos de Bioma (Nieve, Arena, etc) */}
             <BiomeEffects currentBiome="nexus" />
@@ -294,7 +319,6 @@ export default function WorldCanvas() {
     const [wsAgents, setWsAgents] = useState<WsAgent[]>([]);
     const [wsObjects, setWsObjects] = useState<WorldObject[]>([]);
     const [wsConstructions, setWsConstructions] = useState<Construction[]>([]);
-    const [wsEvent, setWsEvent] = useState<any>(null);
     const [myDid, setMyDid] = useState<string | null>(null);
     const [myEmail, setMyEmail] = useState<string | null>(null);
     const [logs, setLogs] = useState<string[]>([]);
