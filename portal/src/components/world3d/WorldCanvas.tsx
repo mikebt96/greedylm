@@ -253,8 +253,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 position={[500, 300, 500]} 
                 intensity={1.2} 
                 color="#e0e7ff"
-                castShadow 
-                shadow-mapSize={[512, 512]}
             />
             
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
@@ -282,9 +280,9 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 { pos: [800, 0.03, 400] as [number, number, number], size: 600, color: '#162e1c' },
                 { pos: [500, 0.03, 700] as [number, number, number], size: 350, color: '#2a3e28' },
             ].map((patch, i) => (
-                <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={patch.pos} receiveShadow>
+                <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={patch.pos}>
                     <circleGeometry args={[patch.size, 32]} />
-                    <meshStandardMaterial color={patch.color} roughness={1} metalness={0} />
+                    <meshBasicMaterial color={patch.color} />
                 </mesh>
             ))}
 
@@ -576,7 +574,6 @@ export default function WorldCanvas() {
     return (
         <div className="w-full h-screen bg-black relative">
             <Canvas 
-                shadows={{ type: THREE.PCFSoftShadowMap }} 
                 gl={{ 
                     antialias: true, 
                     toneMapping: THREE.ACESFilmicToneMapping,
