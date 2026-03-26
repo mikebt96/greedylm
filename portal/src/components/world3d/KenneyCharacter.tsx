@@ -21,12 +21,18 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
     const runFBX = useFBX(`${ASSET_PATH}/Animations/run.fbx`);
     const jumpFBX = useFBX(`${ASSET_PATH}/Animations/jump.fbx`);
     
-    // Extract and re-target clips
+    // Extract and re-target clips with fallback
     const clips = useMemo(() => {
-        const cIdle = idleFBX.animations[0].clone(); cIdle.name = 'idle';
-        const cRun = runFBX.animations[0].clone(); cRun.name = 'run';
-        const cJump = jumpFBX.animations[0].clone(); cJump.name = 'jump';
-        return [cIdle, cRun, cJump];
+        const getClip = (fbxObj: any, name: string) => {
+            if (!fbxObj || !fbxObj.animations || fbxObj.animations.length === 0) return null;
+            const clip = fbxObj.animations[0].clone();
+            clip.name = name;
+            return clip;
+        };
+        const cIdle = getClip(idleFBX, 'idle');
+        const cRun = getClip(runFBX, 'run') || cIdle; // Use idle as fallback to prevent T-pose
+        const cJump = getClip(jumpFBX, 'jump') || cIdle;
+        return [cIdle, cRun, cJump].filter(c => !!c) as THREE.AnimationClip[];
     }, [idleFBX, runFBX, jumpFBX]);
 
     // Load and apply skin
