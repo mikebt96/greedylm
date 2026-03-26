@@ -54,7 +54,7 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
 
     useFrame((state, delta) => {
         if (!groupRef.current || !meshRef.current) return;
-        const t = state.elapsedTime;
+        const t = state.clock.elapsedTime;
         
         // Performance: Only check distance every ~10 frames
         const camDist = state.camera.position.distanceTo(groupRef.current.position);

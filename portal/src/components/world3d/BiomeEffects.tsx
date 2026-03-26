@@ -31,7 +31,7 @@ export function BiomeEffects({ currentBiome }: { currentBiome: string }) {
         if (!pointsRef.current) return;
         const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
-        const t = state.elapsedTime;
+        const t = state.clock.elapsedTime;
         for (let i = 0; i < cfg.count; i++) {
             arr[i * 3 + 1] -= cfg.speed * 0.016 * 60; // fall
             if (arr[i * 3 + 1] < 0) arr[i * 3 + 1] = 50;
