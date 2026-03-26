@@ -10,7 +10,8 @@ import {
     Float,
     Text,
     ContactShadows,
-    useTexture
+    useTexture,
+    Environment
 } from '@react-three/drei';
 import { 
     Swords, 
@@ -240,17 +241,24 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 
     return (
         <>
-            {/* Lighting */}
-            <ambientLight intensity={0.6} />
-            <hemisphereLight args={['#ffffff', '#446644', 0.8]} />
-            <fog attach="fog" args={['#0a0e1a', 100, 1500]} />
+            {/* Environment & Sky */}
+            <Environment 
+                files="/textures/sky/qwantani_night_puresky_2k.exr" 
+                background 
+                blur={0} 
+            />
+            <Stars radius={400} depth={60} count={10000} factor={4} saturation={0} fade speed={0.5} />
+            
+            {/* Lighting (Adjusted for HDRI) */}
+            <ambientLight intensity={0.4} />
+            <hemisphereLight args={['#2c3e50', '#000000', 0.5]} />
+            <fog attach="fog" args={['#02040a', 100, 1800]} />
             <directionalLight 
                 position={[500, 500, 500]} 
-                intensity={1.2} 
+                intensity={0.8} 
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
             />
-            <Stars radius={400} depth={60} count={20000} factor={7} saturation={0} fade speed={1} />
             
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#0d1b2a']} />
             

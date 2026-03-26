@@ -12,9 +12,6 @@ celery
 alembic
 pgvector
 sentence-transformers
-httpx
-passlib[bcrypt]
-bcrypt==3.2.0
-nest-asyncio
-PyGithub
-slowapi
+argon2-cffi
+cryptography
+qdrant-client

@@ -1,8 +1,8 @@
 import secrets
 import string
-from passlib.context import CryptContext
+from argon2 import PasswordHasher
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ph = PasswordHasher()
 
 def generate_secure_key(length=32):
     """Generate a cryptographically secure random string."""
@@ -19,7 +19,7 @@ def generate_jwt_secret():
 def generate_master_key():
     """Generates a master key and its bcrypt hash."""
     plain_key = generate_secure_key(32)
-    key_hash = pwd_context.hash(plain_key)
+    key_hash = ph.hash(plain_key)
     return plain_key, key_hash
 
 if __name__ == "__main__":
