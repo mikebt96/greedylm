@@ -322,25 +322,20 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 function Ground() {
     const textures = useTexture({
         map: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
-        normalMap: '/textures/ground/textures/rocky_terrain_02_nor_gl_2k.png',
-        roughnessMap: '/textures/ground/textures/rocky_terrain_02_rough_2k.png',
     });
 
     if (textures.map) {
-        Object.values(textures).forEach((t) => {
-            t.wrapS = t.wrapT = THREE.RepeatWrapping;
-            t.repeat.set(500, 500);
-        });
+        textures.map.wrapS = textures.map.wrapT = THREE.RepeatWrapping;
+        textures.map.repeat.set(500, 500);
     }
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
             <planeGeometry args={[32000, 32000]} />
             <meshStandardMaterial 
-                {...textures}
+                map={textures.map}
                 color="#2d4a35"
-                normalScale={new THREE.Vector2(0.8, 0.8)}
-                roughness={1}
+                roughness={0.8}
             />
         </mesh>
     );
