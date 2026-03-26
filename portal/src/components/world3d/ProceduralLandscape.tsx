@@ -246,11 +246,11 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
 
     return (
         <instancedMesh ref={meshRef} args={[undefined, undefined, 2000]}>
-            <planeGeometry args={[1, 1]} />
+            <planeGeometry args={[0.4, 0.4]} />
             <meshBasicMaterial
-                color="#1a3a2a"
+                color="#2d6a4f"
                 transparent
-                opacity={0.85}
+                opacity={0.7}
                 side={THREE.DoubleSide}
             />
         </instancedMesh>

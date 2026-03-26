@@ -21,7 +21,7 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
     const runFBX = useFBX(`${ASSET_PATH}/Animations/run.fbx`);
     const jumpFBX = useFBX(`${ASSET_PATH}/Animations/jump.fbx`);
     
-    // Extract clips and rename them for useAnimations
+    // Extract and re-target clips
     const clips = useMemo(() => {
         const cIdle = idleFBX.animations[0].clone(); cIdle.name = 'idle';
         const cRun = runFBX.animations[0].clone(); cRun.name = 'run';
@@ -29,34 +29,34 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
         return [cIdle, cRun, cJump];
     }, [idleFBX, runFBX, jumpFBX]);
 
-    const { actions } = useAnimations(clips, fbx);
-    
     // Load and apply skin
     const texture = useTexture(`${ASSET_PATH}/Skins/${skin}.png`);
-    
+
+    const { actions } = useAnimations(clips, fbx);
+
+    // Ensure material is applied to all meshes
     useEffect(() => {
         fbx.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                mesh.material = new THREE.MeshBasicMaterial({ map: texture });
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
+                (child as THREE.Mesh).material = new THREE.MeshBasicMaterial({ map: texture });
             }
         });
     }, [fbx, texture]);
 
     // Handle animation transitions
     useEffect(() => {
+        // Stop others
+        Object.values(actions).forEach(a => a?.stop());
+        
         const action = actions[animation];
         if (action) {
-            action.reset().fadeIn(0.2).play();
-            return () => { action.fadeOut(0.2); };
+            action.reset().fadeIn(0.1).play();
         }
     }, [animation, actions]);
 
     return (
         <group ref={group} dispose={null} scale={0.01}>
-            <primitive object={fbx} rotation-y={Math.PI} />
+            <primitive object={fbx} />
         </group>
     );
 }

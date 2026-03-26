@@ -72,9 +72,9 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         }
 
         // Face movement direction
-        if (speed > 0.5) {
+        if (speed > 0.1) {
             const angle = Math.atan2(dx, dz);
-            groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, angle, 0.1);
+            groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, angle, 0.15);
         }
     });
 
