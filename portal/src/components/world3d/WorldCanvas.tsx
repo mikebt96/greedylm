@@ -226,9 +226,10 @@ interface SceneProps {
     onAgentInteract: (did: string) => void;
     myDid: string | null;
     myPosRef: React.MutableRefObject<{ x: number; y: number }>;
+    isScanning: boolean;
 }
 
-function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef }: SceneProps) {
+function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef, isScanning }: SceneProps) {
     const gridRef = useRef<THREE.GridHelper>(null);
 
     useFrame(() => {
@@ -295,6 +296,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                     key={agent.did} 
                     agent={agent} 
                     isMe={agent.did === myDid}
+                    isScanning={isScanning}
                     onClick={() => onAgentInteract(agent.did)}
                 />
             ))}
@@ -302,11 +304,12 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 <WorldObjectMesh 
                     key={obj.id} 
                     obj={obj} 
+                    isScanning={isScanning}
                     onClick={() => onObjectInteract(obj.id, obj.type)} 
                 />
             ))}
             {constructions.map(c => (
-                <ConstructionMesh key={c.id} construction={c} />
+                <ConstructionMesh key={c.id} construction={c} isScanning={isScanning} />
             ))}
 
         </>
@@ -352,6 +355,7 @@ export default function WorldCanvas() {
     const [logs, setLogs] = useState<string[]>([]);
     const [selectedAgent, setSelectedAgent] = useState<WsAgent | null>(null);
     const [actionPending, setActionPending] = useState<{ finish_at: string, duration: number } | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
     
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimer = useRef<any>(null);
@@ -463,12 +467,14 @@ export default function WorldCanvas() {
         const onKeyDown = (e: KeyboardEvent) => {
             const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
             keysRef.current.add(key === 'Shift' ? 'shift' : key === ' ' ? ' ' : key.toLowerCase());
+            if (e.key === 'Alt') setIsScanning(true);
             // Prevent page scroll on space/arrows
             if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
         };
         const onKeyUp = (e: KeyboardEvent) => {
             const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
             keysRef.current.delete(key === 'Shift' ? 'shift' : key === ' ' ? ' ' : key.toLowerCase());
+            if (e.key === 'Alt') setIsScanning(false);
         };
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
@@ -611,6 +617,7 @@ export default function WorldCanvas() {
                     onAgentInteract={handleAgentClick}
                     myDid={myDid}
                     myPosRef={myPosRef}
+                    isScanning={isScanning}
                 />
                 
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />

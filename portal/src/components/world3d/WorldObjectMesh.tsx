@@ -51,9 +51,10 @@ const SUBTYPE_COLORS: Record<string, string> = {
     crystal_node:  '#ce93d8',
 };
 
-export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () => void }) {
+export function WorldObjectMesh({ obj, isScanning, onClick }: { obj: WorldObj; isScanning: boolean; onClick: () => void }) {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef  = useRef<THREE.Mesh>(null);
+    const [hovered, setHovered] = React.useState(false);
 
     const seed = useMemo(() => {
         let h = 0;
@@ -112,9 +113,14 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
     const isHerb     = cfg.label === '🌿' || obj.type === 'tree'; // 'tree' usa el modelo de herb/flora por ahora
     const isCave     = cfg.label === '🕳️';
 
+    // UI/UX Reveal Logic: Show if (Close AND (Scanning OR Hovered))
+    const showLabel = distVisible && (isScanning || hovered);
+
     return (
         <group ref={groupRef} position={[obj.x, 0, obj.y]}
-            onClick={(e) => { e.stopPropagation(); onClick(); }}>
+            onClick={(e) => { e.stopPropagation(); onClick(); }}
+            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
+            onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
 
             {/* MINERAL — crystal pillars */}
             {isMineral && (
@@ -198,7 +204,7 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
                 </mesh>
             )}
 
-            {distVisible && (
+            {showLabel && (
                 <Html position={[0, 2.5, 0]} center distanceFactor={24}>
                     <div style={{
                         background: 'rgba(2,6,23,0.85)',
