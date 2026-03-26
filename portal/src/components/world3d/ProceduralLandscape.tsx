@@ -237,7 +237,7 @@ function GlowMushroom({ f }: { f: TerrainFeature }) {
 
 // ── Main Controller ──
 
-export function ProceduralLandscape({ myPosRef }: { myPosRef: React.MutableRefObject<{ x: number; y: number }> }) {
+export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: number; y: number } } }) {
     // Initialize with 3x3 grid around origin for immediate spawn rendering
     const [chunks, setChunks] = useState<{cx: number, cz: number}[]>(() => {
         const initial = [];
