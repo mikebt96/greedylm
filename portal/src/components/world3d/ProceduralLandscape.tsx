@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { useTexture } from '@react-three/drei';
 
 /**
  * ProceduralLandscape — generates decorative 3D terrain features in chunks.
@@ -242,12 +243,19 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const temp = new THREE.Object3D();
 
+    // 1. Load Foliage textures
+    const foliage = useTexture({
+        map: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_Color.png',
+        alphaMap: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_Opacity.png',
+        normalMap: '/textures/ground/Foliage004_1K-PNG/Foliage004_1K-PNG_NormalGL.png',
+    });
+
     useEffect(() => {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
-            temp.position.set(f.x, 0.05, f.z);
-            temp.rotation.set(-Math.PI / 2, 0, f.rotY);
-            temp.scale.set(f.scale, f.scale, 1);
+            temp.position.set(f.x, f.scale * 0.4, f.z);
+            temp.rotation.set(0, f.rotY, 0);
+            temp.scale.set(f.scale * 0.8, f.scale * 0.8, f.scale * 0.8);
             temp.updateMatrix();
             meshRef.current!.setMatrixAt(i, temp.matrix);
         });
@@ -256,9 +264,14 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
     }, [features]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 2000]} receiveShadow>
-            <circleGeometry args={[1, 16]} />
-            <meshStandardMaterial color="#1a3a2a" transparent opacity={0.6} />
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 2000]} castShadow>
+            <planeGeometry args={[1, 1]} />
+            <meshStandardMaterial 
+                {...foliage}
+                transparent={true}
+                alphaTest={0.5}
+                side={THREE.DoubleSide}
+            />
         </instancedMesh>
     );
 }

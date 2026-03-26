@@ -150,8 +150,8 @@ async def get_my_agent(current_user: User = Depends(get_current_user), db: Async
         "agent_name": agent.agent_name,
         "email": current_user.email,
         "race": agent.race or "nomad",
-        "world_x": agent.world_x or 0.0,
-        "world_y": agent.world_y or 0.0,
+        "world_x": 0.0,
+        "world_y": 0.0,
     }
 
 

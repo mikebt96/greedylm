@@ -220,7 +220,7 @@ async def world_websocket(websocket: WebSocket):
                 # 1. Agents
                 agents_res = await db.execute(select(Agent).where(Agent.status == "ACTIVE"))
                 all_agents = agents_res.scalars().all()
-                agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": a.world_x, "y": a.world_y, "race": a.race, "color_primary": a.color_primary, "health": a.health, "stamina": a.stamina, "level": a.level, "age": a.age} for a in all_agents]
+                agent_list = [{"did": a.did, "agent_name": a.agent_name, "x": 0.0, "y": 0.0, "race": a.race, "color_primary": a.color_primary, "health": a.health, "stamina": a.stamina, "level": a.level, "age": a.age} for a in all_agents]
 
                 # 2. Objects (Minerals, Flora, Fauna)
                 obj_res = await db.execute(select(WorldObject).where(WorldObject.health > 0))

@@ -321,34 +321,33 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 }
 
 function Ground() {
-    // 1. Load standard JPG diffuse map
-    const diffuse = useTexture('/textures/ground/textures/rocky_terrain_02_diff_2k.jpg');
-    
-    // 2. Load EXR PBR maps
-    const [normal, roughness] = useLoader(EXRLoader, [
-        '/textures/ground/textures/rocky_terrain_02_nor_gl_2k.exr',
-        '/textures/ground/textures/rocky_terrain_02_rough_2k.exr'
-    ]);
+    // 1. Load Ground 037 JPG/PNG maps
+    const textures = useTexture({
+        map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
+        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalGL.jpg',
+        roughnessMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Roughness.jpg',
+        aoMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_AmbientOcclusion.jpg',
+        displacementMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Displacement.jpg',
+    });
 
-    // Apply tiling to all
-    [diffuse, normal, roughness].forEach(t => {
+    // Apply tiling
+    Object.values(textures).forEach(t => {
         if (t) {
             t.wrapS = t.wrapT = THREE.RepeatWrapping;
-            t.repeat.set(500, 500);
+            t.repeat.set(200, 200);
         }
     });
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000]} />
+            <planeGeometry args={[32000, 32000, 128, 128]} />
             <meshStandardMaterial 
-                map={diffuse}
-                normalMap={normal}
-                roughnessMap={roughness}
-                color="#2d3a3f"
-                normalScale={new THREE.Vector2(1.5, 1.5)}
-                roughness={0.9}
-                metalness={0.1}
+                {...textures}
+                color="#b0b0b0"
+                displacementScale={0.3}
+                displacementBias={-0.15}
+                normalScale={new THREE.Vector2(1.0, 1.0)}
+                roughness={1}
             />
         </mesh>
     );
