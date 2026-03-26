@@ -318,9 +318,10 @@ function Scene({
 
 function Ground() {
     const textures = useTexture({
-        map: '/textures/ground/textures/Rocky_Terrain_02_diff_2k.jpg',
-        displacementMap: '/textures/ground/textures/Rocky_Terrain_02_disp_2k.png',
-        // Note: nor_gl.exr would require EXRLoader, skipping for simple implementation
+        map: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
+        displacementMap: '/textures/ground/textures/rocky_terrain_02_disp_2k.png',
+        // spec_2k can be used as roughness Map (though it's technically specular)
+        roughnessMap: '/textures/ground/textures/rocky_terrain_02_spec_2k.png',
     });
 
     // Configure tiling for the massive 32000x32000 plane
