@@ -27,15 +27,29 @@ export function BiomeEffects({ currentBiome }: { currentBiome: string }) {
         return arr;
     }, [cfg.count]);
 
-    useFrame((state) => {
+    const timeRef = useRef(0);
+
+    useFrame((state, delta) => {
         if (!pointsRef.current) return;
         const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
         const arr = posAttr.array as Float32Array;
-        const t = state.clock.elapsedTime;
+        
+        timeRef.current += delta;
+        const t = timeRef.current;
+        if (isNaN(t)) return;
+
         for (let i = 0; i < cfg.count; i++) {
-            arr[i * 3 + 1] -= cfg.speed * 0.016 * 60; // fall
-            if (arr[i * 3 + 1] < 0) arr[i * 3 + 1] = 50;
-            arr[i * 3] += Math.sin(t + i) * 0.002; // drift
+            const idx = i * 3;
+            // fall
+            arr[idx + 1] -= cfg.speed * 0.016 * 60;
+            if (arr[idx + 1] < 0) arr[idx + 1] = 50;
+            
+            // drift
+            arr[idx] += Math.sin(t + i) * 0.002;
+            
+            // NaN safety check
+            if (isNaN(arr[idx])) arr[idx] = (Math.random() - 0.5) * 2000;
+            if (isNaN(arr[idx + 1])) arr[idx + 1] = Math.random() * 50;
         }
         posAttr.needsUpdate = true;
     });

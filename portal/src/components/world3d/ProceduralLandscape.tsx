@@ -266,8 +266,14 @@ export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: nu
 
     useFrame(() => {
         if (!myPosRef.current) return;
-        const cx = Math.floor(myPosRef.current.x / CHUNK_SIZE);
-        const cz = Math.floor(myPosRef.current.y / CHUNK_SIZE);
+        const px = myPosRef.current.x || 0;
+        const py = myPosRef.current.y || 0;
+        
+        const cx = Math.floor(px / CHUNK_SIZE);
+        const cz = Math.floor(py / CHUNK_SIZE);
+        
+        if (isNaN(cx) || isNaN(cz)) return;
+
         if (lastChunk.current.cx !== cx || lastChunk.current.cz !== cz) {
             lastChunk.current = { cx, cz };
             const newChunks = [];
