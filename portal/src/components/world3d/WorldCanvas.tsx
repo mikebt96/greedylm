@@ -321,16 +321,11 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 }
 
 function Ground() {
-    // 1. Load Ground 037 JPG/PNG maps
     const textures = useTexture({
         map: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
         normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
-        roughnessMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Roughness.jpg',
-        aoMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_AmbientOcclusion.jpg',
-        displacementMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Displacement.jpg',
     });
 
-    // Apply tiling
     Object.values(textures).forEach(t => {
         if (t) {
             t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -340,14 +335,11 @@ function Ground() {
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000, 128, 128]} />
+            <planeGeometry args={[32000, 32000, 1, 1]} />
             <meshStandardMaterial 
                 {...textures}
-                color="#b0b0b0"
-                displacementScale={0.3}
-                displacementBias={-0.15}
-                normalScale={new THREE.Vector2(1.0, 1.0)}
-                roughness={1}
+                roughness={0.9}
+                normalScale={new THREE.Vector2(0.8, 0.8)}
             />
         </mesh>
     );
