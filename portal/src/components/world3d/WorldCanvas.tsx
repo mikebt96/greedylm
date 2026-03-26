@@ -241,12 +241,8 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 
     return (
         <>
-            {/* Environment & Sky (Night) */}
-            <Environment 
-                files="/textures/sky/qwantani_night_puresky_2k.exr" 
-                background 
-                blur={0} 
-            />
+            {/* Environment & Background (Optimized) */}
+            <color attach="background" args={['#070b14']} />
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
             {/* Lighting (Night Palette - High Visibility) */}
