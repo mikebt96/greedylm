@@ -78,6 +78,36 @@ interface Construction {
     name?: string;
 }
 
+/* ── Camera Follower (third-person) ─────────────────────────────────────── */
+
+function CameraFollower({ myPosRef }: { myPosRef: React.MutableRefObject<{ x: number; y: number }> }) {
+    const { camera, controls } = useThree();
+
+    useFrame(() => {
+        const pos = myPosRef.current;
+        const targetX = pos.x;
+        const targetZ = pos.y; // world y → Three.js z
+
+        // Smoothly move camera to follow player (third-person offset)
+        const offsetY = 12;
+        const offsetZ = 18;
+        camera.position.x += (targetX - camera.position.x) * 0.06;
+        camera.position.y += (offsetY - camera.position.y) * 0.06;
+        camera.position.z += (targetZ + offsetZ - camera.position.z) * 0.06;
+
+        // Update OrbitControls target to track the player
+        const ctrl = controls as any;
+        if (ctrl?.target) {
+            ctrl.target.x += (targetX - ctrl.target.x) * 0.08;
+            ctrl.target.y = 1;
+            ctrl.target.z += (targetZ - ctrl.target.z) * 0.08;
+            ctrl.update();
+        }
+    });
+
+    return null;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 function Scene({ 
@@ -86,14 +116,16 @@ function Scene({
     constructions,
     onObjectInteract, 
     onAgentInteract,
-    myDid
+    myDid,
+    myPosRef
 }: { 
     agents: WsAgent[], 
     objects: WorldObject[], 
     constructions: Construction[],
     onObjectInteract: (id: string, type: string) => void,
     onAgentInteract: (did: string) => void,
-    myDid: string | null
+    myDid: string | null,
+    myPosRef: React.MutableRefObject<{ x: number; y: number }>
 }) {
     const { scene } = useThree();
 
@@ -383,12 +415,15 @@ export default function WorldCanvas() {
     return (
         <div className="w-full h-screen bg-black relative">
             <Canvas shadows gl={{ antialias: true }}>
-                <PerspectiveCamera makeDefault position={[50, 50, 50]} fov={50} />
+                <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
+                <CameraFollower myPosRef={myPosRef} />
                 <OrbitControls 
+                    makeDefault
                     maxPolarAngle={Math.PI / 2.1} 
-                    minDistance={5} 
-                    maxDistance={400} 
+                    minDistance={8} 
+                    maxDistance={60} 
                     enableDamping
+                    enablePan={false}
                 />
                 
                 <Scene 
@@ -398,6 +433,7 @@ export default function WorldCanvas() {
                     onObjectInteract={handleInteract}
                     onAgentInteract={handleAgentClick}
                     myDid={myDid}
+                    myPosRef={myPosRef}
                 />
                 
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />
