@@ -233,7 +233,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 
     useFrame(() => {
         if (!myPosRef.current || !gridRef.current) return;
-        // Snap grid to player position in 500u steps to keep it centered
         const gx = Math.floor(myPosRef.current.x / 500) * 500;
         const gz = Math.floor(myPosRef.current.y / 500) * 500;
         gridRef.current.position.set(gx, 0.01, gz);
@@ -243,26 +242,29 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
         <>
             {/* Environment & Sky */}
             <Environment 
-                files="/textures/sky/qwantani_night_puresky_2k.exr" 
+                files="/textures/sky/spruit_sunrise_2k.exr" 
                 background 
                 blur={0} 
             />
-            <Stars radius={400} depth={60} count={10000} factor={4} saturation={0} fade speed={0.5} />
+            <Stars radius={400} depth={60} count={2000} factor={4} saturation={0} fade speed={0.1} />
             
-            {/* Lighting (Adjusted for HDRI) */}
-            <ambientLight intensity={0.4} />
-            <hemisphereLight args={['#2c3e50', '#000000', 0.5]} />
-            <fog attach="fog" args={['#02040a', 100, 1800]} />
+            {/* Lighting (Warm Sunrise) */}
+            <ambientLight intensity={0.2} />
+            <hemisphereLight args={['#ffcc80', '#2d4a35', 0.4]} />
+            <fog attach="fog" args={['#ff9e22', 100, 2500]} />
             <directionalLight 
-                position={[500, 500, 500]} 
-                intensity={0.8} 
+                position={[500, 300, 500]} 
+                intensity={1.0} 
+                color="#fff4e6"
                 castShadow 
                 shadow-mapSize={[2048, 2048]}
             />
             
-            <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#0d1b2a']} />
+            <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
+                <lineBasicMaterial attach="material" transparent opacity={0.3} vertexColors />
+            </gridHelper>
             
-            {/* Ground with Tiled PBR Textures (Suspended to prevent world block) */}
+            {/* Ground (Suspended) */}
             <React.Suspense fallback={
                 <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.05, 0]}>
                     <planeGeometry args={[32000, 32000]} />
@@ -272,7 +274,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 <Ground />
             </React.Suspense>
 
-            {/* Biome terrain patches — larger, visible green/brown zones */}
+            {/* Biome terrain patches */}
             {[
                 { pos: [100, 0.03, 80] as [number, number, number], size: 500, color: '#1a3a2a' },
                 { pos: [-50, 0.03, 300] as [number, number, number], size: 400, color: '#1e4d2b' },
@@ -289,13 +291,10 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 </mesh>
             ))}
 
-            {/* Efectos de Bioma (Nieve, Arena, etc) */}
             <BiomeEffects currentBiome="nexus" />
-
-            {/* Procedural landscape: mountains, trees, rocks, grass, mushrooms */}
             <ProceduralLandscape myPosRef={myPosRef} />
 
-            {/* Agentes */}
+            {/* Entidades */}
             {agents.map(agent => (
                 <AgentMesh 
                     key={agent.did} 
@@ -304,8 +303,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                     onClick={() => onAgentInteract(agent.did)}
                 />
             ))}
-
-            {/* Objetos del mundo */}
             {objects.map(obj => (
                 <WorldObjectMesh 
                     key={obj.id} 
@@ -313,13 +310,8 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                     onClick={() => onObjectInteract(obj.id, obj.type)} 
                 />
             ))}
-
-            {/* Construcciones */}
             {constructions.map(c => (
-                <ConstructionMesh
-                    key={c.id}
-                    construction={c}
-                />
+                <ConstructionMesh key={c.id} construction={c} />
             ))}
 
             <ContactShadows opacity={0.4} scale={2000} blur={2.4} far={10} color="#000000" />
@@ -330,19 +322,24 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 function Ground() {
     const textures = useTexture({
         map: '/textures/ground/textures/rocky_terrain_02_diff_2k.jpg',
+        normalMap: '/textures/ground/textures/rocky_terrain_02_nor_gl_2k.png',
+        roughnessMap: '/textures/ground/textures/rocky_terrain_02_rough_2k.png',
     });
 
     if (textures.map) {
-        textures.map.wrapS = textures.map.wrapT = THREE.RepeatWrapping;
-        textures.map.repeat.set(500, 500);
+        Object.values(textures).forEach((t) => {
+            t.wrapS = t.wrapT = THREE.RepeatWrapping;
+            t.repeat.set(500, 500);
+        });
     }
 
     return (
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.1, 0]}>
             <planeGeometry args={[32000, 32000]} />
             <meshStandardMaterial 
-                map={textures.map}
+                {...textures}
                 color="#2d4a35"
+                normalScale={new THREE.Vector2(0.8, 0.8)}
                 roughness={1}
             />
         </mesh>
@@ -581,9 +578,15 @@ export default function WorldCanvas() {
         loadWorld();
     }, []);
 
-    return (
         <div className="w-full h-screen bg-black relative">
-            <Canvas shadows={{ type: THREE.PCFShadowMap }} gl={{ antialias: true }}>
+            <Canvas 
+                shadows={{ type: THREE.PCFSoftShadowMap }} 
+                gl={{ 
+                    antialias: true, 
+                    toneMapping: THREE.ACESFilmicToneMapping,
+                    toneMappingExposure: 0.6 
+                }}
+            >
                 <PerspectiveCamera makeDefault position={[50, 30, 50]} fov={50} />
                 <CameraFollower myPosRef={myPosRef} isSpectator={isSpectator} />
                 <PlayerController
