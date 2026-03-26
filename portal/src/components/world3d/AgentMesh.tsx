@@ -32,9 +32,9 @@ export function AgentMesh({ agent, isMe, onClick }: { agent: AgentData; isMe: bo
     const groupRef = useRef<THREE.Group>(null);
     const orbRef = useRef<THREE.Mesh>(null);
 
-    useFrame(({ clock }) => {
+    useFrame((state) => {
         if (!groupRef.current) return;
-        const t = clock.getElapsedTime();
+        const t = state.elapsedTime;
         groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, agent.x, 0.08);
         groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, agent.y, 0.08);
         const jumpY = agent.jumpY || 0;

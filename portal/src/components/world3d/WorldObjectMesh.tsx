@@ -50,9 +50,9 @@ export function WorldObjectMesh({ obj, onClick }: { obj: WorldObj; onClick: () =
 
     const wanderRef = useRef({ ox: 0, oz: 0, targetX: 0, targetZ: 0, timer: 0 });
 
-    useFrame(({ clock }, delta) => {
+    useFrame((state, delta) => {
         if (!groupRef.current || !meshRef.current) return;
-        const t = clock.getElapsedTime();
+        const t = state.elapsedTime;
 
         if (obj.type === 'creature') {
             const w = wanderRef.current;
