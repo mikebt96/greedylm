@@ -38,7 +38,7 @@ def embed(text: str) -> list[float]:
 
 # ─── Qdrant client helper ─────────────────────────────────────────────────────
 def get_qdrant() -> AsyncQdrantClient:
-    return AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
+    return AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY or None)
 
 
 # ─── Bootstrap collection (called at startup) ─────────────────────────────────

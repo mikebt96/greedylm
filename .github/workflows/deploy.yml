@@ -47,7 +47,6 @@ jobs:
           REDIS_URL: "redis://localhost:6379/0"
           JWT_SECRET: "test-secret-min-64-chars-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           QDRANT_URL: "http://localhost:6333"
-          QDRANT_API_KEY: "test"
           STRIPE_SECRET_KEY: "sk_test_dummy_for_ci"
           STRIPE_WEBHOOK_SECRET: "whsec_dummy_for_ci"
           FRONTEND_URL: "http://localhost:3000"
