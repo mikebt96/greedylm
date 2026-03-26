@@ -81,26 +81,19 @@ interface Construction {
 /* ── Camera Follower (third-person) ─────────────────────────────────────── */
 
 function CameraFollower({ myPosRef }: { myPosRef: React.MutableRefObject<{ x: number; y: number }> }) {
-    const { camera, controls } = useThree();
+    const { controls } = useThree();
 
     useFrame(() => {
         const pos = myPosRef.current;
         const targetX = pos.x;
         const targetZ = pos.y; // world y → Three.js z
 
-        // Smoothly move camera to follow player (third-person offset)
-        const offsetY = 12;
-        const offsetZ = 18;
-        camera.position.x += (targetX - camera.position.x) * 0.06;
-        camera.position.y += (offsetY - camera.position.y) * 0.06;
-        camera.position.z += (targetZ + offsetZ - camera.position.z) * 0.06;
-
-        // Update OrbitControls target to track the player
+        // Only move the OrbitControls pivot — let user freely orbit with mouse
         const ctrl = controls as any;
         if (ctrl?.target) {
-            ctrl.target.x += (targetX - ctrl.target.x) * 0.08;
+            ctrl.target.x += (targetX - ctrl.target.x) * 0.1;
             ctrl.target.y = 1;
-            ctrl.target.z += (targetZ - ctrl.target.z) * 0.08;
+            ctrl.target.z += (targetZ - ctrl.target.z) * 0.1;
             ctrl.update();
         }
     });
