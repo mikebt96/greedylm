@@ -29,7 +29,7 @@ export default function KenneyCharacter({ animation, skin = 'humanMaleA' }: Kenn
         return [cIdle, cRun, cJump];
     }, [idleFBX, runFBX, jumpFBX]);
 
-    const { actions } = useAnimations(clips, group);
+    const { actions } = useAnimations(clips, fbx);
     
     // Load and apply skin
     const texture = useTexture(`${ASSET_PATH}/Skins/${skin}.png`);

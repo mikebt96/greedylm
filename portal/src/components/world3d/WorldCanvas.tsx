@@ -139,7 +139,7 @@ function PlayerController({
     useFrame((_, delta) => {
         if (!myDid) return;
         const keys = keysRef.current;
-        const BASE_SPEED = 3;
+        const BASE_SPEED = 6;
         const isSprinting = keys.has(keybinds.sprint);
         const speed = isSprinting ? BASE_SPEED * 2 : BASE_SPEED;
 
@@ -163,7 +163,7 @@ function PlayerController({
 
         // ── Jump ──
         if (keys.has(keybinds.jump) && jumpYRef.current <= 0) {
-            jumpVelRef.current = 12;
+            jumpVelRef.current = 14;
             keys.delete(keybinds.jump); // consume jump
         }
         jumpVelRef.current -= 30 * delta; // gravity
@@ -262,8 +262,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
-            
-            <BiomeEffects currentBiome="nexus" />
             <ProceduralLandscape myPosRef={myPosRef} />
             <WorldEffects activeBursts={activeEffects} />
 

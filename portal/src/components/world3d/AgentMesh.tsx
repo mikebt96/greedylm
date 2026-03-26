@@ -51,8 +51,9 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         const targetZ = agent.y || 0;
         const terrainH = getTerrainHeight(targetX, targetZ);
         
-        groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
-        groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.08);
+        const lerpFactor = isMe ? 0.35 : 0.08;
+        groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, lerpFactor);
+        groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, lerpFactor);
         const jumpY = agent.jumpY || 0;
         groupRef.current.position.y = terrainH + jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
 
@@ -64,7 +65,7 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
 
         if (jumpY > 0.1) {
             if (anim !== 'jump') setAnim('jump');
-        } else if (speed > 0.5) {
+        } else if (speed > 0.1) {
             if (anim !== 'run') setAnim('run');
         } else {
             if (anim !== 'idle') setAnim('idle');
