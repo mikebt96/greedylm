@@ -169,7 +169,7 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
             const y = getTerrainHeight(f.x, f.z);
             // Trunk is 5 units tall, scaled by f.scale. Bottom at y.
             temp.position.set(f.x, y + f.scale * 2.5, f.z);
-            temp.scale.set(f.scale * 0.1, f.scale * 1.0, f.scale * 0.1);
+            temp.scale.set(f.scale * 0.18, f.scale * 1.0, f.scale * 0.18);
             temp.updateMatrix();
             trunkRef.current!.setMatrixAt(i, temp.matrix);
 
@@ -189,11 +189,11 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
         <group>
             <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]} castShadow>
                 <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
-                <meshLambertMaterial color="#3d2208" />
+                <meshLambertMaterial color="#6b4226" />
             </instancedMesh>
             <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]} castShadow>
                 <icosahedronGeometry args={[2, 1]} />
-                <meshLambertMaterial color="#1a3d28" />
+                <meshLambertMaterial color="#2d6a4f" />
             </instancedMesh>
         </group>
     );
@@ -292,7 +292,7 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
 
     return (
         <mesh position={[offsetX, 0, offsetZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 48, 48]} />
+            <planeGeometry ref={geomRef} args={[CHUNK_SIZE + 2, CHUNK_SIZE + 2, 64, 64]} />
             <meshLambertMaterial {...textures} color="#ffffff" />
         </mesh>
     );

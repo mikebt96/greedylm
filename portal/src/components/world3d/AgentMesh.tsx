@@ -122,32 +122,32 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
                 {/* Torso */}
                 <mesh position={[0, 0.9, 0]}>
                     <boxGeometry args={[0.5, 0.6, 0.25]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
                 {/* Cabeza */}
                 <mesh position={[0, 1.45, 0]}>
                     <boxGeometry args={[0.35, 0.35, 0.35]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
                 {/* Pierna izq */}
                 <mesh position={[-0.13, 0.3, 0]}>
                     <boxGeometry args={[0.18, 0.55, 0.2]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
                 {/* Pierna der */}
                 <mesh position={[0.13, 0.3, 0]}>
                     <boxGeometry args={[0.18, 0.55, 0.2]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
                 {/* Brazo izq */}
                 <mesh position={[-0.34, 0.9, 0]}>
                     <boxGeometry args={[0.16, 0.5, 0.18]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
                 {/* Brazo der */}
                 <mesh position={[0.34, 0.9, 0]}>
                     <boxGeometry args={[0.16, 0.5, 0.18]} />
-                    <meshLambertMaterial color={accent} />
+                    <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
             </group>
 
