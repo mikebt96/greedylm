@@ -249,11 +249,11 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
             {/* LIGHTING — exactamente 2 luces, sin sombras, sin IBL */}
-            <ambientLight intensity={0.35} color="#1a2744" />
+            <ambientLight intensity={0.7} color="#ffffff" />
             <directionalLight
                 position={[200, 400, 200]}
-                intensity={1.8}
-                color="#c8d8ff"
+                intensity={1.2}
+                color="#dde8ff"
             />
             {/* Sin hemisphereLight, sin pointLights, sin Environment */}
             <fog attach="fog" args={['#060d1a', 150, 2000]} />

@@ -105,12 +105,12 @@ function Mountain({ f }: { f: TerrainFeature }) {
         <group position={[f.x, y, f.z]}>
             <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
                 <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
-                <meshLambertMaterial color={f.color} />
+                <meshLambertMaterial color="#2e3f5c" />
             </mesh>
             {f.scale > 15 && (
                 <mesh position={[0, f.scale * 0.85, 0]}>
                     <coneGeometry args={[f.scale * 0.25, f.scale * 0.3, 6]} />
-                    <meshLambertMaterial color="#e8eef4" />
+                    <meshLambertMaterial color="#dce8f0" />
                 </mesh>
             )}
         </group>
@@ -189,11 +189,11 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
         <group>
             <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]} castShadow>
                 <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
-                <meshLambertMaterial color="#6b4226" />
+                <meshLambertMaterial color="#5c3d1e" />
             </instancedMesh>
             <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]} castShadow>
                 <icosahedronGeometry args={[2, 1]} />
-                <meshLambertMaterial color="#2d6a4f" />
+                <meshLambertMaterial color="#2d5a27" />
             </instancedMesh>
         </group>
     );
@@ -292,7 +292,7 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
 
     return (
         <mesh position={[offsetX, 0, offsetZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry ref={geomRef} args={[CHUNK_SIZE + 2, CHUNK_SIZE + 2, 64, 64]} />
+            <planeGeometry ref={geomRef} args={[CHUNK_SIZE + 4, CHUNK_SIZE + 4, 64, 64]} />
             <meshLambertMaterial {...textures} color="#ffffff" />
         </mesh>
     );
