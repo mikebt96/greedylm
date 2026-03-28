@@ -75,7 +75,7 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
 
     // Rocks on elevations
     terrainData.filter(d => d.h > 0).slice(0, 20).forEach(d => {
-        features.push({ type: 'rock', x: d.x, z: d.z, scale: 3 + rng() * 7, rotY: rng() * Math.PI * 2, color: '#4b5563' });
+        features.push({ type: 'rock', x: d.x, z: d.z, scale: 0.6 + rng() * 2.0, rotY: rng() * Math.PI * 2, color: '#4b5563' });
     });
 
     // Trees everywhere

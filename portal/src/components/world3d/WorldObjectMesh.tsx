@@ -57,7 +57,11 @@ export const SUBTYPE_COLORS: Record<string, string> = {
     crystal_node:  '#ce93d8',
 };
 
-export function WorldObjectMesh({ obj, isScanning, onClick }: { obj: WorldObj; isScanning: boolean; onClick: () => void }) {
+export function WorldObjectMesh({ obj, isScanning, onClick }: { 
+    obj: WorldObj; 
+    isScanning: boolean; 
+    onClick: () => void; 
+}) {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef  = useRef<THREE.Mesh>(null);
     const [hovered, setHovered] = React.useState(false);

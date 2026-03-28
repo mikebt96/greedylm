@@ -625,7 +625,6 @@ function WorldCanvasInner() {
                     activeEffects={activeEffects}
                 />
                 
-                <Ground />
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />
             </Canvas>
 
