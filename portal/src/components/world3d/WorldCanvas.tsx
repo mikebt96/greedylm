@@ -278,7 +278,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
                 />
             ))}
             {constructions.map(c => (
-                <ConstructionMesh key={c.id} construction={c} isScanning={isScanning} />
+                <ConstructionMesh key={c.id} construction={c} />
             ))}
 
         </>
