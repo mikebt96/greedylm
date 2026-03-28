@@ -220,6 +220,34 @@ function PlayerController({
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
+function Ground() {
+    const textures = useTexture({
+        map:       '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
+        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
+    });
+
+    useMemo(() => {
+        Object.values(textures).forEach(t => {
+            if (t) {
+                t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                t.repeat.set(120, 120);
+            }
+        });
+    }, [textures]);
+
+    return (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+            <planeGeometry args={[32000, 32000, 1, 1]} />
+            <meshLambertMaterial
+                {...textures}
+                color="#ffffff"
+            />
+        </mesh>
+    );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
 interface SceneProps {
     agents: WsAgent[];
     objects: WorldObject[];
@@ -248,14 +276,19 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <color attach="background" args={['#070b14']} />
             <Stars radius={400} depth={60} count={3000} factor={4} saturation={0} fade speed={0.1} />
             
-            {/* Lighting (Night Palette - High Visibility) */}
-            {/* Simplified Lighting for 140+ FPS performance */}
-            <ambientLight intensity={0.7} />
-            <fogExp2 attach="fog" args={['#070b14', 0.002]} />
-            <directionalLight position={[10, 20, 10]} intensity={1.2} color="#e0e7ff" />
+            {/* LIGHTING — exactamente 2 luces, sin sombras, sin IBL */}
+            <ambientLight intensity={0.35} color="#1a2744" />
+            <directionalLight
+                position={[200, 400, 200]}
+                intensity={1.8}
+                color="#c8d8ff"
+            />
+            {/* Sin hemisphereLight, sin pointLights, sin Environment */}
+            <fog attach="fog" args={['#060d1a', 150, 2000]} />
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
+            <Ground />
             <ProceduralLandscape myPosRef={myPosRef} />
             <WorldEffects activeBursts={activeEffects} />
 
@@ -288,7 +321,7 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-export default function WorldCanvas() {
+function WorldCanvasInner() {
     const { t } = useT();
     const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
     const [wsAgents, setWsAgents] = useState<WsAgent[]>([]);
@@ -592,6 +625,7 @@ export default function WorldCanvas() {
                     activeEffects={activeEffects}
                 />
                 
+                <Ground />
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />
             </Canvas>
 
@@ -705,5 +739,13 @@ export default function WorldCanvas() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function WorldCanvas() {
+    return (
+        <React.Suspense fallback={<div className="w-full h-screen bg-black" />}>
+            <WorldCanvasInner />
+        </React.Suspense>
     );
 }

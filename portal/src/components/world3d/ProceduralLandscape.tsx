@@ -104,12 +104,12 @@ function Mountain({ f }: { f: TerrainFeature }) {
         <group position={[f.x, y, f.z]}>
             <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
                 <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
-                <meshBasicMaterial color={f.color} />
+                <meshLambertMaterial color={f.color} />
             </mesh>
             {f.scale > 15 && (
                 <mesh position={[0, f.scale * 0.85, 0]}>
                     <coneGeometry args={[f.scale * 0.25, f.scale * 0.3, 6]} />
-                    <meshBasicMaterial color="#94a3b8" />
+                    <meshLambertMaterial color="#e8eef4" />
                 </mesh>
             )}
         </group>
@@ -186,13 +186,13 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
 
     return (
         <group>
-            <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]}>
+            <instancedMesh ref={trunkRef} args={[undefined, undefined, 2000]} castShadow>
                 <cylinderGeometry args={[0.3, 0.5, 5, 6]} />
-                <meshBasicMaterial color="#4a2c0a" />
+                <meshLambertMaterial color="#3d2208" />
             </instancedMesh>
-            <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]}>
+            <instancedMesh ref={canopyRef} args={[undefined, undefined, 2000]} castShadow>
                 <icosahedronGeometry args={[2, 1]} />
-                <meshBasicMaterial color="#1b4332" />
+                <meshLambertMaterial color="#1a3d28" />
             </instancedMesh>
         </group>
     );
@@ -218,9 +218,9 @@ function InstancedRocks({ features }: { features: TerrainFeature[] }) {
     }, [features, temp]);
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, 300]}>
+        <instancedMesh ref={meshRef} args={[undefined, undefined, 1000]}>
             <dodecahedronGeometry args={[1, 0]} />
-            <meshLambertMaterial color="#4b5563" />
+            <meshLambertMaterial color="#3a3f4a" />
         </instancedMesh>
     );
 }

@@ -65,9 +65,16 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         const targetZ = targetRef.current.z;
         const terrainH = getTerrainHeight(targetX, targetZ);
         
-        const lerpFactor = isMe ? 0.35 : 0.08;
-        groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, lerpFactor);
-        groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, lerpFactor);
+        if (isMe) {
+            // Sin lerp — posición instantánea para el jugador propio para evitar lag
+            groupRef.current.position.x = targetX;
+            groupRef.current.position.z = targetZ;
+        } else {
+            const lerpFactor = 0.08;
+            groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, lerpFactor);
+            groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, lerpFactor);
+        }
+
         const jumpY = agent.jumpY || 0;
         groupRef.current.position.y = terrainH + jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
 

@@ -185,9 +185,9 @@ export function WorldObjectMesh({ obj, isScanning, onClick }: { obj: WorldObj; i
             {/* HERB */}
             {isHerb && (
                 <group ref={meshRef as any}>
-                    <mesh position={[0, 0.3, 0]}>
+                    <mesh scale={[0.8, 1.2, 0.8]}>
                         <dodecahedronGeometry args={[0.5, 0]} />
-                        <meshBasicMaterial color={mainColor} />
+                        <meshLambertMaterial color={mainColor} />
                     </mesh>
                     <mesh position={[0.3, 0.2, 0.2]}>
                         <dodecahedronGeometry args={[0.35, 0]} />
