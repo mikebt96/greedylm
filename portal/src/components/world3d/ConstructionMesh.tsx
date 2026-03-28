@@ -27,9 +27,14 @@ export function ConstructionMesh({ construction, isScanning }: { construction: C
         <group position={[p.x, y, p.y]}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
-            <mesh position={[0, 0.5, 0]} castShadow>
-                <boxGeometry args={[1, 1, 1]} />
-                <meshStandardMaterial color={color} roughness={0.7} metalness={0.2} />
+            {/* Upgraded model: House-like structure */}
+            <mesh position={[0, 0.4, 0]} castShadow>
+                <boxGeometry args={[1.2, 0.8, 1.2]} />
+                <meshStandardMaterial color={color} roughness={0.7} />
+            </mesh>
+            <mesh position={[0, 1.0, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+                <coneGeometry args={[1.0, 0.6, 4]} />
+                <meshStandardMaterial color="#455a64" roughness={0.8} />
             </mesh>
             {(isScanning || hovered) && (
                 <Html position={[0, 1.4, 0]} center distanceFactor={30}>

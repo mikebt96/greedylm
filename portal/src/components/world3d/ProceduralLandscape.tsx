@@ -85,7 +85,7 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
 
     // Grass and Herbs in Valleys (Low elevation)
     terrainData.filter(d => d.h < 0).slice(0, 60).forEach(d => {
-        features.push({ type: 'grass', x: d.x, z: d.z, scale: 8 + rng() * 17, rotY: rng() * Math.PI * 2, color: '#0d2818' });
+        features.push({ type: 'grass', x: d.x, z: d.z, scale: 2 + rng() * 5, rotY: rng() * Math.PI * 2, color: '#0d2818' });
     });
 
     // Glow Mushrooms in deepest valleys
@@ -234,10 +234,10 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
         features.forEach((f, i) => {
             if (i >= 500) return; // Cap at 500 for perf
             const y = getTerrainHeight(f.x, f.z);
-            // Grass bottom at y + epsilon
-            temp.position.set(f.x, y + f.scale * 0.45, f.z);
-            temp.rotation.set(0, f.rotY, 0);
-            temp.scale.set(f.scale * 0.8, f.scale * 0.8, f.scale * 0.8);
+            // Flatten to ground
+            temp.position.set(f.x, y + 0.05, f.z);
+            temp.rotation.set(-Math.PI / 2, 0, f.rotY);
+            temp.scale.set(f.scale * 0.3, f.scale * 0.3, 1);
             temp.updateMatrix();
             meshRef.current!.setMatrixAt(i, temp.matrix);
         });

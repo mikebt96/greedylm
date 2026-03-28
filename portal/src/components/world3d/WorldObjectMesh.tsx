@@ -39,6 +39,10 @@ export const SUBTYPE_COLORS: Record<string, string> = {
     luminos_gem:   '#ce93d8',
     void_crystal:  '#7c4dff',
     greedystone:   '#00e5ff',
+    // Flora (nuevos del backend)
+    herb:          '#81c784',
+    mandrake:      '#4caf50',
+    nightscale:    '#1a237e',
     // Fauna
     luminos_beast: '#ffeb3b',
     grubmole:      '#8d6e63',
@@ -46,7 +50,7 @@ export const SUBTYPE_COLORS: Record<string, string> = {
     sandscuttler:  '#ffcc80',
     frosthorn:     '#b3e5fc',
     ashcrawler:    '#ef5350',
-    // Legacy (por si acaso)
+    // Legacy mapping
     iron_vein:     '#78909c',
     gold_vein:     '#ffd54f',
     silver_vein:   '#cfd8dc',
