@@ -1,5 +1,6 @@
 'use client';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
@@ -259,18 +260,31 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
 }
 
 function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
-    const geomRef = useRef<THREE.PlaneGeometry>(null);
+    const geomRef = useRef<THREE.BufferGeometry>(null);
     const offsetX = cx * CHUNK_SIZE;
     const offsetZ = cz * CHUNK_SIZE;
 
-    // Displacement Logic
+    const textures = useTexture({
+        map:       '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
+        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
+    });
+
+    useMemo(() => {
+        Object.values(textures).forEach(t => {
+            if (t) {
+                t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                t.repeat.set(12, 12); // 12 repeticiones por chunk de 500u
+            }
+        });
+    }, [textures]);
+
     useEffect(() => {
         if (!geomRef.current) return;
-        const pos = geomRef.current.attributes.position;
+        const pos = geomRef.current.attributes.position as THREE.BufferAttribute;
         for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i) + offsetX;
-            const z = pos.getY(i) + offsetZ; // Local Y is world Z before rotation
-            pos.setZ(i, getTerrainHeight(x, z)); // Local Z is world Y before rotation
+            const lx = pos.getX(i);
+            const lz = pos.getY(i); // antes de rotation es Y
+            pos.setZ(i, getTerrainHeight(lx + offsetX, lz + offsetZ));
         }
         pos.needsUpdate = true;
         geomRef.current.computeVertexNormals();
@@ -278,10 +292,8 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
 
     return (
         <mesh position={[offsetX, 0, offsetZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 32, 32]} />
-            <meshLambertMaterial 
-                color="#1a3a12"
-            />
+            <planeGeometry ref={geomRef} args={[CHUNK_SIZE, CHUNK_SIZE, 48, 48]} />
+            <meshLambertMaterial {...textures} color="#ffffff" />
         </mesh>
     );
 }
@@ -331,7 +343,11 @@ export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: nu
 
     return (
         <group>
-            {chunkCoords.map(c => <TerrainChunk key={`tg-${c.cx}-${c.cz}`} cx={c.cx} cz={c.cz} />)}
+            <React.Suspense fallback={null}>
+                {chunkCoords.map(c => 
+                    <TerrainChunk key={`tg-${c.cx}-${c.cz}`} cx={c.cx} cz={c.cz} />
+                )}
+            </React.Suspense>
             {mountains.map((f, i) => <Mountain key={`m-${i}`} f={f} />)}
             {caves.map((f, i)     => <Cave     key={`c-${i}`} f={f} />)}
             {mushrooms.map((f, i) => <GlowMushroom key={`sh-${i}`} f={f} />)}

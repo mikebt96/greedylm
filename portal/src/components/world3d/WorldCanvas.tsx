@@ -220,34 +220,6 @@ function PlayerController({
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-function Ground() {
-    const textures = useTexture({
-        map:       '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_Color.jpg',
-        normalMap: '/textures/ground/Ground037_2K-JPG/Ground037_2K-JPG_NormalDX.jpg',
-    });
-
-    useMemo(() => {
-        Object.values(textures).forEach(t => {
-            if (t) {
-                t.wrapS = t.wrapT = THREE.RepeatWrapping;
-                t.repeat.set(120, 120);
-            }
-        });
-    }, [textures]);
-
-    return (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
-            <planeGeometry args={[32000, 32000, 1, 1]} />
-            <meshLambertMaterial
-                {...textures}
-                color="#ffffff"
-            />
-        </mesh>
-    );
-}
-
-/* ────────────────────────────────────────────────────────────────────────── */
-
 interface SceneProps {
     agents: WsAgent[];
     objects: WorldObject[];
@@ -288,7 +260,6 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <gridHelper ref={gridRef} args={[4000, 40, '#1e3a8f', '#07162a']}>
                 <lineBasicMaterial attach="material" transparent opacity={0.25} vertexColors />
             </gridHelper>
-            <Ground />
             <ProceduralLandscape myPosRef={myPosRef} />
             <WorldEffects activeBursts={activeEffects} />
 
