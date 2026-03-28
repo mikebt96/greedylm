@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -41,14 +41,28 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
     const timeRef = useRef(0);
     const [anim, setAnim] = React.useState<'idle' | 'run' | 'jump'>('idle');
     const lastPos = useRef({ x: agent.x, z: agent.y });
+    // ← ref separado para el target de posicion para evitar conflicto R3F
+    const targetRef = useRef({ x: agent.x, z: agent.y });
+
+    // Actualizar target cuando cambien las props
+    useEffect(() => {
+        targetRef.current = { x: agent.x, z: agent.y };
+    }, [agent.x, agent.y]);
+
+    // Inicializar posición en mount
+    useEffect(() => {
+        if (groupRef.current) {
+            groupRef.current.position.set(agent.x, getTerrainHeight(agent.x, agent.y), agent.y);
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useFrame((state, delta) => {
         if (!groupRef.current) return;
         timeRef.current += delta;
         const t = timeRef.current;
         
-        const targetX = agent.x || 0;
-        const targetZ = agent.y || 0;
+        const targetX = targetRef.current.x;
+        const targetZ = targetRef.current.z;
         const terrainH = getTerrainHeight(targetX, targetZ);
         
         const lerpFactor = isMe ? 0.35 : 0.08;
@@ -91,7 +105,8 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
     const skin = skinMap[agent.race] || 'humanMaleA';
 
     return (
-        <group ref={groupRef} position={[agent.x, 0, agent.y]} 
+        // ← Sin prop position para que useFrame tenga el control total
+        <group ref={groupRef}
             onClick={(e) => { e.stopPropagation(); onClick(); }}
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
