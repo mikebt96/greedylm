@@ -1,8 +1,9 @@
 'use client';
 import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { Maximize } from 'lucide-react';
 
 interface TouchControlsProps {
-    keysRef: React.RefObject<Set<string>>;
+    keysRef: React.MutableRefObject<Set<string>>;
     onJump: () => void;
 }
 
@@ -14,17 +15,21 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+        const check = () => setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
     }, []);
 
     const clearKeys = useCallback(() => {
-        keysRef.current?.delete('w');
-        keysRef.current?.delete('s');
-        keysRef.current?.delete('a');
-        keysRef.current?.delete('d');
+        keysRef.current.delete('w');
+        keysRef.current.delete('s');
+        keysRef.current.delete('a');
+        keysRef.current.delete('d');
     }, [keysRef]);
 
     const handleTouchStart = useCallback((e: TouchEvent) => {
+        e.preventDefault();
         if (touchIdRef.current !== null) return;
         const touch = e.changedTouches[0];
         touchIdRef.current = touch.identifier;
@@ -36,6 +41,7 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
     }, []);
 
     const handleTouchMove = useCallback((e: TouchEvent) => {
+        e.preventDefault();
         const touch = Array.from(e.changedTouches).find(t => t.identifier === touchIdRef.current);
         if (!touch || !knobRef.current) return;
 
@@ -53,10 +59,10 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
         clearKeys();
         if (dist > 10) {
             const norm = { x: dx / dist, y: dy / dist };
-            if (norm.y < -0.4) keysRef.current?.add('w');
-            if (norm.y > 0.4)  keysRef.current?.add('s');
-            if (norm.x < -0.4) keysRef.current?.add('a');
-            if (norm.x > 0.4)  keysRef.current?.add('d');
+            if (norm.y < -0.4) keysRef.current.add('w');
+            if (norm.y > 0.4)  keysRef.current.add('s');
+            if (norm.x < -0.4) keysRef.current.add('a');
+            if (norm.x > 0.4)  keysRef.current.add('d');
         }
     }, [clearKeys, keysRef]);
 
@@ -71,8 +77,8 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
     useEffect(() => {
         const el = joystickRef.current;
         if (!el) return;
-        el.addEventListener('touchstart', handleTouchStart, { passive: true });
-        el.addEventListener('touchmove', handleTouchMove, { passive: true });
+        el.addEventListener('touchstart', handleTouchStart, { passive: false });
+        el.addEventListener('touchmove', handleTouchMove, { passive: false });
         el.addEventListener('touchend', handleTouchEnd, { passive: true });
         return () => {
             el.removeEventListener('touchstart', handleTouchStart);
@@ -81,62 +87,90 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
         };
     }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+    }, []);
+
     if (!isMobile) return null;
 
     return (
-        <div className="fixed bottom-8 left-0 right-0 flex justify-between items-end px-8 z-50 pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 flex justify-between items-end px-6 pb-6 z-50 pointer-events-none">
             {/* Joystick izquierdo */}
             <div
                 ref={joystickRef}
                 className="pointer-events-auto"
                 style={{
-                    width: 100, height: 100,
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '2px solid rgba(255,255,255,0.3)',
+                    width: 110, height: 110,
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '2px solid rgba(255,255,255,0.25)',
                     borderRadius: '50%',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backdropFilter: 'blur(4px)',
+                    touchAction: 'none',
                 }}
             >
                 <div
                     ref={knobRef}
                     style={{
-                        width: 40, height: 40,
-                        background: 'rgba(255,255,255,0.5)',
+                        width: 44, height: 44,
+                        background: 'rgba(255,255,255,0.4)',
                         borderRadius: '50%',
-                        transition: 'transform 0.05s',
                     }}
                 />
             </div>
 
             {/* Botones derecha */}
-            <div className="pointer-events-auto flex flex-col gap-3">
+            <div className="pointer-events-auto flex flex-col gap-3 items-center">
+                {/* Fullscreen */}
                 <button
-                    onTouchStart={() => onJump()}
+                    onClick={toggleFullscreen}
                     style={{
-                        width: 60, height: 60,
-                        background: 'rgba(0,229,255,0.2)',
+                        width: 44, height: 44,
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '2px solid rgba(255,255,255,0.25)',
+                        borderRadius: 12,
+                        color: '#ffffff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backdropFilter: 'blur(4px)',
+                    }}
+                >
+                    <Maximize size={18} />
+                </button>
+                {/* Jump */}
+                <button
+                    onTouchStart={(e) => { e.preventDefault(); onJump(); }}
+                    style={{
+                        width: 64, height: 64,
+                        background: 'rgba(0,229,255,0.15)',
                         border: '2px solid #00e5ff',
                         borderRadius: '50%',
                         color: '#00e5ff',
-                        fontSize: 20,
+                        fontSize: 22,
+                        fontWeight: 700,
                         backdropFilter: 'blur(4px)',
+                        touchAction: 'none',
                     }}
                 >
                     ↑
                 </button>
+                {/* Sprint */}
                 <button
-                    onTouchStart={() => keysRef.current?.add('shift')}
-                    onTouchEnd={() => keysRef.current?.delete('shift')}
+                    onTouchStart={(e) => { e.preventDefault(); keysRef.current.add('shift'); }}
+                    onTouchEnd={() => keysRef.current.delete('shift')}
                     style={{
-                        width: 60, height: 60,
-                        background: 'rgba(255,200,0,0.2)',
+                        width: 64, height: 64,
+                        background: 'rgba(255,200,0,0.15)',
                         border: '2px solid #ffcc00',
                         borderRadius: '50%',
                         color: '#ffcc00',
                         fontSize: 11,
                         fontWeight: 700,
                         backdropFilter: 'blur(4px)',
+                        touchAction: 'none',
                     }}
                 >
                     SPRINT

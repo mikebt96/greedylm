@@ -180,10 +180,9 @@ function PlayerController({
         const newY = Math.max(0, Math.min(13000, pos.y + moveZ));
         myPosRef.current = { x: newX, y: newY };
 
-        // Optimistic local update
-        const terrainY = getTerrainHeight(newX, newY);
+        // Optimistic local update — AgentMesh handles terrainHeight in its own useFrame
         setWsAgents(prev => prev.map(a =>
-            a.did === myDid ? { ...a, x: newX, y: newY, jumpY: jumpYRef.current + terrainY } : a
+            a.did === myDid ? { ...a, x: newX, y: newY, jumpY: jumpYRef.current } : a
         ));
 
         // ── Interaction (E) ──
