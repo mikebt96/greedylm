@@ -36,8 +36,9 @@ function noise2d(x: number, z: number) {
     return lerp(lerp(a, b, ux), lerp(c, d, ux), fz * fz * (3 - 2 * fz));
 }
 
-export function getTerrainHeight(x: number, z: number) {
-    const nx = x / NOISE_SCALE, nz = z / NOISE_SCALE;
+export function getTerrainHeight(x: number, z: number): number {
+    const nx = x / NOISE_SCALE;
+    const nz = z / NOISE_SCALE;
     let h = noise2d(nx, nz) * 1.0;
     h += noise2d(nx * 2, nz * 2) * 0.5;
     h += noise2d(nx * 4, nz * 4) * 0.25;
@@ -283,8 +284,9 @@ function TerrainChunk({ cx, cz }: { cx: number; cz: number }) {
         const pos = geomRef.current.attributes.position as THREE.BufferAttribute;
         for (let i = 0; i < pos.count; i++) {
             const lx = pos.getX(i);
-            const lz = pos.getY(i); // antes de rotation es Y
-            pos.setZ(i, getTerrainHeight(lx + offsetX, lz + offsetZ));
+            const lz = pos.getY(i); // antes de rotation: Y local = Z mundial
+            // ← negamos lz para compensar la rotación [-PI/2, 0, 0]
+            pos.setZ(i, getTerrainHeight(lx + offsetX, -lz + offsetZ));
         }
         pos.needsUpdate = true;
         geomRef.current.computeVertexNormals();

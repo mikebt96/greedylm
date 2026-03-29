@@ -63,10 +63,8 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         
         const targetX = targetRef.current.x;
         const targetZ = targetRef.current.z;
-        const terrainH = getTerrainHeight(targetX, targetZ);
-        
+
         if (isMe) {
-            // Sin lerp — posición instantánea para el jugador propio para evitar lag
             groupRef.current.position.x = targetX;
             groupRef.current.position.z = targetZ;
         } else {
@@ -75,8 +73,20 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
             groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, lerpFactor);
         }
 
-        const jumpY = agent.jumpY || 0;
-        groupRef.current.position.y = terrainH + jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
+        // ← terrainH se calcula con la posición ACTUAL del grupo, no el target
+        const curX = groupRef.current.position.x;
+        const curZ = groupRef.current.position.z;
+        const terrainH = getTerrainHeight(curX, curZ);
+
+        const jumpY = Math.max(0, agent.jumpY || 0); // nunca negativo
+        const targetY = terrainH + jumpY + Math.sin(t * 1.4 + targetX) * 0.04;
+
+        // Lerp suave hacia la altura del terreno para evitar teleports
+        groupRef.current.position.y = THREE.MathUtils.lerp(
+            groupRef.current.position.y,
+            targetY,
+            isMe ? 1.0 : 0.15  // instantáneo para ti, suave para otros
+        );
 
         // Animation State Logic
         const dx = targetX - lastPos.current.x;

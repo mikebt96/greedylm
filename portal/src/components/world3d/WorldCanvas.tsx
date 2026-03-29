@@ -98,9 +98,11 @@ function CameraFollower({ myPosRef, isSpectator }: { myPosRef: React.RefObject<{
         if (!pos) return;
         const ctrl = controls as any;
         if (ctrl?.target) {
+            const tH = getTerrainHeight(pos.x, pos.y);
             ctrl.target.x += (pos.x - ctrl.target.x) * 0.15;
-            ctrl.target.y = getTerrainHeight(pos.x, pos.y) + 1.5;
             ctrl.target.z += (pos.y - ctrl.target.z) * 0.15;
+            // Lerp suave en Y para no saltar bruscamente en laderas
+            ctrl.target.y += (tH + 1.5 - ctrl.target.y) * 0.08;
             ctrl.update();
         }
     });

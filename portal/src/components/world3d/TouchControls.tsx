@@ -1,180 +1,171 @@
 'use client';
-import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { Maximize } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 
 interface TouchControlsProps {
-    keysRef: React.MutableRefObject<Set<string>>;
+    keysRef: React.RefObject<Set<string>>;
     onJump: () => void;
 }
 
 export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
-    const joystickRef = useRef<HTMLDivElement>(null);
+    const [isMobile, setIsMobile] = useState(false);
+    const joystickBaseRef = useRef<HTMLDivElement>(null);
     const knobRef = useRef<HTMLDivElement>(null);
     const touchIdRef = useRef<number | null>(null);
     const centerRef = useRef({ x: 0, y: 0 });
-    const [isMobile, setIsMobile] = useState(false);
+    const activeKeysRef = useRef<string[]>([]);
 
+    // Detect mobile only on client
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+        const check = () => setIsMobile(window.innerWidth < 900 || navigator.maxTouchPoints > 0);
         check();
         window.addEventListener('resize', check);
         return () => window.removeEventListener('resize', check);
     }, []);
 
-    const clearKeys = useCallback(() => {
-        keysRef.current.delete('w');
-        keysRef.current.delete('s');
-        keysRef.current.delete('a');
-        keysRef.current.delete('d');
+    const clearMovementKeys = useCallback(() => {
+        ['w','s','a','d'].forEach(k => keysRef.current?.delete(k));
+        activeKeysRef.current = [];
     }, [keysRef]);
 
-    const handleTouchStart = useCallback((e: TouchEvent) => {
-        e.preventDefault();
-        if (touchIdRef.current !== null) return;
-        const touch = e.changedTouches[0];
-        touchIdRef.current = touch.identifier;
-        const rect = joystickRef.current!.getBoundingClientRect();
-        centerRef.current = {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2,
-        };
-    }, []);
+    const setKey = useCallback((key: string) => {
+        keysRef.current?.add(key);
+        if (!activeKeysRef.current.includes(key)) activeKeysRef.current.push(key);
+    }, [keysRef]);
 
-    const handleTouchMove = useCallback((e: TouchEvent) => {
-        e.preventDefault();
-        const touch = Array.from(e.changedTouches).find(t => t.identifier === touchIdRef.current);
-        if (!touch || !knobRef.current) return;
-
-        const dx = touch.clientX - centerRef.current.x;
-        const dy = touch.clientY - centerRef.current.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxDist = 40;
-        const clampedDist = Math.min(dist, maxDist);
-        const angle = Math.atan2(dy, dx);
-        const kx = Math.cos(angle) * clampedDist;
-        const ky = Math.sin(angle) * clampedDist;
-
-        knobRef.current.style.transform = `translate(${kx}px, ${ky}px)`;
-
-        clearKeys();
-        if (dist > 10) {
-            const norm = { x: dx / dist, y: dy / dist };
-            if (norm.y < -0.4) keysRef.current.add('w');
-            if (norm.y > 0.4)  keysRef.current.add('s');
-            if (norm.x < -0.4) keysRef.current.add('a');
-            if (norm.x > 0.4)  keysRef.current.add('d');
-        }
-    }, [clearKeys, keysRef]);
-
-    const handleTouchEnd = useCallback((e: TouchEvent) => {
-        const touch = Array.from(e.changedTouches).find(t => t.identifier === touchIdRef.current);
-        if (!touch) return;
-        touchIdRef.current = null;
-        if (knobRef.current) knobRef.current.style.transform = 'translate(0,0)';
-        clearKeys();
-    }, [clearKeys]);
-
+    // Attach to window to bypass Canvas event blocking
     useEffect(() => {
-        const el = joystickRef.current;
-        if (!el) return;
-        el.addEventListener('touchstart', handleTouchStart, { passive: false });
-        el.addEventListener('touchmove', handleTouchMove, { passive: false });
-        el.addEventListener('touchend', handleTouchEnd, { passive: true });
-        return () => {
-            el.removeEventListener('touchstart', handleTouchStart);
-            el.removeEventListener('touchmove', handleTouchMove);
-            el.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
+        if (!isMobile) return;
 
-    const toggleFullscreen = useCallback(() => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
-        } else {
-            document.exitFullscreen().catch(() => {});
-        }
-    }, []);
+        const onTouchStart = (e: TouchEvent) => {
+            const base = joystickBaseRef.current;
+            if (!base || touchIdRef.current !== null) return;
+            const rect = base.getBoundingClientRect();
+            const touch = e.changedTouches[0];
+            if (
+                touch.clientX < rect.left || touch.clientX > rect.right ||
+                touch.clientY < rect.top  || touch.clientY > rect.bottom
+            ) return;
+
+            e.preventDefault();
+            touchIdRef.current = touch.identifier;
+            centerRef.current = {
+                x: rect.left + rect.width / 2,
+                y: rect.top  + rect.height / 2,
+            };
+        };
+
+        const onTouchMove = (e: TouchEvent) => {
+            if (touchIdRef.current === null) return;
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchIdRef.current);
+            if (!touch || !knobRef.current) return;
+            e.preventDefault();
+
+            const dx = touch.clientX - centerRef.current.x;
+            const dy = touch.clientY - centerRef.current.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxR = 38;
+            const clamped = Math.min(dist, maxR);
+            const angle = Math.atan2(dy, dx);
+
+            knobRef.current.style.transform = 
+                `translate(${Math.cos(angle)*clamped}px, ${Math.sin(angle)*clamped}px)`;
+
+            clearMovementKeys();
+            if (dist > 12) {
+                const nx = dx / dist, ny = dy / dist;
+                if (ny < -0.35) setKey('w');
+                if (ny >  0.35) setKey('s');
+                if (nx < -0.35) setKey('a');
+                if (nx >  0.35) setKey('d');
+            }
+        };
+
+        const onTouchEnd = (e: TouchEvent) => {
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchIdRef.current);
+            if (!touch) return;
+            touchIdRef.current = null;
+            if (knobRef.current) knobRef.current.style.transform = 'translate(0,0)';
+            clearMovementKeys();
+        };
+
+        window.addEventListener('touchstart',  onTouchStart, { passive: false });
+        window.addEventListener('touchmove',   onTouchMove,  { passive: false });
+        window.addEventListener('touchend',    onTouchEnd,   { passive: false });
+        window.addEventListener('touchcancel', onTouchEnd,   { passive: false });
+
+        return () => {
+            window.removeEventListener('touchstart',  onTouchStart);
+            window.removeEventListener('touchmove',   onTouchMove);
+            window.removeEventListener('touchend',    onTouchEnd);
+            window.removeEventListener('touchcancel', onTouchEnd);
+        };
+    }, [isMobile, clearMovementKeys, setKey]);
 
     if (!isMobile) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 flex justify-between items-end px-6 pb-6 z-50 pointer-events-none">
-            {/* Joystick izquierdo */}
+        <div
+            style={{
+                position: 'fixed', bottom: 0, left: 0, right: 0,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+                padding: '0 32px 32px',
+                zIndex: 9999,
+                pointerEvents: 'none',
+            }}
+        >
+            {/* Joystick */}
             <div
-                ref={joystickRef}
-                className="pointer-events-auto"
+                ref={joystickBaseRef}
                 style={{
-                    width: 110, height: 110,
+                    pointerEvents: 'auto',
+                    width: 100, height: 100,
+                    borderRadius: '50%',
                     background: 'rgba(255,255,255,0.08)',
                     border: '2px solid rgba(255,255,255,0.25)',
-                    borderRadius: '50%',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    backdropFilter: 'blur(4px)',
-                    touchAction: 'none',
+                    backdropFilter: 'blur(6px)',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
                 }}
             >
                 <div
                     ref={knobRef}
                     style={{
-                        width: 44, height: 44,
-                        background: 'rgba(255,255,255,0.4)',
+                        width: 42, height: 42,
                         borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.45)',
+                        border: '2px solid rgba(255,255,255,0.7)',
+                        transition: 'transform 0.04s linear',
+                        willChange: 'transform',
                     }}
                 />
             </div>
 
             {/* Botones derecha */}
-            <div className="pointer-events-auto flex flex-col gap-3 items-center">
-                {/* Fullscreen */}
-                <button
-                    onClick={toggleFullscreen}
-                    style={{
-                        width: 44, height: 44,
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '2px solid rgba(255,255,255,0.25)',
-                        borderRadius: 12,
-                        color: '#ffffff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        backdropFilter: 'blur(4px)',
-                    }}
-                >
-                    <Maximize size={18} />
-                </button>
-                {/* Jump */}
+            <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <button
                     onTouchStart={(e) => { e.preventDefault(); onJump(); }}
                     style={{
-                        width: 64, height: 64,
+                        width: 64, height: 64, borderRadius: '50%',
                         background: 'rgba(0,229,255,0.15)',
                         border: '2px solid #00e5ff',
-                        borderRadius: '50%',
-                        color: '#00e5ff',
-                        fontSize: 22,
-                        fontWeight: 700,
-                        backdropFilter: 'blur(4px)',
-                        touchAction: 'none',
+                        color: '#00e5ff', fontSize: 26,
+                        backdropFilter: 'blur(6px)',
+                        userSelect: 'none',
                     }}
-                >
-                    ↑
-                </button>
-                {/* Sprint */}
+                >↑</button>
                 <button
-                    onTouchStart={(e) => { e.preventDefault(); keysRef.current.add('shift'); }}
-                    onTouchEnd={() => keysRef.current.delete('shift')}
+                    onTouchStart={(e) => { e.preventDefault(); keysRef.current?.add('shift'); }}
+                    onTouchEnd={(e) => { e.preventDefault(); keysRef.current?.delete('shift'); }}
                     style={{
-                        width: 64, height: 64,
+                        width: 64, height: 64, borderRadius: '50%',
                         background: 'rgba(255,200,0,0.15)',
                         border: '2px solid #ffcc00',
-                        borderRadius: '50%',
-                        color: '#ffcc00',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        backdropFilter: 'blur(4px)',
-                        touchAction: 'none',
+                        color: '#ffcc00', fontSize: 10, fontWeight: 800,
+                        backdropFilter: 'blur(6px)',
+                        userSelect: 'none',
                     }}
-                >
-                    SPRINT
-                </button>
+                >SPRINT</button>
             </div>
         </div>
     );
