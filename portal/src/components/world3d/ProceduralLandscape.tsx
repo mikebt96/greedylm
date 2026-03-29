@@ -48,14 +48,17 @@ function getCachedFeatures(cx: number, cz: number): TerrainFeature[] {
     return _featureCache.get(key)!;
 }
 
-export function getTerrainHeight(x: number, z: number): number {
-    // 1. Base noise
+export function getBaseHeight(x: number, z: number): number {
     const nx = x / NOISE_SCALE;
     const nz = z / NOISE_SCALE;
     let h = noise2d(nx, nz) * 1.0;
     h += noise2d(nx * 2, nz * 2) * 0.5;
     h += noise2d(nx * 4, nz * 4) * 0.25;
-    let baseH = h * NOISE_AMP - (NOISE_AMP * 0.5);
+    return h * NOISE_AMP - (NOISE_AMP * 0.5);
+}
+
+export function getTerrainHeight(x: number, z: number): number {
+    let baseH = getBaseHeight(x, z);
 
     // 2. Bump de montañas — sampler los chunks vecinos
     const cx = Math.floor(x / CHUNK_SIZE);
@@ -103,7 +106,7 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
     for (let i = 0; i < 200; i++) {
         const x = offsetX + rng() * CHUNK_SIZE;
         const z = offsetZ + rng() * CHUNK_SIZE;
-        terrainData.push({ x, z, h: getTerrainHeight(x, z) });
+        terrainData.push({ x, z, h: getBaseHeight(x, z) });
     }
 
     // Mountains on High Ground
@@ -139,7 +142,7 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
 // Montañas decorativas eliminadas — el terreno ahora sube físicamente
 
 function Cave({ f }: { f: TerrainFeature }) {
-    const y = getTerrainHeight(f.x, f.z);
+    const y = getBaseHeight(f.x, f.z);
     return (
         <group position={[f.x, y, f.z]} rotation={[0, f.rotY, 0]}>
             <mesh position={[0, f.scale * 0.5, 0]}>
@@ -155,7 +158,7 @@ function Cave({ f }: { f: TerrainFeature }) {
 }
 
 function GlowMushroom({ f }: { f: TerrainFeature }) {
-    const y = getTerrainHeight(f.x, f.z);
+    const y = getBaseHeight(f.x, f.z);
     return (
         <group position={[f.x, y, f.z]}>
             <mesh position={[0, f.scale * 0.3, 0]}>
@@ -187,7 +190,7 @@ function InstancedTrees({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!trunkRef.current || !canopyRef.current) return;
         features.forEach((f, i) => {
-            const y = getTerrainHeight(f.x, f.z);
+            const y = getBaseHeight(f.x, f.z);
             // Trunk is 5 units tall, scaled by f.scale. Bottom at y.
             temp.position.set(f.x, y + f.scale * 2.5, f.z);
             temp.scale.set(f.scale * 0.18, f.scale * 1.0, f.scale * 0.18);
@@ -227,7 +230,7 @@ function InstancedRocks({ features }: { features: TerrainFeature[] }) {
     useEffect(() => {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
-            const y = getTerrainHeight(f.x, f.z);
+            const y = getBaseHeight(f.x, f.z);
             // Scale is relative to centered dodecahedron. 0.3 offset buries it slightly.
             temp.position.set(f.x, y + f.scale * 0.2, f.z);
             temp.rotation.set(0, f.rotY, 0);
@@ -255,7 +258,7 @@ function InstancedGrass({ features }: { features: TerrainFeature[] }) {
         if (!meshRef.current) return;
         features.forEach((f, i) => {
             if (i >= 500) return; // Cap at 500 for perf
-            const y = getTerrainHeight(f.x, f.z);
+            const y = getBaseHeight(f.x, f.z);
             // Flatten to ground
             temp.position.set(f.x, y + 0.05, f.z);
             temp.rotation.set(-Math.PI / 2, 0, f.rotY);
