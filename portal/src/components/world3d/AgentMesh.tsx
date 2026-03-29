@@ -115,8 +115,8 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
         // ← Sin prop position para que useFrame tenga el control total
         <group ref={groupRef}
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-            onPointerOut={(e) => { e.stopPropagation(); setHovered(false); }}>
+            onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
+            onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'default'; }}>
             
             <group>
                 {/* Torso */}

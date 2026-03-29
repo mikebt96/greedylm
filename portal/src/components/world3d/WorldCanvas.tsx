@@ -45,9 +45,10 @@ import { ConstructionMesh } from './ConstructionMesh';
 import { BiomeEffects } from './BiomeEffects';
 import HUD from './HUD';
 import SettingsPanel, { Keybinds } from './SettingsPanel';
-import { ProceduralLandscape } from './ProceduralLandscape';
+import { ProceduralLandscape, getTerrainHeight } from './ProceduralLandscape';
 import { WorldEffects } from './WorldEffects';
 import { SUBTYPE_COLORS } from './WorldObjectMesh';
+import { TouchControls } from './TouchControls';
 
 // ── Types ──
 interface WsAgent {
@@ -97,7 +98,7 @@ function CameraFollower({ myPosRef, isSpectator }: { myPosRef: React.RefObject<{
         const ctrl = controls as any;
         if (ctrl?.target) {
             ctrl.target.x += (pos.x - ctrl.target.x) * 0.15;
-            ctrl.target.y = 1;
+            ctrl.target.y = getTerrainHeight(pos.x, pos.y) + 1.5;
             ctrl.target.z += (pos.y - ctrl.target.z) * 0.15;
             ctrl.update();
         }
@@ -180,8 +181,9 @@ function PlayerController({
         myPosRef.current = { x: newX, y: newY };
 
         // Optimistic local update
+        const terrainY = getTerrainHeight(newX, newY);
         setWsAgents(prev => prev.map(a =>
-            a.did === myDid ? { ...a, x: newX, y: newY, jumpY: jumpYRef.current } : a
+            a.did === myDid ? { ...a, x: newX, y: newY, jumpY: jumpYRef.current + terrainY } : a
         ));
 
         // ── Interaction (E) ──
@@ -708,6 +710,13 @@ function WorldCanvasInner() {
                     <span className="text-[10px] font-black text-slate-300 tracking-[0.3em] uppercase">Sector Nexus-01</span>
                 </div>
             </div>
+            <TouchControls 
+                keysRef={keysRef}
+                onJump={() => {
+                    keysRef.current?.add(' ');
+                    setTimeout(() => keysRef.current?.delete(' '), 100);
+                }}
+            />
         </div>
     );
 }
