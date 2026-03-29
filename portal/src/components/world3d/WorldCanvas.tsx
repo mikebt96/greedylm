@@ -32,7 +32,8 @@ import {
     DraftingCompass,
     Hammer,
     Scale,
-    Scroll
+    Scroll,
+    Maximize
 } from 'lucide-react';
 import { safeFetch } from '@/lib/api/safeFetch';
 import { getApiUrl } from '@/lib/api/apiUrl';
@@ -709,6 +710,20 @@ function WorldCanvasInner() {
                     <span className="text-[10px] font-black text-slate-300 tracking-[0.3em] uppercase">Sector Nexus-01</span>
                 </div>
             </div>
+            {/* Fullscreen button — all devices */}
+            <button
+                onClick={() => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                }}
+                className="absolute top-8 right-8 p-2.5 bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-800/50 text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer z-50"
+                title="Pantalla completa"
+            >
+                <Maximize className="w-4 h-4" />
+            </button>
             <TouchControls 
                 keysRef={keysRef}
                 onJump={() => {
