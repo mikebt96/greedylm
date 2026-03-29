@@ -581,9 +581,10 @@ function WorldCanvasInner() {
                 />
                 <OrbitControls 
                     makeDefault
-                    maxPolarAngle={Math.PI / 2.1} 
-                    minDistance={8} 
-                    maxDistance={isSpectator ? 800 : 70} 
+                    maxPolarAngle={Math.PI / 2.05} // No bajar debajo del suelo
+                    minPolarAngle={Math.PI / 3}    // No mirar desde muy arriba (top-down)
+                    minDistance={isSpectator ? 8 : 4} 
+                    maxDistance={isSpectator ? 800 : 7} // Cámara muy pegada al jugador
                     enableDamping
                     enablePan={isSpectator}
                 />

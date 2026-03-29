@@ -36,13 +36,49 @@ function noise2d(x: number, z: number) {
     return lerp(lerp(a, b, ux), lerp(c, d, ux), fz * fz * (3 - 2 * fz));
 }
 
+// Cache para no recalcular features cada frame
+const _featureCache = new Map<string, TerrainFeature[]>();
+
+function getCachedFeatures(cx: number, cz: number): TerrainFeature[] {
+    const key = `${cx},${cz}`;
+    if (!_featureCache.has(key)) {
+        const seed = getChunkSeed(cx, cz, 42);
+        _featureCache.set(key, generateFeatures(cx, cz, seed));
+    }
+    return _featureCache.get(key)!;
+}
+
 export function getTerrainHeight(x: number, z: number): number {
+    // 1. Base noise
     const nx = x / NOISE_SCALE;
     const nz = z / NOISE_SCALE;
     let h = noise2d(nx, nz) * 1.0;
     h += noise2d(nx * 2, nz * 2) * 0.5;
     h += noise2d(nx * 4, nz * 4) * 0.25;
-    return h * NOISE_AMP - (NOISE_AMP * 0.5);
+    let baseH = h * NOISE_AMP - (NOISE_AMP * 0.5);
+
+    // 2. Bump de montañas — sampler los chunks vecinos
+    const cx = Math.floor(x / CHUNK_SIZE);
+    const cz = Math.floor(z / CHUNK_SIZE);
+
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+            const features = getCachedFeatures(cx + dx, cz + dz);
+            for (const f of features) {
+                if (f.type !== 'mountain') continue;
+                const dist = Math.sqrt((x - f.x) ** 2 + (z - f.z) ** 2);
+                const radius = f.scale * 0.9; // radio de influencia
+                if (dist < radius) {
+                    // Smoothstep para transición suave
+                    const t = 1 - dist / radius;
+                    const smooth = t * t * (3 - 2 * t);
+                    baseH += smooth * f.scale * 1.1;
+                }
+            }
+        }
+    }
+
+    return baseH;
 }
 
 interface TerrainFeature {
@@ -100,23 +136,7 @@ function generateFeatures(cx: number, cz: number, seed: number): TerrainFeature[
 
 // ── Feature Components — MeshLambertMaterial everywhere ──
 
-function Mountain({ f }: { f: TerrainFeature }) {
-    const y = getTerrainHeight(f.x, f.z);
-    return (
-        <group position={[f.x, y, f.z]}>
-            <mesh position={[0, f.scale * 0.4, 0]} castShadow receiveShadow>
-                <coneGeometry args={[f.scale * 0.8, f.scale * 1.2, 6]} />
-                <meshLambertMaterial color="#2e3f5c" />
-            </mesh>
-            {f.scale > 15 && (
-                <mesh position={[0, f.scale * 0.85, 0]}>
-                    <coneGeometry args={[f.scale * 0.25, f.scale * 0.3, 6]} />
-                    <meshLambertMaterial color="#dce8f0" />
-                </mesh>
-            )}
-        </group>
-    );
-}
+// Montañas decorativas eliminadas — el terreno ahora sube físicamente
 
 function Cave({ f }: { f: TerrainFeature }) {
     const y = getTerrainHeight(f.x, f.z);
@@ -350,7 +370,7 @@ export function ProceduralLandscape({ myPosRef }: { myPosRef: { current: { x: nu
                     <TerrainChunk key={`tg-${c.cx}-${c.cz}`} cx={c.cx} cz={c.cz} />
                 )}
             </React.Suspense>
-            {mountains.map((f, i) => <Mountain key={`m-${i}`} f={f} />)}
+            {/* Mountains are physically part of the terrain now */}
             {caves.map((f, i)     => <Cave     key={`c-${i}`} f={f} />)}
             {mushrooms.map((f, i) => <GlowMushroom key={`sh-${i}`} f={f} />)}
             <InstancedTrees features={trees} />
