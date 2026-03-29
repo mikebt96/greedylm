@@ -1,12 +1,14 @@
 'use client';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Eye } from 'lucide-react';
 
 interface TouchControlsProps {
     keysRef: React.RefObject<Set<string>>;
     onJump: () => void;
+    onToggleCamera?: () => void;
 }
 
-export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
+export function TouchControls({ keysRef, onJump, onToggleCamera }: TouchControlsProps) {
     const [isMobile, setIsMobile] = useState(false);
     const joystickBaseRef = useRef<HTMLDivElement>(null);
     const knobRef = useRef<HTMLDivElement>(null);
@@ -143,6 +145,22 @@ export function TouchControls({ keysRef, onJump }: TouchControlsProps) {
 
             {/* Botones derecha */}
             <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {onToggleCamera && (
+                    <button
+                        onTouchStart={(e) => { e.preventDefault(); onToggleCamera(); }}
+                        style={{
+                            width: 64, height: 64, borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.15)',
+                            border: '2px solid rgba(255,255,255,0.4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff',
+                            backdropFilter: 'blur(6px)',
+                            userSelect: 'none',
+                        }}
+                    >
+                        <Eye size={24} />
+                    </button>
+                )}
                 <button
                     onTouchStart={(e) => { e.preventDefault(); onJump(); }}
                     style={{

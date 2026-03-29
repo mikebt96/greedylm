@@ -33,7 +33,7 @@ const RACE_COLORS: Record<string, string> = {
 // Import topography engine
 import { getTerrainHeight } from './ProceduralLandscape';
 
-export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentData; isMe: boolean; isScanning: boolean; onClick: () => void }) {
+export function AgentMesh({ agent, isMe, isScanning, onClick, camView }: { agent: AgentData; isMe: boolean; isScanning?: boolean; onClick: () => void; camView?: string }) {
     const groupRef = useRef<THREE.Group>(null);
     const orbRef = useRef<THREE.Mesh>(null);
     const [hovered, setHovered] = React.useState(false);
@@ -128,8 +128,9 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
             onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
             onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = 'default'; }}>
             
-            <group>
-                {/* Torso */}
+            {!(isMe && camView === 'first') && (
+                <group>
+                    {/* Torso */}
                 <mesh position={[0, 0.9, 0]}>
                     <boxGeometry args={[0.5, 0.6, 0.25]} />
                     <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
@@ -160,16 +161,19 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
                     <meshLambertMaterial color={accent} emissive={accent} emissiveIntensity={0.2} />
                 </mesh>
             </group>
+            )}
 
             {/* "Me" ring */}
-            {isMe && (
+            {isMe && !(isMe && camView === 'first') && (
                 <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                     <ringGeometry args={[0.55, 0.7, 24]} />
                     <meshBasicMaterial color="#00e5ff" transparent opacity={0.6} side={THREE.DoubleSide} />
                 </mesh>
             )}
-            {/* Nameplate visibility logic: Always show for "Me", otherwise show if (Scanning OR Hovered) */}
-            {(isMe || isScanning || hovered) && (
+            {/* Nameplate visibility logic: 
+                - Never show for "Me" unless camera is far or isometric.
+                - For other agents, show if hovered or scanning. */}
+            {(!isMe && (isScanning || hovered)) || (isMe && (camView === 'third_far' || camView === 'isometric')) ? (
                 <Html position={[0, 2.3, 0]} center distanceFactor={20}>
                 <div style={{
                     background: 'rgba(2,6,23,0.8)',
@@ -182,7 +186,7 @@ export function AgentMesh({ agent, isMe, isScanning, onClick }: { agent: AgentDa
                     {agent.agent_name} <span style={{ color: '#64748b', fontSize: 8 }}>Lv{agent.level}</span>
                 </div>
             </Html>
-            )}
+            ) : null}
         </group>
     );
 }

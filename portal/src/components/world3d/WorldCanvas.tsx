@@ -234,9 +234,10 @@ interface SceneProps {
     myPosRef: React.MutableRefObject<{ x: number; y: number }>;
     isScanning: boolean;
     activeEffects: any[];
+    camView: string;
 }
 
-function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef, isScanning, activeEffects }: SceneProps) {
+function Scene({ agents, objects, constructions, onObjectInteract, onAgentInteract, myDid, myPosRef, isScanning, activeEffects, camView }: SceneProps) {
     const gridRef = useRef<THREE.GridHelper>(null);
 
     useFrame(() => {
@@ -268,33 +269,38 @@ function Scene({ agents, objects, constructions, onObjectInteract, onAgentIntera
             <WorldEffects activeBursts={activeEffects} />
 
             {/* Entidades */}
-            {agents.map(agent => (
+            {agents.map(a => (
                 <AgentMesh 
-                    key={agent.did} 
-                    agent={agent} 
-                    isMe={agent.did === myDid}
+                    key={a.did} 
+                    agent={a} 
+                    isMe={a.did === myDid} 
                     isScanning={isScanning}
-                    onClick={() => onAgentInteract(agent.did)}
+                    onClick={() => onAgentInteract(a.did)} 
+                    camView={camView} 
                 />
             ))}
-            {objects.map(obj => (
+            {objects.map(o => (
                 <WorldObjectMesh 
-                    key={obj.id} 
-                    obj={obj} 
+                    key={o.id} 
+                    obj={o} 
                     isScanning={isScanning}
-                    onClick={() => onObjectInteract(obj.id, obj.type)} 
+                    onClick={() => onObjectInteract(o.id, o.type)} 
                 />
             ))}
             {constructions.map(c => (
-                <ConstructionMesh key={c.id} construction={c} />
+                <ConstructionMesh 
+                    key={c.id} 
+                    construction={c} 
+                />
             ))}
-
         </>
     );
 }
 
 
 /* ────────────────────────────────────────────────────────────────────────── */
+
+export type CameraView = 'first' | 'third_close' | 'third_far' | 'isometric';
 
 function WorldCanvasInner() {
     const { t } = useT();
@@ -314,6 +320,35 @@ function WorldCanvasInner() {
     const reconnectTimer = useRef<any>(null);
     const keysRef = useRef<Set<string>>(new Set());
     const myPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const [camView, setCamView] = useState<CameraView>('third_close');
+    const [isSpectator, setIsSpectator] = useState(false);
+
+    // Camera Mode Hotkey (V)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'v' && document.activeElement?.tagName !== 'INPUT' && !isSpectator) {
+                setCamView(prev => {
+                    if (prev === 'third_close') return 'first';
+                    if (prev === 'first') return 'third_far';
+                    if (prev === 'third_far') return 'isometric';
+                    return 'third_close';
+                });
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isSpectator]);
+
+    const camSettings = {
+        first:       { minD: 0.1, maxD: 0.1, minP: Math.PI/3, maxP: Math.PI/2.05, pan: false },
+        third_close: { minD: 4,   maxD: 7,   minP: Math.PI/3, maxP: Math.PI/2.05, pan: false },
+        third_far:   { minD: 10,  maxD: 25,  minP: Math.PI/4, maxP: Math.PI/2.05, pan: false },
+        isometric:   { minD: 30,  maxD: 50,  minP: 0,         maxP: Math.PI/4,    pan: true },
+    }[camView];
+
+    const finalCam = isSpectator 
+        ? { minD: 8, maxD: 800, minP: 0, maxP: Math.PI/2.05, pan: true }
+        : camSettings;
 
     const addLog = (msg: string) => {
         setLogs(prev => [msg, ...prev].slice(0, 10));
@@ -401,7 +436,6 @@ function WorldCanvasInner() {
         } catch { setWsStatus('error'); reconnectTimer.current = setTimeout(connect, 5000); }
     }, [myDid]);
 
-    const [isSpectator, setIsSpectator] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [keybinds, setKeybinds] = useState<Keybinds>({
         forward: 'w', backward: 's', left: 'a', right: 'd',
@@ -581,12 +615,12 @@ function WorldCanvasInner() {
                 />
                 <OrbitControls 
                     makeDefault
-                    maxPolarAngle={Math.PI / 2.05} // No bajar debajo del suelo
-                    minPolarAngle={Math.PI / 3}    // No mirar desde muy arriba (top-down)
-                    minDistance={isSpectator ? 8 : 4} 
-                    maxDistance={isSpectator ? 800 : 7} // Cámara muy pegada al jugador
+                    maxPolarAngle={finalCam.maxP} 
+                    minPolarAngle={finalCam.minP}    
+                    minDistance={finalCam.minD} 
+                    maxDistance={finalCam.maxD} 
                     enableDamping
-                    enablePan={isSpectator}
+                    enablePan={finalCam.pan}
                 />
                 
                 <Scene 
@@ -599,6 +633,7 @@ function WorldCanvasInner() {
                     myPosRef={myPosRef}
                     isScanning={isScanning}
                     activeEffects={activeEffects}
+                    camView={camView}
                 />
                 
                 <Stats className="!top-auto !bottom-0 sm:!top-0 sm:!bottom-auto" />
@@ -766,6 +801,14 @@ function WorldCanvasInner() {
                 onJump={() => {
                     keysRef.current?.add(' ');
                     setTimeout(() => keysRef.current?.delete(' '), 100);
+                }}
+                onToggleCamera={() => {
+                    setCamView(prev => {
+                        if (prev === 'third_close') return 'first';
+                        if (prev === 'first') return 'third_far';
+                        if (prev === 'third_far') return 'isometric';
+                        return 'third_close';
+                    });
                 }}
             />
         </div>
