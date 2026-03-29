@@ -715,14 +715,48 @@ function WorldCanvasInner() {
             </div>
             {/* Fullscreen button — all devices */}
             <button
-                onClick={() => {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(() => {});
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const doc = document as any;
+                    const el = document.documentElement as any;
+                    
+                    if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+                        if (el.requestFullscreen) {
+                            el.requestFullscreen().catch(() => {});
+                        } else if (el.webkitRequestFullscreen) {
+                            el.webkitRequestFullscreen();
+                        }
                     } else {
-                        document.exitFullscreen().catch(() => {});
+                        if (doc.exitFullscreen) {
+                            doc.exitFullscreen().catch(() => {});
+                        } else if (doc.webkitExitFullscreen) {
+                            doc.webkitExitFullscreen();
+                        }
                     }
                 }}
-                className="absolute top-8 right-8 p-2.5 bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-800/50 text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer z-50"
+                onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const doc = document as any;
+                    const el = document.documentElement as any;
+                    
+                    if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+                        if (el.requestFullscreen) {
+                            el.requestFullscreen().catch(() => {});
+                        } else if (el.webkitRequestFullscreen) {
+                            el.webkitRequestFullscreen();
+                        }
+                    } else {
+                        if (doc.exitFullscreen) {
+                            doc.exitFullscreen().catch(() => {});
+                        } else if (doc.webkitExitFullscreen) {
+                            doc.webkitExitFullscreen();
+                        }
+                    }
+                }}
+                className="absolute top-8 right-8 p-2.5 bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-800/50 text-slate-300 hover:text-white hover:bg-slate-800/60 transition-all cursor-pointer z-50 pointer-events-auto"
+                style={{ touchAction: 'manipulation' }}
                 title="Pantalla completa"
             >
                 <Maximize className="w-4 h-4" />
